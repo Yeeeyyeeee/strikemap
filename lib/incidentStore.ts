@@ -120,6 +120,8 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
 
 /**
  * Seed the store with initial data if empty.
+ * NEVER persists seed data to Redis — seed is in-memory only as a baseline.
+ * Real data from refreshLiveData() will merge on top and persist.
  */
 export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
   const store = await ensureLoaded();
@@ -127,8 +129,7 @@ export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
     for (const inc of incidents) {
       store.set(inc.id, inc);
     }
-    console.log(`[store] Seeded with ${store.size} incidents`);
-    await persistToRedis();
+    console.log(`[store] Seeded in-memory with ${store.size} baseline incidents (not persisted to Redis)`);
   }
 }
 
