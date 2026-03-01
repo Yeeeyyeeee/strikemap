@@ -178,12 +178,18 @@ function postToIncident(post: ChannelPost): Incident {
 
 export async function fetchTelegramIncidents(): Promise<Incident[]> {
   const channels = getConfiguredChannels();
-  if (channels.length === 0) return [];
+  if (channels.length === 0) {
+    console.warn("[telegram] No channels configured (TELEGRAM_CHANNELS env var missing)");
+    return [];
+  }
 
+  console.log(`[telegram] Scraping ${channels.length} channels: ${channels.join(", ")}`);
   const results = await Promise.all(channels.map((ch) => scrapeChannel(ch)));
   const allPosts = results.flat();
+  console.log(`[telegram] Scraped ${allPosts.length} total posts`);
 
   const filteredPosts = allPosts.filter((post) => isIranRelated(post.text));
+  console.log(`[telegram] ${filteredPosts.length} posts passed Iran keyword filter`);
   const incidents = filteredPosts.map((post) => postToIncident(post));
 
   // Enrich with AI geocoding in batches of 5
@@ -201,6 +207,9 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
       incidents[i].target_military = enrichment.target_military;
     }
   }
+
+  const withCoords = incidents.filter((i) => i.lat !== 0 && i.lng !== 0);
+  console.log(`[telegram] ${withCoords.length}/${incidents.length} incidents got valid coordinates from AI`);
 
   return incidents;
 }

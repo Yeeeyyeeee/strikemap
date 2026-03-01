@@ -30,16 +30,25 @@ export async function refreshLiveData(): Promise<number> {
 
   try {
     const [sheetData, rssData, telegramData] = await Promise.all([
-      withTimeout(fetchSheetData(), 10_000).catch(() => []),
-      withTimeout(fetchRSSIncidents(), 15_000).catch(() => []),
-      withTimeout(fetchTelegramIncidents(), 15_000).catch(() => []),
+      withTimeout(fetchSheetData(), 10_000).catch((err) => {
+        console.warn(`[refresh] Sheet fetch failed: ${err?.message || err}`);
+        return [] as Awaited<ReturnType<typeof fetchSheetData>>;
+      }),
+      withTimeout(fetchRSSIncidents(), 15_000).catch((err) => {
+        console.warn(`[refresh] RSS fetch failed: ${err?.message || err}`);
+        return [] as Awaited<ReturnType<typeof fetchRSSIncidents>>;
+      }),
+      withTimeout(fetchTelegramIncidents(), 30_000).catch((err) => {
+        console.warn(`[refresh] Telegram fetch failed: ${err?.message || err}`);
+        return [] as Awaited<ReturnType<typeof fetchTelegramIncidents>>;
+      }),
     ]);
+
+    console.log(`[refresh] Fetched: ${sheetData.length} sheet, ${rssData.length} rss, ${telegramData.length} telegram`);
 
     const allNew = [...sheetData, ...rssData, ...telegramData];
     const added = mergeIncidents(allNew);
-    if (added > 0) {
-      console.log(`[refresh] Merged ${added} new incidents from live sources`);
-    }
+    console.log(`[refresh] Merged ${added} new incidents (${allNew.length} candidates, store deduped)`);
     return added;
   } catch (err) {
     console.error("[refresh] Refresh failed:", err);
