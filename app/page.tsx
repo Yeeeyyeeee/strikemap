@@ -438,7 +438,7 @@ export default function Home() {
 
       {/* Left column gauges — only on map views */}
       {isMapView(viewMode) && settings.showGauges && (
-        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto pr-1">
+        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto pr-1 w-52">
           <EscalationMeter incidents={incidents} />
           {(viewMode === "all" || viewMode === "iran") && (
             <AccuracyGauge incidents={incidents} side="iran" />
