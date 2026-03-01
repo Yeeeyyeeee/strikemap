@@ -215,7 +215,7 @@ export default function MapView({
       for (const incident of validIncidents) {
         if (markersRef.current.has(incident.id)) continue;
 
-        const color = incident.side === "us_israel"
+        const color = (incident.side === "us_israel" || incident.side === "us" || incident.side === "israel")
           ? "#3b82f6"
           : getWeaponColor(incident.weapon);
         const iconType = getIconType(incident.weapon);

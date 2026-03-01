@@ -18,6 +18,10 @@ interface HeaderProps {
   onRequestNotifications?: () => void;
   settingsOpen?: boolean;
   onToggleSettings?: () => void;
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
+  notificationsEnabled?: boolean;
+  onToggleNotifications?: () => void;
 }
 
 const isMapView = (mode: ViewMode) =>
@@ -43,11 +47,15 @@ export default function Header({
   onRequestNotifications,
   settingsOpen = false,
   onToggleSettings,
+  soundEnabled = true,
+  onToggleSound,
+  notificationsEnabled = true,
+  onToggleNotifications,
 }: HeaderProps) {
   const { t, locale, setLocale } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const iranCount = incidents.filter((i) => i.side === "iran").length;
-  const usIsraelCount = incidents.filter((i) => i.side === "us_israel").length;
+  const usIsraelCount = incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel").length;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-[#2a2a2a]">
@@ -72,27 +80,46 @@ export default function Header({
             )}
           </div>
           <div className="flex items-center gap-2 ml-2">
-            {onRequestNotifications && (
+            {/* Sound mute/unmute toggle */}
+            {onToggleSound && (
               <button
-                onClick={onRequestNotifications}
-                className="relative text-neutral-500 hover:text-neutral-300 transition-colors p-1"
-                title={
-                  notificationPermission === "granted"
-                    ? t("notifications_enabled")
-                    : notificationPermission === "denied"
-                      ? t("notifications_blocked")
-                      : t("enable_notifications")
-                }
+                onClick={onToggleSound}
+                className={`relative transition-colors p-1 ${soundEnabled ? "text-neutral-500 hover:text-neutral-300" : "text-red-400 hover:text-red-300"}`}
+                title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                </svg>
-                {notificationPermission === "default" && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                {soundEnabled ? (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
+                    <path d="M19.07 4.93a10 10 0 010 14.14" />
+                    <path d="M15.54 8.46a5 5 0 010 7.07" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                    <line x1="17" y1="9" x2="23" y2="15" />
+                  </svg>
                 )}
-                {notificationPermission === "granted" && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />
+              </button>
+            )}
+            {/* Notifications toggle */}
+            {onToggleNotifications && (
+              <button
+                onClick={onToggleNotifications}
+                className={`relative transition-colors p-1 ${notificationsEnabled ? "text-neutral-500 hover:text-neutral-300" : "text-red-400 hover:text-red-300"}`}
+                title={notificationsEnabled ? "Disable notifications" : "Enable notifications"}
+              >
+                {notificationsEnabled ? (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 01-3.46 0" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 01-3.46 0" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
                 )}
               </button>
             )}

@@ -13,7 +13,7 @@ interface StatsBoardProps {
 export default function StatsBoard({ incidents }: StatsBoardProps) {
   const stats = useMemo(() => {
     const iranStrikes = incidents.filter((i) => i.side === "iran");
-    const usStrikes = incidents.filter((i) => i.side === "us_israel");
+    const usStrikes = incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel");
     const dates = incidents.map((i) => i.date).sort();
     const firstDate = dates[0] || "N/A";
     const lastDate = dates[dates.length - 1] || "N/A";

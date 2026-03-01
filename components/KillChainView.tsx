@@ -9,9 +9,11 @@ interface KillChainViewProps {
   onSelectIncident: (incident: Incident) => void;
 }
 
-const SIDE_CONFIG = {
+const SIDE_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
   iran: { label: "IRANIAN", color: "#ef4444", bg: "bg-red-500/10", border: "border-red-500/30" },
   us_israel: { label: "US/ISRAEL", color: "#3b82f6", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+  us: { label: "US", color: "#3b82f6", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+  israel: { label: "ISRAEL", color: "#06b6d4", bg: "bg-cyan-500/10", border: "border-cyan-500/30" },
 };
 
 const SEVERITY_COLORS: Record<string, string> = {

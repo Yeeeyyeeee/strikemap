@@ -29,7 +29,7 @@ export async function fetchSheetData(): Promise<Incident[]> {
             video_url: row.video_url || "",
             source_url: row.source_url || "",
             source: "sheet" as const,
-            side: row.side === "us_israel" ? "us_israel" as const : "iran" as const,
+            side: (row.side === "us" ? "us" as const : row.side === "israel" ? "israel" as const : row.side === "us_israel" ? "us_israel" as const : "iran" as const),
             target_military: row.target_military === "true",
           }));
         resolve(incidents);

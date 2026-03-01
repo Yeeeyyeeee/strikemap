@@ -6,7 +6,7 @@ export interface EnrichmentResult {
   lng: number;
   weapon: string;
   target_type: string;
-  side: "iran" | "us_israel";
+  side: "iran" | "us_israel" | "us" | "israel";
   target_military: boolean;
   intercepted_by: string;
   intercept_success: boolean;
@@ -28,7 +28,7 @@ const responseSchema: ResponseSchema = {
     lng: { type: SchemaType.NUMBER, description: "Longitude as decimal" },
     weapon: { type: SchemaType.STRING, description: "Weapon type if mentioned" },
     target_type: { type: SchemaType.STRING, description: "What was targeted" },
-    side: { type: SchemaType.STRING, description: "iran or us_israel" },
+    side: { type: SchemaType.STRING, description: "iran, us, or israel — use 'us' for US/American/CENTCOM strikes, 'israel' for Israeli/IDF strikes" },
     target_military: { type: SchemaType.BOOLEAN, description: "true if military target" },
     intercepted_by: { type: SchemaType.STRING, description: "Defense system that intercepted, e.g. 'Iron Dome', 'Arrow-3', 'THAAD', 'David\\'s Sling', or empty string if not intercepted/unknown" },
     intercept_success: { type: SchemaType.BOOLEAN, description: "true if the projectile was confirmed intercepted by a defense system, false otherwise" },
@@ -49,7 +49,7 @@ Return a JSON object with:
 - lng: Longitude as decimal number
 - weapon: Weapon type if mentioned (e.g. "Ballistic missile", "Shahed-136 drone", "Airstrike")
 - target_type: What was targeted (e.g. "Air base", "Urban area", "Oil refinery")
-- side: Who is attacking — "iran" if Iran/IRGC/Houthis/Hezbollah attacking, "us_israel" if US/Israel/IDF attacking
+- side: Who is attacking — "iran" if Iran/IRGC/Houthis/Hezbollah attacking, "us" if US/American/CENTCOM/Pentagon attacking, "israel" if Israel/IDF/IAF/Mossad attacking
 - target_military: true if military target, false if civilian
 - intercepted_by: Name of the defense system that intercepted the projectile (e.g. "Iron Dome", "Arrow-3", "THAAD", "David's Sling"). Empty string if not intercepted or not mentioned.
 - intercept_success: true if the projectile was confirmed intercepted, false otherwise
@@ -102,7 +102,11 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
     }
 
     // Normalize side value
-    if (parsed.side !== "iran" && parsed.side !== "us_israel") {
+    if (parsed.side === "us_israel") {
+      // Legacy value — split based on location heuristic
+      parsed.side = parsed.location?.includes("Iran") ? "us" : "israel";
+    }
+    if (parsed.side !== "iran" && parsed.side !== "us" && parsed.side !== "israel") {
       parsed.side = "iran";
     }
 

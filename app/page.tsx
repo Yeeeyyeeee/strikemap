@@ -100,6 +100,7 @@ export default function Home() {
   // Track real timestamps when new strikes are detected (not the date string)
   const [lastIranStrikeAt, setLastIranStrikeAt] = useState<number>(0);
   const [lastUSStrikeAt, setLastUSStrikeAt] = useState<number>(0);
+  const [lastIsraelStrikeAt, setLastIsraelStrikeAt] = useState<number>(0);
 
   // Fetch all incidents from the persistent server-side store
   const loadData = useCallback(async () => {
@@ -126,7 +127,8 @@ export default function Home() {
           // Record real timestamps for conflict clock
           const now = Date.now();
           if (newIncs.some((i) => i.side === "iran")) setLastIranStrikeAt(now);
-          if (newIncs.some((i) => i.side === "us_israel")) setLastUSStrikeAt(now);
+          if (newIncs.some((i) => i.side === "us" || (i.side === "us_israel" && i.location?.includes("Iran")))) setLastUSStrikeAt(now);
+          if (newIncs.some((i) => i.side === "israel" || (i.side === "us_israel" && !i.location?.includes("Iran")))) setLastIsraelStrikeAt(now);
 
           if (settingsRef.current.soundEnabled) playImpactSound();
           flashKey.current += 1;
@@ -225,7 +227,9 @@ export default function Home() {
   const filteredIncidents = useMemo(() => {
     let result = viewMode === "all" || !isMapView(viewMode)
       ? incidents
-      : incidents.filter((i) => i.side === viewMode);
+      : viewMode === "us_israel"
+        ? incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel")
+        : incidents.filter((i) => i.side === viewMode);
     // Apply date filter from settings
     if (settings.dateFrom) {
       result = result.filter((i) => i.date >= settings.dateFrom!);
@@ -347,6 +351,18 @@ export default function Home() {
         onRequestNotifications={notifSupported ? requestPermission : undefined}
         settingsOpen={settingsOpen}
         onToggleSettings={handleToggleSettings}
+        soundEnabled={settings.soundEnabled}
+        onToggleSound={() => {
+          const next = { ...settings, soundEnabled: !settings.soundEnabled };
+          setSettings(next);
+          saveSettings(next);
+        }}
+        notificationsEnabled={settings.notificationsEnabled}
+        onToggleNotifications={() => {
+          const next = { ...settings, notificationsEnabled: !settings.notificationsEnabled };
+          setSettings(next);
+          saveSettings(next);
+        }}
       />
 
       {settingsOpen && (
@@ -476,7 +492,7 @@ export default function Home() {
           )}
           <InterceptGauge incidents={incidents} />
           <CasualtyTracker incidents={incidents} />
-          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} />
+          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
           {settings.showLegend && (
             <Legend weapons={weapons} timelineActive={timelineActive} />
           )}
@@ -486,7 +502,7 @@ export default function Home() {
       {/* Legend standalone — when gauges are off but legend is on */}
       {isMapView(viewMode) && !settings.showGauges && settings.showLegend && (
         <div className={`fixed left-4 z-40 hidden md:flex flex-col gap-3 transition-[bottom] duration-300 ${timelineActive ? "bottom-40" : "bottom-4"}`}>
-          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} />
+          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
           <Legend weapons={weapons} timelineActive={timelineActive} />
         </div>
       )}

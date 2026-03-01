@@ -8,14 +8,20 @@ interface AccuracyGaugeProps {
   side: StrikeSide;
 }
 
-const SIDE_CONFIG: Record<StrikeSide, { label: string; accent: string }> = {
+const SIDE_CONFIG: Record<string, { label: string; accent: string }> = {
   iran: { label: "Iran Aim Accuracy", accent: "#ef4444" },
   us_israel: { label: "US/Israel Aim Accuracy", accent: "#3b82f6" },
+  us: { label: "US Aim Accuracy", accent: "#3b82f6" },
+  israel: { label: "Israel Aim Accuracy", accent: "#06b6d4" },
 };
 
 export default memo(function AccuracyGauge({ incidents, side }: AccuracyGaugeProps) {
+  const matchesSide = (i: Incident) => {
+    if (side === "us_israel") return i.side === "us_israel" || i.side === "us" || i.side === "israel";
+    return i.side === side;
+  };
   const strikes = incidents.filter(
-    (i) => i.side === side && i.lat !== 0 && i.lng !== 0
+    (i) => matchesSide(i) && i.lat !== 0 && i.lng !== 0
   );
 
   if (strikes.length === 0) return null;

@@ -243,6 +243,19 @@ const US_ISRAEL_ATTACKER_KEYWORDS = [
   "israel fires", "israel fired", "israel launches",
 ];
 
+const US_ONLY_KEYWORDS = [
+  "us struck", "us attacked", "usaf", "us air force", "pentagon",
+  "coalition struck", "coalition forces",
+  "b-2", "b-52", "centcom", "us central command",
+  "american", "united states",
+];
+
+const ISRAEL_ONLY_KEYWORDS = [
+  "idf", "israeli", "israel struck", "israel attacked", "israel hit",
+  "israel fires", "israel fired", "israel launches",
+  "iaf", "israel defense", "mossad",
+];
+
 function matchFirst<T extends { keywords: string[] }>(
   text: string,
   entries: T[]
@@ -269,16 +282,26 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   const wpn = matchFirst(text, WEAPONS);
 
   // Determine side
-  let side: "iran" | "us_israel" = "iran";
+  let side: "iran" | "us" | "israel" = "iran";
   const iranScore = IRAN_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
   const usScore = US_ISRAEL_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
 
   if (usScore > iranScore) {
-    side = "us_israel";
+    // Distinguish US from Israel
+    const usOnly = US_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+    const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+    if (usOnly > ilOnly) {
+      side = "us";
+    } else if (ilOnly > usOnly) {
+      side = "israel";
+    } else {
+      // Heuristic: strikes in Iran are likely US, others likely Israel
+      side = loc.location.includes("Iran") ? "us" : "israel";
+    }
   } else if (iranScore === 0 && usScore === 0) {
-    // Heuristic: if target is in Iran, attacker is likely US/Israel
+    // Heuristic: if target is in Iran, attacker is likely US
     if (loc.location.includes("Iran")) {
-      side = "us_israel";
+      side = "us";
     }
   }
 

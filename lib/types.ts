@@ -1,4 +1,4 @@
-export type StrikeSide = "iran" | "us_israel";
+export type StrikeSide = "iran" | "us_israel" | "us" | "israel";
 
 export type ViewMode = "all" | "iran" | "us_israel" | "leadership" | "stats" | "weapons" | "killchain";
 
