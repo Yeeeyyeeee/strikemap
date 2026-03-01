@@ -33,6 +33,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="StrikeMap" />
+        <meta name="google-adsense-account" content="ca-pub-5608578086593725" />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link
           href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
