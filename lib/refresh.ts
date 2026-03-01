@@ -26,6 +26,13 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+/** Reset debounce so next call always refreshes */
+export async function resetDebounce(): Promise<void> {
+  refreshing = false;
+  const r = getRedis();
+  if (r) await r.del("lastRefreshAt").catch(() => {});
+}
+
 /**
  * Fetch live data from all sources and merge into the store.
  * Debounced to run at most once per minute (tracked in Redis so it
