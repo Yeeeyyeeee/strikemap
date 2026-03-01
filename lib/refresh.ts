@@ -17,7 +17,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Fetch live data from all sources and merge into the in-memory store.
+ * Fetch live data from all sources and merge into the store.
  * Debounced to run at most once per minute.
  */
 export async function refreshLiveData(): Promise<number> {
@@ -47,7 +47,7 @@ export async function refreshLiveData(): Promise<number> {
     console.log(`[refresh] Fetched: ${sheetData.length} sheet, ${rssData.length} rss, ${telegramData.length} telegram`);
 
     const allNew = [...sheetData, ...rssData, ...telegramData];
-    const added = mergeIncidents(allNew);
+    const added = await mergeIncidents(allNew);
     console.log(`[refresh] Merged ${added} new incidents (${allNew.length} candidates, store deduped)`);
     return added;
   } catch (err) {

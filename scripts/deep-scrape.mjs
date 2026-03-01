@@ -8,7 +8,7 @@ const CHANNELS = [
   "IDFofficial", "IsraelWarRoom", "CIG_telegram", "QudsNen",
   "SouthFirstResponders", "tabzlive", "AMK_Mapping", "rnintel", "intelslava",
 ];
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyAWpnOnLBfiIa0mSC-S4pnaVhqz5J_Ti9s";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 // How many pages to go back per channel (~20 posts per page)
 // IDF/Israeli channels post less, so we can go deeper

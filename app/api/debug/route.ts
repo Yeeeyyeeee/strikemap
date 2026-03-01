@@ -5,13 +5,12 @@ import { scrapeChannel, isIranRelated } from "@/lib/telegram";
 export async function GET() {
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
-    storeSize: getIncidentCount(),
+    storeSize: await getIncidentCount(),
     env: {
       TELEGRAM_CHANNELS: process.env.TELEGRAM_CHANNELS ? `set (${process.env.TELEGRAM_CHANNELS.split(",").length} channels)` : "MISSING",
       GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "set" : "MISSING",
+      UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ? "set" : "MISSING",
       NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? "set" : "MISSING",
-      NEXT_PUBLIC_FJ_RSS_URL: process.env.NEXT_PUBLIC_FJ_RSS_URL ? "set" : "MISSING",
-      NEXT_PUBLIC_SHEET_URL: process.env.NEXT_PUBLIC_SHEET_URL && process.env.NEXT_PUBLIC_SHEET_URL !== "your_published_google_sheet_csv_url_here" ? "set" : "MISSING",
     },
   };
 

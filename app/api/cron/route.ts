@@ -3,11 +3,7 @@ import { seedIfEmpty } from "@/lib/incidentStore";
 import { SAMPLE_INCIDENTS } from "@/lib/sampleData";
 import { refreshLiveData } from "@/lib/refresh";
 
-// Seed on first import (in case cron fires before any user visit)
-seedIfEmpty(SAMPLE_INCIDENTS);
-
 export async function GET(request: Request) {
-  // Verify the request is from Vercel Cron (in production)
   const authHeader = request.headers.get("authorization");
   if (
     process.env.CRON_SECRET &&
@@ -16,6 +12,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await seedIfEmpty(SAMPLE_INCIDENTS);
   const added = await refreshLiveData();
 
   return NextResponse.json({

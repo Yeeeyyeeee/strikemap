@@ -1,37 +1,90 @@
 /**
- * Server-side in-memory incident store.
- * Accumulates all incidents in memory for the lifetime of the serverless function.
- * On cold starts, seeds with sample data and refetches live data via cron.
+ * Persistent incident store backed by Upstash Redis.
+ * Falls back to in-memory store if Redis is not configured.
+ * Data survives cold starts and deployments.
  */
 
 import { Incident } from "./types";
+import { Redis } from "@upstash/redis";
 
-let store: Map<string, Incident> = new Map();
-let seeded = false;
+const REDIS_KEY = "incidents";
+
+let redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    return redis;
+  }
+  return null;
+}
+
+// In-memory cache to avoid hitting Redis on every request
+let memCache: Map<string, Incident> = new Map();
+let cacheLoaded = false;
+
+/** Load all incidents from Redis into memory (once per cold start) */
+async function ensureLoaded(): Promise<Map<string, Incident>> {
+  if (cacheLoaded) return memCache;
+
+  const r = getRedis();
+  if (r) {
+    try {
+      const data = await r.get<Incident[]>(REDIS_KEY);
+      if (data && Array.isArray(data)) {
+        for (const inc of data) {
+          memCache.set(inc.id, inc);
+        }
+        console.log(`[store] Loaded ${memCache.size} incidents from Redis`);
+      }
+    } catch (err) {
+      console.error("[store] Failed to load from Redis:", err);
+    }
+  }
+
+  cacheLoaded = true;
+  return memCache;
+}
+
+/** Save current in-memory state to Redis */
+let saving = false;
+async function persistToRedis(): Promise<void> {
+  const r = getRedis();
+  if (!r || saving) return;
+
+  saving = true;
+  try {
+    const incidents = Array.from(memCache.values());
+    await r.set(REDIS_KEY, JSON.stringify(incidents));
+  } catch (err) {
+    console.error("[store] Failed to save to Redis:", err);
+  } finally {
+    saving = false;
+  }
+}
 
 /** Get all stored incidents */
-export function getAllIncidents(): Incident[] {
+export async function getAllIncidents(): Promise<Incident[]> {
+  const store = await ensureLoaded();
   return Array.from(store.values());
 }
 
 /** Get current count */
-export function getIncidentCount(): number {
+export async function getIncidentCount(): Promise<number> {
+  const store = await ensureLoaded();
   return store.size;
 }
-
-/** Check if the store only has seed data (no live data yet) */
-export function isOnlySeedData(): boolean {
-  return seeded && !liveDataMerged;
-}
-
-let liveDataMerged = false;
 
 /**
  * Merge new incidents into the store.
  * Only adds incidents with valid coordinates that aren't already stored.
  * Returns count of newly added incidents.
  */
-export function mergeIncidents(incidents: Incident[]): number {
+export async function mergeIncidents(incidents: Incident[]): Promise<number> {
+  const store = await ensureLoaded();
   let added = 0;
 
   for (const inc of incidents) {
@@ -42,8 +95,8 @@ export function mergeIncidents(incidents: Incident[]): number {
   }
 
   if (added > 0) {
-    liveDataMerged = true;
     console.log(`[store] Added ${added} new incidents (total: ${store.size})`);
+    await persistToRedis();
   }
 
   return added;
@@ -52,12 +105,13 @@ export function mergeIncidents(incidents: Incident[]): number {
 /**
  * Seed the store with initial data if empty.
  */
-export function seedIfEmpty(incidents: Incident[]) {
+export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
+  const store = await ensureLoaded();
   if (store.size === 0 && incidents.length > 0) {
     for (const inc of incidents) {
       store.set(inc.id, inc);
     }
-    seeded = true;
     console.log(`[store] Seeded with ${store.size} incidents`);
+    await persistToRedis();
   }
 }
