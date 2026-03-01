@@ -88,7 +88,7 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
   let added = 0;
 
   for (const inc of incidents) {
-    if (!store.has(inc.id) && inc.lat !== 0 && inc.lng !== 0) {
+    if (!store.has(inc.id)) {
       store.set(inc.id, inc);
       added++;
     }

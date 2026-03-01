@@ -15,7 +15,12 @@ export default memo(function FeedSidebar({
 }: FeedSidebarProps) {
   const feedItems = incidents
     .filter((i) => i.source === "rss" || i.source === "telegram")
-    .sort((a, b) => (b.date > a.date ? 1 : -1));
+    .sort((a, b) => {
+      // Sort by timestamp if available, otherwise by date
+      const aTime = a.timestamp || a.date;
+      const bTime = b.timestamp || b.date;
+      return bTime > aTime ? 1 : bTime < aTime ? -1 : 0;
+    });
 
   if (feedItems.length === 0) return null;
 
@@ -51,7 +56,11 @@ export default memo(function FeedSidebar({
                   VID
                 </span>
               )}
-              <span className="text-neutral-600 text-[10px]">{item.date}</span>
+              <span className="text-neutral-600 text-[10px]">
+                {item.timestamp
+                  ? new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : item.date}
+              </span>
             </div>
             <p className="text-xs text-neutral-300 line-clamp-3">
               {item.description}

@@ -192,28 +192,38 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
   const allPosts = results.flat();
   console.log(`[telegram] Scraped ${allPosts.length} total posts`);
 
-  const filteredPosts = allPosts.filter((post) => isIranRelated(post.text));
-  console.log(`[telegram] ${filteredPosts.length} posts passed Iran keyword filter`);
-  const incidents = filteredPosts.map((post) => postToIncident(post));
+  // Convert ALL posts to incidents (shown in feed)
+  const allIncidents = allPosts.map((post) => postToIncident(post));
 
-  // Enrich with AI geocoding in batches of 5
-  const enrichments = await enrichBatch(filteredPosts, (p) => p.text, 5);
+  // Only enrich Iran-related posts with AI (for map coordinates)
+  const iranPosts = allPosts.filter((post) => isIranRelated(post.text));
+  console.log(`[telegram] ${iranPosts.length} posts match Iran keywords, enriching with AI`);
 
-  for (let i = 0; i < incidents.length; i++) {
-    const enrichment = enrichments[i];
-    if (enrichment) {
-      incidents[i].location = enrichment.location;
-      incidents[i].lat = enrichment.lat;
-      incidents[i].lng = enrichment.lng;
-      incidents[i].weapon = enrichment.weapon;
-      incidents[i].target_type = enrichment.target_type;
-      incidents[i].side = enrichment.side;
-      incidents[i].target_military = enrichment.target_military;
+  if (iranPosts.length > 0) {
+    const enrichments = await enrichBatch(iranPosts, (p) => p.text, 5);
+
+    // Map enriched data back to the corresponding incidents
+    const iranIds = new Set(iranPosts.map((p) => `tg-${p.id.replace("/", "-")}`));
+    let enrichIdx = 0;
+    for (const inc of allIncidents) {
+      if (iranIds.has(inc.id) && enrichIdx < enrichments.length) {
+        const enrichment = enrichments[enrichIdx];
+        if (enrichment) {
+          inc.location = enrichment.location;
+          inc.lat = enrichment.lat;
+          inc.lng = enrichment.lng;
+          inc.weapon = enrichment.weapon;
+          inc.target_type = enrichment.target_type;
+          inc.side = enrichment.side;
+          inc.target_military = enrichment.target_military;
+        }
+        enrichIdx++;
+      }
     }
   }
 
-  const withCoords = incidents.filter((i) => i.lat !== 0 && i.lng !== 0);
-  console.log(`[telegram] ${withCoords.length}/${incidents.length} incidents got valid coordinates from AI`);
+  const withCoords = allIncidents.filter((i) => i.lat !== 0 && i.lng !== 0);
+  console.log(`[telegram] Returning ${allIncidents.length} total (${withCoords.length} with map coordinates)`);
 
-  return incidents;
+  return allIncidents;
 }
