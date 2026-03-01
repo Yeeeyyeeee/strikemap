@@ -52,6 +52,14 @@ export default function Home() {
   const [rangeWeapon, setRangeWeapon] = useState<{ lat: number; lng: number; radiusKm: number } | null>(null);
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
+  // Check if disclaimer was already accepted this session
+  useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem("strikemap-disclaimer") === "1") {
+      setDisclaimerAccepted(true);
+    }
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Timeline state
@@ -322,6 +330,61 @@ export default function Home() {
     viewMode,
     selectedIncidentId: selectedIncident?.id,
   });
+
+  if (!disclaimerAccepted) {
+    return (
+      <div className="h-screen w-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl max-w-lg w-full p-6 shadow-2xl">
+          <h1
+            className="text-xl font-bold tracking-wider mb-1"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
+            <span className="text-red-500">STRIKE</span>
+            <span className="text-neutral-300">MAP</span>
+          </h1>
+          <p className="text-neutral-500 text-xs mb-4">Live Military Strike Tracker</p>
+
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4 mb-4 max-h-60 overflow-y-auto">
+            <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Disclaimer</h2>
+            <div className="text-xs text-neutral-500 space-y-2 leading-relaxed">
+              <p>
+                This website aggregates publicly available information from open-source intelligence (OSINT)
+                channels, news feeds, and social media. All data is sourced from third-party platforms and
+                is presented as-is for informational purposes only.
+              </p>
+              <p>
+                The content displayed on this site does not represent the views, opinions, or endorsements
+                of the site owner or its operators. We do not verify the accuracy, completeness, or
+                reliability of any information presented.
+              </p>
+              <p>
+                This site is not affiliated with any government, military, or intelligence organization.
+                No classified or proprietary information is used.
+              </p>
+              <p>
+                By continuing, you acknowledge that you use this site at your own risk. The site owner
+                assumes no liability for any decisions made or actions taken based on the information
+                provided herein.
+              </p>
+              <p>
+                This site may contain graphic descriptions of military events. Viewer discretion is advised.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              sessionStorage.setItem("strikemap-disclaimer", "1");
+              setDisclaimerAccepted(true);
+            }}
+            className="w-full py-2.5 text-sm font-semibold bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors"
+          >
+            I Understand &amp; Accept
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-screen overflow-hidden">
