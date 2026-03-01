@@ -3,6 +3,8 @@ import { seedIfEmpty } from "@/lib/incidentStore";
 import { SAMPLE_INCIDENTS } from "@/lib/sampleData";
 import { refreshLiveData } from "@/lib/refresh";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (
