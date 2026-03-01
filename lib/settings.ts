@@ -6,6 +6,7 @@ export interface UserSettings {
   showFeed: boolean;
   showLegend: boolean;
   soundEnabled: boolean;
+  notificationsEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showFeed: true,
   showLegend: true,
   soundEnabled: true,
+  notificationsEnabled: true,
 };
 
 const STORAGE_KEY = "strikemap-settings";

@@ -29,6 +29,25 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
     return () => clearInterval(id);
   }, []);
 
+  // Derive timestamps from incident dates if no real-time strike detected
+  const effectiveIranAt = lastIranStrikeAt > 0
+    ? lastIranStrikeAt
+    : (() => {
+        const latest = incidents
+          .filter((i) => i.side === "iran" && i.date)
+          .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
+        return latest ? new Date(latest.date + "T23:59:59").getTime() : 0;
+      })();
+
+  const effectiveUSAt = lastUSStrikeAt > 0
+    ? lastUSStrikeAt
+    : (() => {
+        const latest = incidents
+          .filter((i) => i.side === "us_israel" && i.date)
+          .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
+        return latest ? new Date(latest.date + "T23:59:59").getTime() : 0;
+      })();
+
   if (incidents.length === 0) return null;
 
   return (
@@ -47,7 +66,7 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
             className="text-sm font-bold text-red-300"
             style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
-            {lastIranStrikeAt > 0 ? formatElapsed(now - lastIranStrikeAt) : "—"}
+            {effectiveIranAt > 0 ? formatElapsed(now - effectiveIranAt) : "—"}
           </div>
         </div>
         {/* US/Israel */}
@@ -57,7 +76,7 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
             className="text-sm font-bold text-blue-300"
             style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
-            {lastUSStrikeAt > 0 ? formatElapsed(now - lastUSStrikeAt) : "—"}
+            {effectiveUSAt > 0 ? formatElapsed(now - effectiveUSAt) : "—"}
           </div>
         </div>
       </div>

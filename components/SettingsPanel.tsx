@@ -102,6 +102,7 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
               <ToggleRow label="Feed Sidebar" checked={settings.showFeed} onChange={(v) => update({ showFeed: v })} />
               <ToggleRow label="Legend" checked={settings.showLegend} onChange={(v) => update({ showLegend: v })} />
               <ToggleRow label="Sound Effects" checked={settings.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
+              <ToggleRow label="Notifications" checked={settings.notificationsEnabled} onChange={(v) => update({ notificationsEnabled: v })} />
             </div>
           </div>
         </div>

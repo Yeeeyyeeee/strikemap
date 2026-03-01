@@ -134,10 +134,12 @@ export default function Home() {
           });
 
           // Push notification for new strikes
-          sendNotificationRef.current("New Strike Detected", {
-            body: `${first.weapon || "Strike"} at ${first.location} — ${first.description.slice(0, 100)}`,
-            tag: `strike-${first.id}`,
-          });
+          if (settingsRef.current.notificationsEnabled) {
+            sendNotificationRef.current("New Strike Detected", {
+              body: `${first.weapon || "Strike"} at ${first.location} — ${first.description.slice(0, 100)}`,
+              tag: `strike-${first.id}`,
+            });
+          }
         }
       }
 
@@ -189,10 +191,12 @@ export default function Home() {
             }
 
             // Push notification for missile alerts
-            sendNotificationRef.current("INCOMING HOSTILE MISSILES", {
-              body: `Alert: ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")} — Shelter in ${alert.timeToImpact}s`,
-              tag: `alert-${alert.id}`,
-            });
+            if (settingsRef.current.notificationsEnabled) {
+              sendNotificationRef.current("INCOMING HOSTILE MISSILES", {
+                body: `Alert: ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")} — Shelter in ${alert.timeToImpact}s`,
+                tag: `alert-${alert.id}`,
+              });
+            }
             break; // one sound per poll is enough
           }
         }
@@ -434,7 +438,7 @@ export default function Home() {
 
       {/* Accuracy gauges — only on map views */}
       {isMapView(viewMode) && settings.showGauges && (
-        <div className="fixed top-16 left-4 z-40 hidden md:flex flex-col gap-3">
+        <div className="fixed top-16 left-4 z-40 hidden md:flex flex-col gap-3 max-h-[calc(100vh-14rem)] overflow-y-auto">
           <EscalationMeter incidents={incidents} />
           {(viewMode === "all" || viewMode === "iran") && (
             <AccuracyGauge incidents={incidents} side="iran" />
