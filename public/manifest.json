@@ -1,0 +1,14 @@
+{
+  "name": "StrikeMap — Live Military Strike Tracker",
+  "short_name": "StrikeMap",
+  "description": "Live map tracking military strikes in real-time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ef4444",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
