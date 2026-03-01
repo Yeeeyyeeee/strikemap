@@ -28,7 +28,7 @@ export async function GET() {
 
     return NextResponse.json(
       { posts, count: posts.length },
-      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch {
     return NextResponse.json({ posts: [], error: "Scrape failed" });

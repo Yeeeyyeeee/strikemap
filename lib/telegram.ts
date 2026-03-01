@@ -74,7 +74,7 @@ export async function scrapeChannel(username: string): Promise<ChannelPost[]> {
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      next: { revalidate: 20 },
+      cache: "no-store",
     });
 
     if (!res.ok) {

@@ -30,7 +30,7 @@ export default memo(function FeedSidebar({
 
   useEffect(() => {
     fetchFeed();
-    const interval = setInterval(fetchFeed, 30_000);
+    const interval = setInterval(fetchFeed, 15_000); // Refresh every 15s
     return () => clearInterval(interval);
   }, [fetchFeed]);
 
