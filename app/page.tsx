@@ -436,9 +436,9 @@ export default function Home() {
         )}
       </main>
 
-      {/* Accuracy gauges — only on map views */}
+      {/* Left column gauges — only on map views */}
       {isMapView(viewMode) && settings.showGauges && (
-        <div className="fixed top-16 left-4 z-40 hidden md:flex flex-col gap-3 max-h-[calc(100vh-14rem)] overflow-y-auto">
+        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto pr-1">
           <EscalationMeter incidents={incidents} />
           {(viewMode === "all" || viewMode === "iran") && (
             <AccuracyGauge incidents={incidents} side="iran" />
@@ -448,11 +448,15 @@ export default function Home() {
           )}
           <InterceptGauge incidents={incidents} />
           <CasualtyTracker incidents={incidents} />
+          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} />
+          {settings.showLegend && (
+            <Legend weapons={weapons} timelineActive={timelineActive} />
+          )}
         </div>
       )}
 
-      {/* Legend + Conflict Clock — only on map views */}
-      {isMapView(viewMode) && settings.showLegend && (
+      {/* Legend standalone — when gauges are off but legend is on */}
+      {isMapView(viewMode) && !settings.showGauges && settings.showLegend && (
         <div className={`fixed left-4 z-40 hidden md:flex flex-col gap-3 transition-[bottom] duration-300 ${timelineActive ? "bottom-40" : "bottom-4"}`}>
           <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} />
           <Legend weapons={weapons} timelineActive={timelineActive} />
