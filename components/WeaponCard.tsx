@@ -14,6 +14,7 @@ const TYPE_COLORS: Record<string, string> = {
   guided_bomb: "#3b82f6",
   anti_ship: "#06b6d4",
   hypersonic: "#ec4899",
+  interceptor: "#22c55e",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   guided_bomb: "Guided Bomb",
   anti_ship: "Anti-Ship",
   hypersonic: "Hypersonic",
+  interceptor: "Interceptor",
 };
 
 export default function WeaponCard({ weapon, onShowRange }: WeaponCardProps) {

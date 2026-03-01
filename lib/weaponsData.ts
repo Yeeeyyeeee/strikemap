@@ -1,7 +1,7 @@
 export interface WeaponSpec {
   name: string;
   side: "iran" | "us_israel";
-  type: "ballistic" | "cruise" | "drone" | "guided_bomb" | "anti_ship" | "hypersonic";
+  type: "ballistic" | "cruise" | "drone" | "guided_bomb" | "anti_ship" | "hypersonic" | "interceptor";
   range_km: number;
   speed: string;
   warhead_kg: number;
@@ -95,6 +95,34 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     ],
   },
   {
+    name: "Fattah-2",
+    side: "iran",
+    type: "hypersonic",
+    range_km: 1800,
+    speed: "Mach 13-15",
+    warhead_kg: 500,
+    cep_m: 20,
+    description: "Advanced hypersonic missile with improved HGV and extended range. Second-generation design.",
+    launchSites: [
+      { name: "Isfahan", lat: 32.65, lng: 51.68 },
+      { name: "Semnan", lat: 35.58, lng: 53.39 },
+    ],
+  },
+  {
+    name: "Shahab-3",
+    side: "iran",
+    type: "ballistic",
+    range_km: 1300,
+    speed: "Mach 7",
+    warhead_kg: 760,
+    cep_m: 2500,
+    description: "Liquid-fuel MRBM derived from North Korean Nodong-1. Backbone of Iran's strategic deterrent.",
+    launchSites: [
+      { name: "Tabriz TAB", lat: 38.08, lng: 46.28 },
+      { name: "Isfahan", lat: 32.65, lng: 51.68 },
+    ],
+  },
+  {
     name: "Shahed-136",
     side: "iran",
     type: "drone",
@@ -135,6 +163,32 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     ],
   },
   {
+    name: "Mohajer-6",
+    side: "iran",
+    type: "drone",
+    range_km: 200,
+    speed: "200 km/h",
+    warhead_kg: 40,
+    cep_m: 5,
+    description: "Medium-altitude UCAV with dual Qaem-5 PGMs. Electro-optical/IR payload, real-time data link.",
+    launchSites: [
+      { name: "Isfahan UAV Base", lat: 32.65, lng: 51.68 },
+    ],
+  },
+  {
+    name: "Ababil-3",
+    side: "iran",
+    type: "drone",
+    range_km: 150,
+    speed: "250 km/h",
+    warhead_kg: 45,
+    cep_m: 10,
+    description: "Twin-boom pusher-prop UAV used for reconnaissance and attack. Operated by IRGC and proxies.",
+    launchSites: [
+      { name: "Kermanshah", lat: 34.35, lng: 47.07 },
+    ],
+  },
+  {
     name: "Paveh",
     side: "iran",
     type: "cruise",
@@ -146,6 +200,19 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     launchSites: [
       { name: "Kermanshah", lat: 34.35, lng: 47.07 },
       { name: "Dezful", lat: 32.38, lng: 48.40 },
+    ],
+  },
+  {
+    name: "Hoveyzeh",
+    side: "iran",
+    type: "cruise",
+    range_km: 1350,
+    speed: "Mach 0.7",
+    warhead_kg: 340,
+    cep_m: 10,
+    description: "Long-range cruise missile derived from Soumar. Ground-launched, turbojet-powered, INS/GPS.",
+    launchSites: [
+      { name: "Kermanshah", lat: 34.35, lng: 47.07 },
     ],
   },
   {
@@ -175,8 +242,36 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
       { name: "Isfahan", lat: 32.65, lng: 51.68 },
     ],
   },
+  {
+    name: "Noor",
+    side: "iran",
+    type: "anti_ship",
+    range_km: 170,
+    speed: "Mach 0.9",
+    warhead_kg: 165,
+    cep_m: 3,
+    description: "Anti-ship cruise missile based on Chinese C-802. Active radar seeker, sea-skimming profile.",
+    launchSites: [
+      { name: "Bandar Abbas", lat: 27.18, lng: 56.27 },
+      { name: "Jask", lat: 25.64, lng: 57.77 },
+    ],
+  },
 
-  // ---- US / Israeli ----
+  // ---- US ----
+  {
+    name: "GBU-57 MOP",
+    side: "us_israel",
+    type: "guided_bomb",
+    range_km: 20,
+    speed: "Subsonic (glide)",
+    warhead_kg: 2404,
+    cep_m: 5,
+    description: "Massive Ordnance Penetrator. 30,000-lb bunker buster delivered by B-2 Spirit. Penetrates 60m of reinforced concrete.",
+    launchSites: [
+      { name: "Whiteman AFB (B-2)", lat: 38.73, lng: -93.56 },
+      { name: "Diego Garcia", lat: -7.31, lng: 72.41 },
+    ],
+  },
   {
     name: "JDAM (GBU-31)",
     side: "us_israel",
@@ -185,7 +280,7 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Subsonic (glide)",
     warhead_kg: 430,
     cep_m: 5,
-    description: "GPS/INS guided bomb kit on Mk 84 2000-lb body. Workhorse precision munition.",
+    description: "GPS/INS guided bomb kit on Mk 84 2000-lb body. Workhorse precision munition of US and Israeli air forces.",
     launchSites: [
       { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
       { name: "Nevatim AB, Israel", lat: 31.21, lng: 34.87 },
@@ -199,9 +294,10 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Subsonic (glide)",
     warhead_kg: 2130,
     cep_m: 5,
-    description: "Deep-penetrating 'bunker buster'. Laser-guided, designed for hardened underground targets.",
+    description: "Deep-penetrating bunker buster. Laser-guided, designed for hardened underground targets.",
     launchSites: [
       { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
+      { name: "Al Dhafra AB, UAE", lat: 24.25, lng: 54.55 },
     ],
   },
   {
@@ -212,10 +308,23 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Subsonic (glide)",
     warhead_kg: 17,
     cep_m: 1,
-    description: "Small Diameter Bomb. GPS-guided, diamond-back wings for extended glide range. Low collateral.",
+    description: "Small Diameter Bomb. GPS-guided, diamond-back wings for extended glide range. Low collateral damage.",
     launchSites: [
       { name: "Al Dhafra AB, UAE", lat: 24.25, lng: 54.55 },
       { name: "Ramat David AB, Israel", lat: 32.67, lng: 35.18 },
+    ],
+  },
+  {
+    name: "GBU-53/B StormBreaker",
+    side: "us_israel",
+    type: "guided_bomb",
+    range_km: 110,
+    speed: "Subsonic (glide)",
+    warhead_kg: 48,
+    cep_m: 1,
+    description: "SDB II with tri-mode seeker (mmW radar, IR, semi-active laser). Engages moving targets in all weather.",
+    launchSites: [
+      { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
     ],
   },
   {
@@ -226,9 +335,10 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Mach 0.75",
     warhead_kg: 450,
     cep_m: 5,
-    description: "Sea/sub-launched cruise missile. TERCOM + GPS + DSMAC guidance. Stand-off strike capability.",
+    description: "Sea/sub-launched cruise missile. TERCOM + GPS + DSMAC guidance. Primary US stand-off strike weapon.",
     launchSites: [
       { name: "USS carrier group (Gulf)", lat: 26.5, lng: 52.0 },
+      { name: "USS submarine (Med)", lat: 33.0, lng: 32.0 },
     ],
   },
   {
@@ -239,12 +349,96 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Mach 0.8",
     warhead_kg: 450,
     cep_m: 3,
-    description: "Air-launched stealth cruise missile. Low-observable airframe, infrared seeker terminal guidance.",
+    description: "Air-launched stealth cruise missile. Low-observable airframe, IR seeker terminal guidance. Carried by B-1B, B-52, F-15E.",
     launchSites: [
       { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
       { name: "Diego Garcia", lat: -7.31, lng: 72.41 },
     ],
   },
+  {
+    name: "AGM-88G AARGM-ER",
+    side: "us_israel",
+    type: "cruise",
+    range_km: 300,
+    speed: "Mach 2+",
+    warhead_kg: 68,
+    cep_m: 1,
+    description: "Extended-range anti-radiation missile. Targets enemy radar and air defense systems. GPS/INS + passive homing.",
+    launchSites: [
+      { name: "Al Dhafra AB, UAE", lat: 24.25, lng: 54.55 },
+      { name: "USS carrier group (Gulf)", lat: 26.5, lng: 52.0 },
+    ],
+  },
+  {
+    name: "LRASM (AGM-158C)",
+    side: "us_israel",
+    type: "anti_ship",
+    range_km: 930,
+    speed: "Mach 0.8",
+    warhead_kg: 450,
+    cep_m: 1,
+    description: "Long-Range Anti-Ship Missile. Stealthy, autonomous targeting with AI-assisted sensor fusion. Sea-skimming profile.",
+    launchSites: [
+      { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
+      { name: "USS carrier group (Gulf)", lat: 26.5, lng: 52.0 },
+    ],
+  },
+  {
+    name: "AGM-154 JSOW",
+    side: "us_israel",
+    type: "guided_bomb",
+    range_km: 130,
+    speed: "Subsonic (glide)",
+    warhead_kg: 230,
+    cep_m: 3,
+    description: "Joint Stand-Off Weapon. GPS/INS glide weapon with BLU-97 submunitions or unitary warhead. Low-cost stand-off.",
+    launchSites: [
+      { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
+      { name: "USS carrier group (Gulf)", lat: 26.5, lng: 52.0 },
+    ],
+  },
+  {
+    name: "GBU-43 MOAB",
+    side: "us_israel",
+    type: "guided_bomb",
+    range_km: 2,
+    speed: "Gravity drop",
+    warhead_kg: 8482,
+    cep_m: 10,
+    description: "Massive Ordnance Air Blast (Mother of All Bombs). 21,600-lb thermobaric weapon. GPS-guided, delivered by C-130.",
+    launchSites: [
+      { name: "Al Udeid AB, Qatar", lat: 25.12, lng: 51.31 },
+    ],
+  },
+  {
+    name: "SM-3 Block IIA",
+    side: "us_israel",
+    type: "interceptor",
+    range_km: 2500,
+    speed: "Mach 15",
+    warhead_kg: 0,
+    cep_m: 0,
+    description: "Exo-atmospheric ballistic missile interceptor. Kinetic kill vehicle, deployed on Aegis cruisers/destroyers.",
+    launchSites: [
+      { name: "USS Aegis cruiser (Gulf)", lat: 26.5, lng: 52.0 },
+    ],
+  },
+  {
+    name: "THAAD",
+    side: "us_israel",
+    type: "interceptor",
+    range_km: 200,
+    speed: "Mach 8",
+    warhead_kg: 0,
+    cep_m: 0,
+    description: "Terminal High Altitude Area Defense. Endo/exo-atmospheric interceptor. Hit-to-kill. Deployed to Israel and Gulf bases.",
+    launchSites: [
+      { name: "Nevatim AB, Israel", lat: 31.21, lng: 34.87 },
+      { name: "Al Dhafra AB, UAE", lat: 24.25, lng: 54.55 },
+    ],
+  },
+
+  // ---- Israeli ----
   {
     name: "Delilah",
     side: "us_israel",
@@ -253,7 +447,7 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Mach 0.7",
     warhead_kg: 30,
     cep_m: 1,
-    description: "Israeli air-launched cruise missile. Loitering capability, TV/IR seeker, man-in-the-loop.",
+    description: "Israeli air-launched cruise missile. Loitering capability, TV/IR seeker, man-in-the-loop guidance.",
     launchSites: [
       { name: "Ramat David AB, Israel", lat: 32.67, lng: 35.18 },
       { name: "Hatzerim AB, Israel", lat: 31.23, lng: 34.66 },
@@ -267,15 +461,55 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     speed: "Subsonic (glide)",
     warhead_kg: 113,
     cep_m: 3,
-    description: "Stand-off precision guidance kit. Scene-matching AI seeker for GPS-denied environments.",
+    description: "Stand-off precision guidance kit. Scene-matching AI seeker for GPS-denied environments. Rafael-made.",
     launchSites: [
       { name: "Nevatim AB, Israel", lat: 31.21, lng: 34.87 },
     ],
   },
   {
-    name: "Arrow-3",
+    name: "SPICE 2000",
+    side: "us_israel",
+    type: "guided_bomb",
+    range_km: 60,
+    speed: "Subsonic (glide)",
+    warhead_kg: 900,
+    cep_m: 3,
+    description: "Heavy stand-off guidance kit on Mk 84 body. Electro-optical scene matching + GPS. Primary IAF precision munition.",
+    launchSites: [
+      { name: "Nevatim AB, Israel", lat: 31.21, lng: 34.87 },
+      { name: "Ramat David AB, Israel", lat: 32.67, lng: 35.18 },
+    ],
+  },
+  {
+    name: "Popeye (AGM-142)",
+    side: "us_israel",
+    type: "cruise",
+    range_km: 78,
+    speed: "Mach 0.8",
+    warhead_kg: 340,
+    cep_m: 3,
+    description: "TV/IR-guided air-to-surface missile. Stand-off precision strike, man-in-the-loop terminal guidance.",
+    launchSites: [
+      { name: "Hatzerim AB, Israel", lat: 31.23, lng: 34.66 },
+    ],
+  },
+  {
+    name: "Rocks (LORA)",
     side: "us_israel",
     type: "ballistic",
+    range_km: 430,
+    speed: "Mach 5",
+    warhead_kg: 570,
+    cep_m: 10,
+    description: "Long-Range Artillery weapon. Quasi-ballistic, sea or ground-launched. GPS/INS + terminal seeker.",
+    launchSites: [
+      { name: "Palmachim AB, Israel", lat: 31.89, lng: 34.68 },
+    ],
+  },
+  {
+    name: "Arrow-3",
+    side: "us_israel",
+    type: "interceptor",
     range_km: 2400,
     speed: "Mach 9",
     warhead_kg: 0,
@@ -283,6 +517,84 @@ export const WEAPONS_CATALOG: WeaponSpec[] = [
     description: "Exo-atmospheric interceptor. Kill vehicle uses kinetic hit-to-kill. Designed vs. Iranian MRBMs.",
     launchSites: [
       { name: "Palmachim AB, Israel", lat: 31.89, lng: 34.68 },
+    ],
+  },
+  {
+    name: "Arrow-2",
+    side: "us_israel",
+    type: "interceptor",
+    range_km: 90,
+    speed: "Mach 9",
+    warhead_kg: 150,
+    cep_m: 0,
+    description: "Endo-atmospheric ballistic missile interceptor. Blast-fragmentation warhead. Active radar seeker.",
+    launchSites: [
+      { name: "Palmachim AB, Israel", lat: 31.89, lng: 34.68 },
+    ],
+  },
+  {
+    name: "David's Sling (Stunner)",
+    side: "us_israel",
+    type: "interceptor",
+    range_km: 300,
+    speed: "Mach 7.5",
+    warhead_kg: 0,
+    cep_m: 0,
+    description: "Two-stage interceptor for cruise missiles, SRBMs, and large rockets. Dual-pulse motor, hit-to-kill.",
+    launchSites: [
+      { name: "Hatzor AB, Israel", lat: 31.76, lng: 34.73 },
+    ],
+  },
+  {
+    name: "Iron Dome (Tamir)",
+    side: "us_israel",
+    type: "interceptor",
+    range_km: 70,
+    speed: "Mach 2.2",
+    warhead_kg: 11,
+    cep_m: 0,
+    description: "Short-range rocket and artillery interceptor. Proximity-fused warhead. AI threat-assessment selects only impactful targets.",
+    launchSites: [
+      { name: "Multiple batteries, Israel", lat: 32.0, lng: 34.87 },
+    ],
+  },
+  {
+    name: "Harop",
+    side: "us_israel",
+    type: "drone",
+    range_km: 1000,
+    speed: "370 km/h",
+    warhead_kg: 23,
+    cep_m: 1,
+    description: "Loitering munition by IAI. Anti-radiation + EO seeker. Can loiter 6+ hours over target area before striking.",
+    launchSites: [
+      { name: "Palmachim AB, Israel", lat: 31.89, lng: 34.68 },
+    ],
+  },
+  {
+    name: "Hermes 900",
+    side: "us_israel",
+    type: "drone",
+    range_km: 350,
+    speed: "220 km/h",
+    warhead_kg: 300,
+    cep_m: 3,
+    description: "Medium-altitude MALE UCAV. Multi-sensor payload, SATCOM data link. Can carry PGMs for strike missions.",
+    launchSites: [
+      { name: "Palmachim AB, Israel", lat: 31.89, lng: 34.68 },
+    ],
+  },
+  {
+    name: "Jericho III",
+    side: "us_israel",
+    type: "ballistic",
+    range_km: 6500,
+    speed: "Mach 20+",
+    warhead_kg: 1000,
+    cep_m: 100,
+    description: "Three-stage solid-fuel ICBM. Israel's strategic deterrent. Capable of delivering nuclear or conventional warheads.",
+    launchSites: [
+      { name: "Sdot Micha AB, Israel", lat: 31.7, lng: 34.88 },
     ],
   },
 ];

@@ -1,5 +1,6 @@
 import { Incident } from "./types";
 import { enrichBatch } from "./geocodeWithAI";
+import { enrichWithKeywords } from "./keywordEnricher";
 
 const IRAN_KEYWORDS = [
   "iran",
@@ -18,6 +19,36 @@ const IRAN_KEYWORDS = [
   "drone strike",
   "missile attack",
   "retaliatory strike",
+  "explosion",
+  "explosions",
+  "strike",
+  "airstrike",
+  "air strike",
+  "attack",
+  "intercept",
+  "intercepted",
+  "siren",
+  "sirens",
+  "incoming",
+  "missile",
+  "rocket",
+  "drone",
+  "israel",
+  "idf",
+  "hezbollah",
+  "houthi",
+  "centcom",
+  "pentagon",
+  "bahrain",
+  "iraq",
+  "syria",
+  "yemen",
+  "lebanon",
+  "gaza",
+  "tel aviv",
+  "haifa",
+  "isfahan",
+  "bandar abbas",
 ];
 
 export interface ChannelPost {
@@ -204,11 +235,12 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
 
     // Map enriched data back to the corresponding incidents
     const iranIds = new Set(iranPosts.map((p) => `tg-${p.id.replace("/", "-")}`));
+    const iranPostMap = new Map(iranPosts.map((p) => [`tg-${p.id.replace("/", "-")}`, p]));
     let enrichIdx = 0;
     for (const inc of allIncidents) {
       if (iranIds.has(inc.id) && enrichIdx < enrichments.length) {
         const enrichment = enrichments[enrichIdx];
-        if (enrichment) {
+        if (enrichment && enrichment.lat !== 0 && enrichment.lng !== 0) {
           inc.location = enrichment.location;
           inc.lat = enrichment.lat;
           inc.lng = enrichment.lng;
@@ -216,6 +248,21 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
           inc.target_type = enrichment.target_type;
           inc.side = enrichment.side;
           inc.target_military = enrichment.target_military;
+        } else {
+          // Fallback: try keyword-based enrichment
+          const post = iranPostMap.get(inc.id);
+          if (post) {
+            const kwResult = enrichWithKeywords(post.text);
+            if (kwResult) {
+              inc.location = kwResult.location;
+              inc.lat = kwResult.lat;
+              inc.lng = kwResult.lng;
+              inc.weapon = kwResult.weapon || inc.weapon;
+              inc.target_type = kwResult.target_type || inc.target_type;
+              inc.side = kwResult.side;
+              inc.target_military = kwResult.target_military;
+            }
+          }
         }
         enrichIdx++;
       }
