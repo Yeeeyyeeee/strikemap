@@ -23,41 +23,46 @@ function getRedis(): Redis | null {
 
 // In-memory cache
 let memCache: Map<string, Incident> = new Map();
-let cacheLoaded = false;
+let loadPromise: Promise<Map<string, Incident>> | null = null;
 
 /** Load all incidents from Redis into memory (once per cold start) */
 async function ensureLoaded(): Promise<Map<string, Incident>> {
-  if (cacheLoaded) return memCache;
-  cacheLoaded = true;
+  // If already loaded, return immediately
+  if (loadPromise) return loadPromise;
 
-  const r = getRedis();
-  if (!r) return memCache;
+  // Create a single promise that all concurrent callers will await
+  loadPromise = (async () => {
+    const r = getRedis();
+    if (!r) return memCache;
 
-  try {
-    const raw = await r.get(REDIS_KEY);
-    if (!raw) return memCache;
+    try {
+      const raw = await r.get(REDIS_KEY);
+      if (!raw) return memCache;
 
-    // Handle both correctly stored arrays and legacy string-encoded data
-    let incidents: Incident[];
-    if (Array.isArray(raw)) {
-      incidents = raw;
-    } else if (typeof raw === "string") {
-      incidents = JSON.parse(raw);
-    } else {
-      return memCache;
-    }
-
-    if (Array.isArray(incidents)) {
-      for (const inc of incidents) {
-        if (inc && inc.id) memCache.set(inc.id, inc);
+      // Handle both correctly stored arrays and legacy string-encoded data
+      let incidents: Incident[];
+      if (Array.isArray(raw)) {
+        incidents = raw;
+      } else if (typeof raw === "string") {
+        incidents = JSON.parse(raw);
+      } else {
+        return memCache;
       }
-      console.log(`[store] Loaded ${memCache.size} incidents from Redis`);
-    }
-  } catch (err) {
-    console.error("[store] Failed to load from Redis:", err);
-  }
 
-  return memCache;
+      if (Array.isArray(incidents)) {
+        for (const inc of incidents) {
+          if (inc && inc.id) memCache.set(inc.id, inc);
+        }
+        console.log(`[store] Loaded ${memCache.size} incidents from Redis`);
+      }
+    } catch (err) {
+      console.error("[store] Failed to load from Redis:", err);
+    }
+
+    return memCache;
+  })();
+
+  return loadPromise;
 }
 
 /** Save current in-memory state to Redis */
@@ -132,7 +137,7 @@ export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
  */
 export async function clearStore(): Promise<void> {
   memCache = new Map();
-  cacheLoaded = false;
+  loadPromise = null;
   const r = getRedis();
   if (r) {
     await r.del(REDIS_KEY);
