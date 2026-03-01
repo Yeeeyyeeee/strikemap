@@ -4,26 +4,36 @@ function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
   }
-  // Resume if browser suspended it (autoplay policy)
   if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
   return audioCtx;
 }
 
-// Auto-resume audio context on first user interaction
+// Pre-create and unlock AudioContext on first user interaction
+// so sounds play instantly without initialization delay
 if (typeof window !== "undefined") {
-  const unlock = () => {
-    if (audioCtx && audioCtx.state === "suspended") {
+  const warmUp = () => {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === "suspended") {
       audioCtx.resume();
     }
-    window.removeEventListener("click", unlock);
-    window.removeEventListener("touchstart", unlock);
-    window.removeEventListener("keydown", unlock);
+    // Play a silent buffer to fully unlock the audio pipeline
+    const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+
+    window.removeEventListener("click", warmUp);
+    window.removeEventListener("touchstart", warmUp);
+    window.removeEventListener("keydown", warmUp);
   };
-  window.addEventListener("click", unlock);
-  window.addEventListener("touchstart", unlock);
-  window.addEventListener("keydown", unlock);
+  window.addEventListener("click", warmUp);
+  window.addEventListener("touchstart", warmUp);
+  window.addEventListener("keydown", warmUp);
 }
 
 // ---- Air-raid siren state ----
