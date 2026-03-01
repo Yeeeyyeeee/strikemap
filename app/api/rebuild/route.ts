@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { seedIfEmpty, mergeIncidents, getAllIncidents } from "@/lib/incidentStore";
+import { seedIfEmpty, mergeIncidents, getAllIncidents, deduplicateStore } from "@/lib/incidentStore";
 import { SAMPLE_INCIDENTS } from "@/lib/sampleData";
 import { scrapeChannelDeep, isIranRelated } from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
@@ -82,6 +82,9 @@ export async function GET() {
 
     const telegramAdded = await mergeIncidents(allIncidents);
 
+    // Deduplicate: remove incidents from different channels reporting the same strike
+    const deduped = await deduplicateStore();
+
     const all = await getAllIncidents();
 
     return NextResponse.json({
@@ -89,6 +92,7 @@ export async function GET() {
       sheetAdded: sheetCount,
       telegramScraped: allIncidents.length,
       telegramAdded,
+      deduplicatesRemoved: deduped,
       total: all.length,
       withCoords: all.filter((i) => i.lat !== 0 && i.lng !== 0).length,
       timestamp: new Date().toISOString(),
