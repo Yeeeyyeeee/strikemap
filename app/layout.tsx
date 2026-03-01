@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/I18nContext";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "StrikeMap — Live Military Strike Tracker",
@@ -44,6 +45,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <I18nProvider>{children}</I18nProvider>
+        <Analytics />
       </body>
     </html>
   );
