@@ -58,7 +58,7 @@ async function persistToRedis(): Promise<void> {
   saving = true;
   try {
     const incidents = Array.from(memCache.values());
-    await r.set(REDIS_KEY, JSON.stringify(incidents));
+    await r.set(REDIS_KEY, incidents);
   } catch (err) {
     console.error("[store] Failed to save to Redis:", err);
   } finally {
