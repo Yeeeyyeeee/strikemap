@@ -36,7 +36,7 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
         const latest = incidents
           .filter((i) => i.side === "iran" && i.date)
           .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
-        return latest ? new Date(latest.date + "T23:59:59").getTime() : 0;
+        return latest ? new Date(latest.date + "T00:00:00").getTime() : 0;
       })();
 
   const effectiveUSAt = lastUSStrikeAt > 0
@@ -45,7 +45,7 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
         const latest = incidents
           .filter((i) => i.side === "us_israel" && i.date)
           .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
-        return latest ? new Date(latest.date + "T23:59:59").getTime() : 0;
+        return latest ? new Date(latest.date + "T00:00:00").getTime() : 0;
       })();
 
   if (incidents.length === 0) return null;

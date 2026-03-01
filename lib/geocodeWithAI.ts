@@ -113,7 +113,14 @@ Return a JSON object with:
 - casualties_civilian: Estimated number of civilian killed. Use 0 if not reported.
 - casualties_description: Brief description of casualties — who was killed/injured, unit affiliation if known. If unknown, write "No casualties reported".
 
-If the post is not about a specific strike or you cannot determine the location, set lat and lng to 0.`;
+If the post is not about a specific strike or you cannot determine the location, set lat and lng to 0.
+
+IMPORTANT — NEUTRALITY RULES:
+- Use strictly neutral, factual language in ALL output fields.
+- NEVER use politically charged terms like "regime", "terror", "terrorist", "occupied", "Zionist", "apartheid", "entity", "resistance", or "liberation".
+- Use neutral alternatives: "government" instead of "regime", "forces" instead of "militants", "Israeli" instead of "Zionist".
+- For locations, use internationally recognized names only (e.g. "Tel Aviv, Israel" not "occupied Palestine").
+- The damage_assessment and casualties_description should read like a neutral news wire report, not an editorial.`;
 
 export async function enrichPostWithAI(text: string): Promise<EnrichmentResult | null> {
   if (!text || text.length < 10) return null;
