@@ -17,6 +17,7 @@ export interface Incident {
   source: "sheet" | "rss" | "telegram";
   side: StrikeSide;
   target_military: boolean; // true = military target, false = civilian
+  timestamp?: string; // full ISO 8601 datetime (e.g. "2026-03-01T14:30:00+00:00")
   telegram_post_id?: string; // e.g. "tabzlive/70372" — enables iframe embed
   intercepted_by?: string; // e.g. "Iron Dome", "Arrow-3", "THAAD", "David's Sling"
   intercept_success?: boolean; // true = intercepted by defense system

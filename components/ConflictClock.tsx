@@ -29,23 +29,30 @@ export default memo(function ConflictClock({ incidents, lastIranStrikeAt = 0, la
     return () => clearInterval(id);
   }, []);
 
-  // Derive timestamps from incident dates if no real-time strike detected
+  // Derive timestamps from incident data
   const effectiveIranAt = lastIranStrikeAt > 0
     ? lastIranStrikeAt
     : (() => {
         const latest = incidents
-          .filter((i) => i.side === "iran" && i.date)
-          .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
-        return latest ? new Date(latest.date + "T00:00:00").getTime() : 0;
+          .filter((i) => i.side === "iran" && (i.timestamp || i.date))
+          .sort((a, b) => ((b.timestamp || b.date) > (a.timestamp || a.date) ? 1 : -1))[0];
+        if (!latest) return 0;
+        // Use full timestamp if available, otherwise fall back to date
+        return latest.timestamp
+          ? new Date(latest.timestamp).getTime()
+          : new Date(latest.date + "T00:00:00").getTime();
       })();
 
   const effectiveUSAt = lastUSStrikeAt > 0
     ? lastUSStrikeAt
     : (() => {
         const latest = incidents
-          .filter((i) => i.side === "us_israel" && i.date)
-          .sort((a, b) => (b.date > a.date ? 1 : -1))[0];
-        return latest ? new Date(latest.date + "T00:00:00").getTime() : 0;
+          .filter((i) => i.side === "us_israel" && (i.timestamp || i.date))
+          .sort((a, b) => ((b.timestamp || b.date) > (a.timestamp || a.date) ? 1 : -1))[0];
+        if (!latest) return 0;
+        return latest.timestamp
+          ? new Date(latest.timestamp).getTime()
+          : new Date(latest.date + "T00:00:00").getTime();
       })();
 
   if (incidents.length === 0) return null;

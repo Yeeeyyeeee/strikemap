@@ -26,6 +26,7 @@ export interface ChannelPost {
   channelUsername: string;
   text: string;
   date: string;
+  timestamp: string; // full ISO 8601 datetime
   videoUrl: string;
 }
 
@@ -127,9 +128,10 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
     );
     const text = textMatch ? cleanText(textMatch[1]) : "";
 
-    // Extract date
+    // Extract date and full timestamp
     const dateMatch = block.match(/<time[^>]+datetime="([^"]+)"/);
-    const date = dateMatch ? dateMatch[1].split("T")[0] : "";
+    const timestamp = dateMatch ? dateMatch[1] : "";
+    const date = timestamp ? timestamp.split("T")[0] : "";
 
     // Extract video — check both <video src=""> and <video><source src="">
     let videoUrl = "";
@@ -147,6 +149,7 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
       channelUsername: username,
       text: text || "[Video]",
       date,
+      timestamp,
       videoUrl,
     });
   }
@@ -160,6 +163,7 @@ function postToIncident(post: ChannelPost): Incident {
   return {
     id: `tg-${post.id.replace("/", "-")}`,
     date: post.date || new Date().toISOString().split("T")[0],
+    timestamp: post.timestamp || new Date().toISOString(),
     location: "",
     lat: 0,
     lng: 0,
