@@ -1,74 +1,30 @@
 /**
- * Server-side persistent incident store.
- * Accumulates all incidents to a JSON file on disk.
- * Anyone visiting the site gets the full history instantly.
+ * Server-side in-memory incident store.
+ * Accumulates all incidents in memory for the lifetime of the serverless function.
+ * On cold starts, seeds with sample data and refetches live data via cron.
  */
 
 import { Incident } from "./types";
 
-const isServer = typeof window === "undefined";
-
-let store: Map<string, Incident> | null = null;
-
-function getStorePath(): string {
-  const path = require("path");
-  return path.join(process.cwd(), ".incident-store.json");
-}
-
-function loadStore(): Map<string, Incident> {
-  if (store) return store;
-
-  store = new Map();
-
-  if (!isServer) return store;
-
-  try {
-    const fs = require("fs");
-    const storePath = getStorePath();
-    if (fs.existsSync(storePath)) {
-      const raw = fs.readFileSync(storePath, "utf-8");
-      const incidents = JSON.parse(raw) as Incident[];
-      for (const inc of incidents) {
-        store.set(inc.id, inc);
-      }
-      console.log(`[store] Loaded ${store.size} incidents from disk`);
-    }
-  } catch (err) {
-    console.error("[store] Failed to load:", err);
-  }
-
-  return store;
-}
-
-function saveStore() {
-  if (!isServer || !store) return;
-  try {
-    const fs = require("fs");
-    const incidents = Array.from(store.values());
-    fs.writeFileSync(getStorePath(), JSON.stringify(incidents), "utf-8");
-  } catch (err) {
-    console.error("[store] Failed to save:", err);
-  }
-}
-
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveStore();
-    saveTimer = null;
-  }, 2000);
-}
+let store: Map<string, Incident> = new Map();
+let seeded = false;
 
 /** Get all stored incidents */
 export function getAllIncidents(): Incident[] {
-  return Array.from(loadStore().values());
+  return Array.from(store.values());
 }
 
 /** Get current count */
 export function getIncidentCount(): number {
-  return loadStore().size;
+  return store.size;
 }
+
+/** Check if the store only has seed data (no live data yet) */
+export function isOnlySeedData(): boolean {
+  return seeded && !liveDataMerged;
+}
+
+let liveDataMerged = false;
 
 /**
  * Merge new incidents into the store.
@@ -76,19 +32,18 @@ export function getIncidentCount(): number {
  * Returns count of newly added incidents.
  */
 export function mergeIncidents(incidents: Incident[]): number {
-  const s = loadStore();
   let added = 0;
 
   for (const inc of incidents) {
-    if (!s.has(inc.id) && inc.lat !== 0 && inc.lng !== 0) {
-      s.set(inc.id, inc);
+    if (!store.has(inc.id) && inc.lat !== 0 && inc.lng !== 0) {
+      store.set(inc.id, inc);
       added++;
     }
   }
 
   if (added > 0) {
-    console.log(`[store] Added ${added} new incidents (total: ${s.size})`);
-    debouncedSave();
+    liveDataMerged = true;
+    console.log(`[store] Added ${added} new incidents (total: ${store.size})`);
   }
 
   return added;
@@ -98,12 +53,11 @@ export function mergeIncidents(incidents: Incident[]): number {
  * Seed the store with initial data if empty.
  */
 export function seedIfEmpty(incidents: Incident[]) {
-  const s = loadStore();
-  if (s.size === 0 && incidents.length > 0) {
+  if (store.size === 0 && incidents.length > 0) {
     for (const inc of incidents) {
-      s.set(inc.id, inc);
+      store.set(inc.id, inc);
     }
-    console.log(`[store] Seeded with ${s.size} incidents`);
-    saveStore(); // Immediate save for seed
+    seeded = true;
+    console.log(`[store] Seeded with ${store.size} incidents`);
   }
 }

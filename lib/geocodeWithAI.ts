@@ -17,62 +17,8 @@ export interface EnrichmentResult {
   casualties_description: string;
 }
 
-// ---- Persistent disk cache (server-only, skipped in browser) ----
-const isServer = typeof window === "undefined";
-
-let cache: Map<string, EnrichmentResult | null>;
-let cacheLoaded = false;
-
-function getCachePath(): string {
-  // Dynamic require to avoid bundling Node modules in client
-  const path = require("path");
-  return path.join(process.cwd(), ".enrichment-cache.json");
-}
-
-function loadCache(): Map<string, EnrichmentResult | null> {
-  if (cacheLoaded) return cache;
-  cacheLoaded = true;
-
-  if (isServer) {
-    try {
-      const fs = require("fs");
-      const cachePath = getCachePath();
-      if (fs.existsSync(cachePath)) {
-        const raw = fs.readFileSync(cachePath, "utf-8");
-        const entries = JSON.parse(raw) as [string, EnrichmentResult | null][];
-        cache = new Map(entries);
-        console.log(`[enrichment] Loaded ${cache.size} cached results from disk`);
-        return cache;
-      }
-    } catch (err) {
-      console.error("[enrichment] Failed to load cache:", err);
-    }
-  }
-
-  cache = new Map();
-  return cache;
-}
-
-function saveCache() {
-  if (!isServer) return;
-  try {
-    const fs = require("fs");
-    const entries = Array.from(loadCache().entries());
-    fs.writeFileSync(getCachePath(), JSON.stringify(entries), "utf-8");
-  } catch (err) {
-    console.error("[enrichment] Failed to save cache:", err);
-  }
-}
-
-// Debounce disk writes — flush at most once per 2 seconds
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveCache();
-    saveTimer = null;
-  }, 2000);
-}
+// ---- In-memory cache (survives within a warm serverless instance) ----
+const cache: Map<string, EnrichmentResult | null> = new Map();
 
 const responseSchema: ResponseSchema = {
   type: SchemaType.OBJECT,
@@ -128,7 +74,7 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const c = loadCache();
+  const c = cache;
   const cacheKey = text.slice(0, 200);
   if (c.has(cacheKey)) {
     return c.get(cacheKey) ?? null;
@@ -152,8 +98,7 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
     // Validate the result
     if (!parsed.location || typeof parsed.lat !== "number" || typeof parsed.lng !== "number") {
       c.set(cacheKey, null);
-      debouncedSave();
-      return null;
+        return null;
     }
 
     // Normalize side value
@@ -181,12 +126,10 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
     };
 
     c.set(cacheKey, enrichment);
-    debouncedSave();
     return enrichment;
   } catch (err) {
     console.error("Gemini enrichment failed:", err);
     c.set(cacheKey, null);
-    debouncedSave();
     return null;
   }
 }
