@@ -84,83 +84,76 @@ export default function Timeline({
     onIndexChange(Math.min(maxIndex, currentIndex + 1));
   }, [currentIndex, maxIndex, onIndexChange]);
 
-  const firstDate = allDates[0] ?? "";
-  const lastDate = allDates[allDates.length - 1] ?? "";
+  const cycleSpeed = useCallback(() => {
+    const idx = SPEEDS.indexOf(speed);
+    onSpeedChange(SPEEDS[(idx + 1) % SPEEDS.length]);
+  }, [speed, onSpeedChange]);
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-[45] bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a] px-6 py-4"
+      className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] w-[min(28rem,calc(100vw-2rem))]"
       style={{ fontFamily: "JetBrains Mono, monospace" }}
     >
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-3 right-4 text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
-      >
-        ✕
-      </button>
-
-      {/* Top row: date + counter */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <span className="text-red-400 text-xs font-semibold uppercase tracking-wider">
-            REPLAY
-          </span>
-          <span className="text-neutral-300 text-sm">
-            {currentDate ? formatDate(currentDate) : "—"}
-          </span>
+      <div className="bg-[#1a1a1a]/95 backdrop-blur-xl border border-[#2a2a2a] rounded-2xl shadow-2xl shadow-black/50 px-4 py-3">
+        {/* Top: date + counter + close */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-red-400 text-[9px] font-bold uppercase tracking-widest shrink-0">
+              REPLAY
+            </span>
+            <span className="text-neutral-300 text-xs truncate">
+              {currentDate ? formatDate(currentDate) : "\u2014"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-neutral-600 text-[10px]">
+              {visibleCount}/{totalIncidents}
+            </span>
+            <button
+              onClick={onClose}
+              className="text-neutral-600 hover:text-neutral-300 transition-colors text-xs leading-none"
+            >
+              \u2715
+            </button>
+          </div>
         </div>
-        <span className="text-neutral-500 text-xs">
-          {visibleCount} of {totalIncidents} strikes shown
-        </span>
-      </div>
 
-      {/* Slider */}
-      <div
-        ref={trackRef}
-        className="timeline-track mb-2"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
+        {/* Progress bar */}
         <div
-          className="timeline-fill"
-          style={{ width: `${percentage}%` }}
-        />
-        <div
-          className="timeline-thumb"
-          style={{ left: `${percentage}%` }}
-        />
-      </div>
+          ref={trackRef}
+          className="timeline-track mb-3"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          <div
+            className="timeline-fill"
+            style={{ width: `${percentage}%` }}
+          />
+          <div
+            className="timeline-thumb"
+            style={{ left: `${percentage}%` }}
+          />
+        </div>
 
-      {/* Date range labels */}
-      <div className="flex justify-between mb-3">
-        <span className="text-neutral-600 text-[10px]">
-          {firstDate ? formatDate(firstDate) : ""}
-        </span>
-        <span className="text-neutral-600 text-[10px]">
-          {lastDate ? formatDate(lastDate) : ""}
-        </span>
-      </div>
-
-      {/* Controls row */}
-      <div className="flex items-center justify-between">
-        {/* Playback controls */}
-        <div className="flex items-center gap-2">
+        {/* Controls: skip back, play/pause, skip forward, speed */}
+        <div className="flex items-center justify-center gap-3">
+          {/* Skip back */}
           <button
             onClick={stepBack}
             disabled={currentIndex === 0}
-            className="w-7 h-7 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-200 disabled:text-neutral-700 disabled:cursor-not-allowed transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 disabled:text-neutral-700 disabled:cursor-not-allowed transition-colors"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
               <path d="M8 1L3 6l5 5V1z" />
               <rect x="1" y="1" width="2" height="10" />
             </svg>
           </button>
 
+          {/* Play/Pause */}
           <button
             onClick={onPlayPause}
-            className="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-full bg-red-500 hover:bg-red-400 flex items-center justify-center transition-colors shadow-lg shadow-red-500/20"
           >
             {isPlaying ? (
               <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
@@ -168,42 +161,34 @@ export default function Timeline({
                 <rect x="7.5" y="0" width="3.5" height="14" rx="1" />
               </svg>
             ) : (
-              <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="white" className="ml-0.5">
                 <path d="M1 0.5L11 7L1 13.5V0.5z" />
               </svg>
             )}
           </button>
 
+          {/* Skip forward */}
           <button
             onClick={stepForward}
             disabled={currentIndex >= maxIndex}
-            className="w-7 h-7 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-200 disabled:text-neutral-700 disabled:cursor-not-allowed transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-200 disabled:text-neutral-700 disabled:cursor-not-allowed transition-colors"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
               <path d="M4 1l5 5-5 5V1z" />
               <rect x="9" y="1" width="2" height="10" />
             </svg>
           </button>
-        </div>
 
-        {/* Speed controls */}
-        <div className="flex items-center gap-1">
-          <span className="text-neutral-600 text-[10px] mr-1.5 uppercase tracking-wider">
-            Speed
-          </span>
-          {SPEEDS.map((s) => (
-            <button
-              key={s}
-              onClick={() => onSpeedChange(s)}
-              className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                speed === s
-                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
-            >
-              {s}x
-            </button>
-          ))}
+          {/* Divider */}
+          <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
+
+          {/* Speed toggle */}
+          <button
+            onClick={cycleSpeed}
+            className="px-2 py-1 text-[10px] rounded-md bg-[#2a2a2a] text-neutral-400 hover:text-neutral-200 transition-colors min-w-[2.5rem] text-center"
+          >
+            {speed}x
+          </button>
         </div>
       </div>
     </div>

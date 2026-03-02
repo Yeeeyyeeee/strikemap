@@ -519,7 +519,7 @@ export default function Home() {
 
       {/* Legend standalone — when gauges are off but legend is on */}
       {isMapView(viewMode) && !settings.showGauges && settings.showLegend && (
-        <div className={`fixed left-4 z-40 hidden md:flex flex-col gap-3 transition-[bottom] duration-300 ${timelineActive ? "bottom-40" : "bottom-4"}`}>
+        <div className="fixed left-4 bottom-4 z-40 hidden md:flex flex-col gap-3">
           <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
           <Legend weapons={weapons} timelineActive={timelineActive} />
         </div>
