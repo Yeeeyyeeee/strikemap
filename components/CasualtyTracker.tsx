@@ -34,8 +34,6 @@ export default memo(function CasualtyTracker({ incidents }: CasualtyTrackerProps
   }, [incidents]);
 
   const total = stats.totalMilitary + stats.totalCivilian;
-  if (total === 0) return null;
-
   const maxBar = Math.max(stats.totalMilitary, stats.totalCivilian, 1);
   const maxSide = Math.max(stats.iranMilitary + stats.iranCivilian, stats.usMilitary + stats.usCivilian, 1);
 

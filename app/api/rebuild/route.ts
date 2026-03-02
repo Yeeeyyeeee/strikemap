@@ -5,7 +5,7 @@ import { scrapeChannelDeep, isIranRelated } from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
 import { fetchSheetData } from "@/lib/fetchSheetData";
 import { resetDebounce } from "@/lib/refresh";
-import { Incident } from "@/lib/types";
+import { Incident, MediaItem } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -56,6 +56,12 @@ export async function GET() {
             side: "iran",
             target_military: false,
             telegram_post_id: `${post.channelUsername}/${msgId}`,
+            media: (() => {
+              const m: MediaItem[] = [];
+              if (post.videoUrl) m.push({ type: "video", url: post.videoUrl });
+              for (const url of post.imageUrls || []) m.push({ type: "image", url });
+              return m.length > 0 ? m : undefined;
+            })(),
           };
 
           // Use keyword enrichment (instant, no API call)
@@ -69,6 +75,17 @@ export async function GET() {
               inc.target_type = kwResult.target_type || "";
               inc.side = kwResult.side;
               inc.target_military = kwResult.target_military;
+              if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
+              if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
+              if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
+              if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
+              if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
+              if (kwResult.casualties_civilian) inc.casualties_civilian = kwResult.casualties_civilian;
+              if (kwResult.casualties_description && kwResult.casualties_description !== "No casualties reported") {
+                inc.casualties_description = kwResult.casualties_description;
+              }
+              if (kwResult.damage_assessment) inc.damage_assessment = kwResult.damage_assessment;
+              if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
             }
           }
 
