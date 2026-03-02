@@ -58,6 +58,21 @@ export async function sendMessage(text: string): Promise<boolean> {
   });
 }
 
+/**
+ * Forward the original message from a public source channel.
+ * This preserves all media (photos, videos, documents) perfectly.
+ * Returns true if forwarded successfully.
+ */
+async function forwardOriginal(channelUsername: string, messageId: string): Promise<boolean> {
+  const numericId = messageId.split("/").pop() || "";
+  if (!numericId || isNaN(Number(numericId))) return false;
+  return apiCall("forwardMessage", {
+    chat_id: getChannelId(),
+    from_chat_id: `@${channelUsername}`,
+    message_id: Number(numericId),
+  });
+}
+
 /** Send a location pin (silent) */
 async function sendLocation(lat: number, lng: number): Promise<boolean> {
   return apiCall("sendLocation", {
@@ -264,8 +279,8 @@ function isConfirmedHit(inc: Incident): boolean {
 }
 
 /**
- * Send a STRIKE notification — location pin (confirmed hits only) + incident report + media.
- * This is the high-visibility format for map markers.
+ * Send a STRIKE notification — forward original post (media), then analysis text.
+ * Location pin only for confirmed hits.
  */
 export async function sendIncident(
   inc: Incident,
@@ -278,40 +293,58 @@ export async function sendIncident(
     await sleep(300);
   }
 
+  // 2. Forward the original Telegram post (preserves all media perfectly)
+  let forwarded = false;
+  if (post) {
+    const msgId = post.id.split("/").pop() || "";
+    if (msgId) {
+      forwarded = await forwardOriginal(post.channelUsername, msgId);
+      if (forwarded) await sleep(300);
+    }
+  }
+
   const caption = formatIncident(inc, siteUrl);
 
-  // 2. Collect media from the post (preferred, has original URLs) or incident
-  let media = post ? collectMedia(post) : collectIncidentMedia(inc);
+  // 3. If forwarding failed, try sending scraped media with caption
+  if (!forwarded) {
+    let media = post ? collectMedia(post) : collectIncidentMedia(inc);
+    if (media.length === 0 && post) media = collectIncidentMedia(inc);
 
-  // 3. If post media is empty, try incident media as fallback
-  if (media.length === 0 && post) {
-    media = collectIncidentMedia(inc);
+    if (media.length > 0) {
+      const ok = await sendMediaGroup(media, caption);
+      if (ok) return true;
+      // Media group failed, fall through to text-only
+    }
   }
 
-  // 4. Send media group with caption, or text-only
-  if (media.length > 0) {
-    const ok = await sendMediaGroup(media, caption);
-    // If media group fails (e.g. URL expired), fall back to text
-    if (!ok) return sendMessage(caption);
-    return true;
-  }
-
+  // 4. Send analysis text (always — either after forward or as standalone)
   return sendMessage(caption);
 }
 
 /**
- * Send a FEED post — lighter format for general channel updates.
+ * Send a FEED post — forward original (media), then summary text.
  */
 export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<boolean> {
-  const caption = formatFeedPost(post, siteUrl);
-  const media = collectMedia(post);
-
-  if (media.length > 0) {
-    const ok = await sendMediaGroup(media, caption);
-    if (!ok) return sendMessage(caption);
-    return true;
+  // 1. Forward the original message with all media intact
+  const msgId = post.id.split("/").pop() || "";
+  let forwarded = false;
+  if (msgId) {
+    forwarded = await forwardOriginal(post.channelUsername, msgId);
+    if (forwarded) await sleep(300);
   }
 
+  const caption = formatFeedPost(post, siteUrl);
+
+  // 2. If forward failed, try scraped media
+  if (!forwarded) {
+    const media = collectMedia(post);
+    if (media.length > 0) {
+      const ok = await sendMediaGroup(media, caption);
+      if (ok) return true;
+    }
+  }
+
+  // 3. Send summary text (always)
   return sendMessage(caption);
 }
 
