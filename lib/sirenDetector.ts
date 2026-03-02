@@ -145,8 +145,10 @@ export function hasRecentProcessing(): boolean {
  * Called as a side effect from /api/feed.
  */
 /** Load suppression list from Redis (cold start sync). */
+let suppressionLoaded = false;
 async function loadSuppressions(): Promise<void> {
-  if (suppressedCountries.size > 0) return; // already loaded
+  if (suppressionLoaded) return;
+  suppressionLoaded = true;
   const r = getRedis();
   if (!r) return;
   try {
@@ -161,17 +163,20 @@ async function loadSuppressions(): Promise<void> {
         r.hdel("siren_suppressed", country).catch(() => {});
       }
     }
+    if (suppressedCountries.size > 0) {
+      console.log(`[siren] Loaded ${suppressedCountries.size} suppressed countries from Redis`);
+    }
   } catch { /* ignore */ }
 }
 
-export function processSirenPosts(posts: Array<{
+export async function processSirenPosts(posts: Array<{
   id: string;
   channelUsername: string;
   text: string;
   timestamp: string;
-}>): void {
-  // Fire-and-forget load suppressions from Redis on first call
-  loadSuppressions().catch(() => {});
+}>): Promise<void> {
+  // Must await suppression load before checking
+  await loadSuppressions();
 
   const now = Date.now();
   lastProcessedAt = now;

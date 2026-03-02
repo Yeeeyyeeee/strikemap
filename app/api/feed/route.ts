@@ -26,7 +26,7 @@ export async function GET() {
       .slice(0, 100);
 
     // Process posts for siren detection (populates server-side state)
-    processSirenPosts(posts);
+    await processSirenPosts(posts);
 
     // Enrich Iran-related posts with coordinates so feed clicks can navigate the map
     for (const post of posts) {

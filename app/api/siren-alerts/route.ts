@@ -15,7 +15,7 @@ export async function GET() {
           channels.map((ch) => scrapeChannel(ch).catch(() => []))
         );
         const posts = results.flat().filter((p) => p.text);
-        processSirenPosts(posts);
+        await processSirenPosts(posts);
       }
     }
 
