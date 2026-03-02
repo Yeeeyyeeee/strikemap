@@ -48,6 +48,105 @@ async function apiCall(method: string, body: Record<string, unknown>): Promise<b
   return true;
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export async function apiCallJson(method: string, body: Record<string, unknown>): Promise<any> {
+  const token = getToken();
+  const res = await fetch(`${API}${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.result || null;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Download a file from a URL and re-upload it to the channel via multipart.
+ * This avoids CDN URL expiration issues.
+ */
+async function downloadAndSendPhoto(url: string, caption?: string): Promise<boolean> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return false;
+    const blob = await resp.blob();
+    const form = new FormData();
+    form.append("chat_id", getChannelId());
+    form.append("photo", blob, "photo.jpg");
+    if (caption) {
+      form.append("caption", caption);
+      form.append("parse_mode", "MarkdownV2");
+    }
+    const token = getToken();
+    const res = await fetch(`${API}${token}/sendPhoto`, { method: "POST", body: form });
+    if (!res.ok) {
+      console.error(`[bot] downloadAndSendPhoto failed (${res.status}):`, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[bot] downloadAndSendPhoto error:", err);
+    return false;
+  }
+}
+
+async function downloadAndSendVideo(url: string, caption?: string): Promise<boolean> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!resp.ok) return false;
+    const blob = await resp.blob();
+    // Skip videos > 20MB (Telegram Bot API limit)
+    if (blob.size > 20 * 1024 * 1024) {
+      console.warn(`[bot] Video too large (${(blob.size / 1024 / 1024).toFixed(1)}MB), skipping`);
+      return false;
+    }
+    const form = new FormData();
+    form.append("chat_id", getChannelId());
+    form.append("video", blob, "video.mp4");
+    if (caption) {
+      form.append("caption", caption);
+      form.append("parse_mode", "MarkdownV2");
+    }
+    const token = getToken();
+    const res = await fetch(`${API}${token}/sendVideo`, { method: "POST", body: form });
+    if (!res.ok) {
+      console.error(`[bot] downloadAndSendVideo failed (${res.status}):`, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[bot] downloadAndSendVideo error:", err);
+    return false;
+  }
+}
+
+/** Download media from URLs and re-upload them as a media group */
+async function downloadAndSendMediaGroup(
+  media: { type: "photo" | "video"; url: string }[],
+  caption?: string,
+): Promise<boolean> {
+  if (media.length === 0) return true;
+  // For single items, use direct upload
+  if (media.length === 1) {
+    return media[0].type === "video"
+      ? downloadAndSendVideo(media[0].url, caption)
+      : downloadAndSendPhoto(media[0].url, caption);
+  }
+  // For multiple items, send the first with caption, rest without
+  let firstSent = false;
+  for (let i = 0; i < Math.min(media.length, 5); i++) {
+    const m = media[i];
+    const cap = i === 0 ? caption : undefined;
+    const ok = m.type === "video"
+      ? await downloadAndSendVideo(m.url, cap)
+      : await downloadAndSendPhoto(m.url, cap);
+    if (ok) firstSent = true;
+    await sleep(300);
+  }
+  return firstSent;
+}
+
 /** Send a MarkdownV2 text message */
 export async function sendMessage(text: string): Promise<boolean> {
   return apiCall("sendMessage", {
@@ -305,15 +404,18 @@ export async function sendIncident(
 
   const caption = formatIncident(inc, siteUrl);
 
-  // 3. If forwarding failed, try sending scraped media with caption
+  // 3. If forwarding failed, download media and re-upload
   if (!forwarded) {
     let media = post ? collectMedia(post) : collectIncidentMedia(inc);
     if (media.length === 0 && post) media = collectIncidentMedia(inc);
 
     if (media.length > 0) {
-      const ok = await sendMediaGroup(media, caption);
+      // Try download + re-upload (handles expired CDN URLs better)
+      const ok = await downloadAndSendMediaGroup(media, caption);
       if (ok) return true;
-      // Media group failed, fall through to text-only
+      // If that also failed, try direct URL method as last resort
+      const ok2 = await sendMediaGroup(media, caption);
+      if (ok2) return true;
     }
   }
 
@@ -335,12 +437,15 @@ export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<
 
   const caption = formatFeedPost(post, siteUrl);
 
-  // 2. If forward failed, try scraped media
+  // 2. If forward failed, download and re-upload media
   if (!forwarded) {
     const media = collectMedia(post);
     if (media.length > 0) {
-      const ok = await sendMediaGroup(media, caption);
+      const ok = await downloadAndSendMediaGroup(media, caption);
       if (ok) return true;
+      // Last resort: direct URL
+      const ok2 = await sendMediaGroup(media, caption);
+      if (ok2) return true;
     }
   }
 
