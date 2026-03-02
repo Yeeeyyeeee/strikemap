@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
-import { parseTelegramPostId, getTelegramEmbedUrl } from "@/lib/telegramUtils";
 
 interface IncidentCardProps {
   incident: Incident;
@@ -32,17 +31,13 @@ function isDirectVideoUrl(url: string): boolean {
 }
 
 function getVideoStrategy(incident: Incident): {
-  type: "youtube" | "direct" | "telegram_embed" | "link" | "none";
+  type: "youtube" | "direct" | "link" | "none";
   url: string;
 } {
   const ytUrl = getYouTubeEmbedUrl(incident.video_url);
   if (ytUrl) return { type: "youtube", url: ytUrl };
   if (isDirectVideoUrl(incident.video_url))
     return { type: "direct", url: incident.video_url };
-  const telegramPostId =
-    incident.telegram_post_id || parseTelegramPostId(incident.source_url);
-  if (telegramPostId)
-    return { type: "telegram_embed", url: getTelegramEmbedUrl(telegramPostId) };
   if (incident.video_url) return { type: "link", url: incident.video_url };
   return { type: "none", url: "" };
 }
@@ -81,35 +76,13 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
 
   // Video state
   const video = getVideoStrategy(incident);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeError, setIframeError] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [expanded, setExpanded] = useState(false);
 
-  // Reset video state when incident changes
+  // Reset state when incident changes
   useEffect(() => {
-    setIframeLoaded(false);
-    setIframeError(false);
     setExpanded(false);
     initialZoom.current = map.getZoom();
   }, [incident.id, map]);
-
-  // Telegram embed resize handler
-  useEffect(() => {
-    if (video.type !== "telegram_embed") return;
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== "https://t.me") return;
-      if (!event.data || typeof event.data !== "string") return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.event === "resize" && data.height && iframeRef.current) {
-          iframeRef.current.style.height = `${Math.min(data.height, 300)}px`;
-        }
-      } catch { /* ignore */ }
-    };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [video.type]);
 
   // Position update function
   const updatePosition = useCallback(() => {
@@ -191,26 +164,6 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
         </div>
       )}
 
-      {video.type === "telegram_embed" && !iframeError && (
-        <div className="border-b border-[#2a2a2a] bg-[#0e0e0e]">
-          {!iframeLoaded && (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-          <iframe
-            ref={iframeRef}
-            src={video.url}
-            className={`w-full border-0 ${iframeLoaded ? "" : "h-0 overflow-hidden"}`}
-            style={iframeLoaded ? { minHeight: "200px", maxHeight: "300px" } : {}}
-            onLoad={() => setIframeLoaded(true)}
-            onError={() => setIframeError(true)}
-            sandbox="allow-scripts allow-same-origin allow-popups"
-            title="Telegram post"
-          />
-        </div>
-      )}
-
       {video.type === "link" && (
         <div className="border-b border-[#2a2a2a] px-4 py-3 bg-[#111]">
           <a
@@ -220,19 +173,6 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 underline underline-offset-2"
           >
             Watch video ↗
-          </a>
-        </div>
-      )}
-
-      {video.type === "telegram_embed" && iframeError && (
-        <div className="border-b border-[#2a2a2a] px-4 py-3 bg-[#111]">
-          <a
-            href={incident.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2"
-          >
-            View on Telegram ↗
           </a>
         </div>
       )}
