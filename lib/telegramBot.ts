@@ -246,7 +246,25 @@ function collectIncidentMedia(inc: Incident): { type: "photo" | "video"; url: st
 }
 
 /**
- * Send a STRIKE notification — location pin + incident report + media.
+ * Check if an incident is a confirmed hit (damage reported, casualties, etc.)
+ * Only confirmed hits get a location pin — avoids leaking coords for unverified reports.
+ */
+function isConfirmedHit(inc: Incident): boolean {
+  if (inc.damage_severity) return true;
+  if ((inc.casualties_military || 0) > 0 || (inc.casualties_civilian || 0) > 0) return true;
+  if (inc.damage_assessment) return true;
+  // Check text for confirmation keywords
+  const text = `${inc.description} ${inc.details || ""}`.toLowerCase();
+  const hitKeywords = [
+    "hit", "struck", "destroyed", "impact", "damage", "explosion",
+    "casualties", "killed", "wounded", "injured", "collapsed",
+    "direct hit", "confirmed strike", "successful strike",
+  ];
+  return hitKeywords.some((kw) => text.includes(kw));
+}
+
+/**
+ * Send a STRIKE notification — location pin (confirmed hits only) + incident report + media.
  * This is the high-visibility format for map markers.
  */
 export async function sendIncident(
@@ -254,8 +272,8 @@ export async function sendIncident(
   post: ChannelPost | null,
   siteUrl: string,
 ): Promise<boolean> {
-  // 1. Location pin
-  if (inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
+  // 1. Location pin — only for confirmed hits
+  if (isConfirmedHit(inc) && inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
     await sendLocation(inc.lat, inc.lng).catch(() => {});
     await sleep(300);
   }
@@ -263,9 +281,14 @@ export async function sendIncident(
   const caption = formatIncident(inc, siteUrl);
 
   // 2. Collect media from the post (preferred, has original URLs) or incident
-  const media = post ? collectMedia(post) : collectIncidentMedia(inc);
+  let media = post ? collectMedia(post) : collectIncidentMedia(inc);
 
-  // 3. Send media group with caption, or text-only
+  // 3. If post media is empty, try incident media as fallback
+  if (media.length === 0 && post) {
+    media = collectIncidentMedia(inc);
+  }
+
+  // 4. Send media group with caption, or text-only
   if (media.length > 0) {
     const ok = await sendMediaGroup(media, caption);
     // If media group fails (e.g. URL expired), fall back to text
