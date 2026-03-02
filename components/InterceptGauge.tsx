@@ -11,16 +11,20 @@ interface SystemStats {
   name: string;
   intercepted: number;
   missed: number;
+  unknown: number;
   total: number;
   rate: number;
 }
 
-const SYSTEM_COLORS: Record<string, string> = {
+export const SYSTEM_COLORS: Record<string, string> = {
   "Iron Dome": "#22c55e",
   "Arrow-3": "#3b82f6",
   "Arrow-2": "#60a5fa",
   THAAD: "#a855f7",
   "David's Sling": "#f97316",
+  "S-300": "#ef4444",
+  "Bavar-373": "#f43f5e",
+  "Khordad-15": "#e11d48",
 };
 
 function getColor(pct: number): string {
@@ -37,31 +41,47 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
   if (withIntercept.length === 0) return null;
 
   // Group by defense system
-  const systemMap = new Map<string, { intercepted: number; missed: number }>();
+  const systemMap = new Map<string, { intercepted: number; missed: number; unknown: number; projectilesFired: number; projectilesIntercepted: number }>();
   for (const inc of withIntercept) {
     const sys = inc.intercepted_by!;
-    const entry = systemMap.get(sys) || { intercepted: 0, missed: 0 };
-    if (inc.intercept_success) {
+    const entry = systemMap.get(sys) || { intercepted: 0, missed: 0, unknown: 0, projectilesFired: 0, projectilesIntercepted: 0 };
+    if (inc.intercept_success === true) {
       entry.intercepted++;
-    } else {
+    } else if (inc.intercept_success === false) {
       entry.missed++;
+    } else {
+      entry.unknown++;
     }
+    if (inc.missiles_fired) entry.projectilesFired += inc.missiles_fired;
+    if (inc.missiles_intercepted) entry.projectilesIntercepted += inc.missiles_intercepted;
     systemMap.set(sys, entry);
   }
 
   const systems: SystemStats[] = Array.from(systemMap.entries())
-    .map(([name, { intercepted, missed }]) => ({
-      name,
-      intercepted,
-      missed,
-      total: intercepted + missed,
-      rate: Math.round((intercepted / (intercepted + missed)) * 100),
-    }))
+    .map(([name, { intercepted, missed, unknown }]) => {
+      const confirmed = intercepted + missed;
+      return {
+        name,
+        intercepted,
+        missed,
+        unknown,
+        total: intercepted + missed + unknown,
+        rate: confirmed > 0 ? Math.round((intercepted / confirmed) * 100) : 0,
+      };
+    })
     .sort((a, b) => b.total - a.total);
 
-  const totalIntercepted = systems.reduce((s, sys) => s + sys.intercepted, 0);
-  const totalAttempts = systems.reduce((s, sys) => s + sys.total, 0);
-  const overallRate = totalAttempts > 0 ? Math.round((totalIntercepted / totalAttempts) * 100) : 0;
+  // Use missiles_fired/missiles_intercepted when available, otherwise count incidents
+  let totalProjectiles = 0;
+  let totalIntercepted = 0;
+  for (const inc of withIntercept) {
+    totalProjectiles += inc.missiles_fired || 1;
+    totalIntercepted += inc.missiles_intercepted || (inc.intercept_success === true ? 1 : 0);
+  }
+  const totalConfirmedIncidents = systems.reduce((s, sys) => s + sys.intercepted + sys.missed, 0);
+  const totalInterceptedIncidents = systems.reduce((s, sys) => s + sys.intercepted, 0);
+  const totalUnknown = systems.reduce((s, sys) => s + sys.unknown, 0);
+  const overallRate = totalConfirmedIncidents > 0 ? Math.round((totalInterceptedIncidents / totalConfirmedIncidents) * 100) : 0;
 
   return (
     <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-3 w-52">
@@ -88,7 +108,7 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
           {overallRate}%
         </span>
         <span className="text-[10px] text-neutral-500">
-          {totalIntercepted}/{totalAttempts}
+          {totalInterceptedIncidents}/{totalConfirmedIncidents}
         </span>
       </div>
 
@@ -96,10 +116,21 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
       <div className="space-y-2">
         {systems.map((sys) => (
           <div key={sys.name}>
-            <div className="flex justify-between text-[11px] mb-0.5">
-              <span style={{ color: SYSTEM_COLORS[sys.name] || "#999" }}>
-                {sys.name}
-              </span>
+            <div className="flex items-center justify-between text-[11px] mb-0.5">
+              <div className="flex items-center gap-1">
+                {sys.intercepted > 0 && (
+                  <span className="text-green-400 text-[9px]" title="Intercepted">&#x2713;</span>
+                )}
+                {sys.missed > 0 && (
+                  <span className="text-red-400 text-[9px]" title="Missed">&#x2717;</span>
+                )}
+                {sys.unknown > 0 && (
+                  <span className="text-neutral-500 text-[9px]" title="Unconfirmed">?</span>
+                )}
+                <span style={{ color: SYSTEM_COLORS[sys.name] || "#999" }}>
+                  {sys.name}
+                </span>
+              </div>
               <span className="text-neutral-400 font-medium">
                 {sys.rate}%
               </span>
@@ -115,6 +146,26 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Unknown/unconfirmed row */}
+      {totalUnknown > 0 && (
+        <div className="mt-2 pt-2 border-t border-[#2a2a2a]/50">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-neutral-500">Unconfirmed</span>
+            <span className="text-neutral-500">{totalUnknown}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Total projectiles */}
+      <div className="mt-2 pt-2 border-t border-[#2a2a2a]/50">
+        <span
+          className="text-[9px] text-neutral-600 uppercase tracking-wider"
+          style={{ fontFamily: "JetBrains Mono, monospace" }}
+        >
+          {totalProjectiles} projectiles tracked
+        </span>
       </div>
     </div>
   );

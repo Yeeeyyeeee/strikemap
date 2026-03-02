@@ -9,7 +9,9 @@ export interface EnrichmentResult {
   side: "iran" | "us_israel" | "us" | "israel";
   target_military: boolean;
   intercepted_by: string;
-  intercept_success: boolean;
+  intercept_success: boolean | null;
+  missiles_fired?: number;
+  missiles_intercepted?: number;
   damage_assessment: string;
   damage_severity: string;
   casualties_military: number;

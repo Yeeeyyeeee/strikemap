@@ -2,16 +2,22 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/I18nContext";
 import { Analytics } from "@vercel/analytics/react";
+import TelegramToast from "@/components/TelegramToast";
 
 export const metadata: Metadata = {
   title: "StrikeMap — Live Military Strike Tracker",
   description:
     "Live map tracking military strikes on targets worldwide in real-time",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
   openGraph: {
     title: "StrikeMap — Live Military Strike Tracker",
     description: "Live map tracking military strikes in real-time",
     siteName: "StrikeMap",
     type: "website",
+    images: [{ url: "/icon.png", width: 1080, height: 1080 }],
   },
   twitter: {
     card: "summary_large_image",
@@ -34,7 +40,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="StrikeMap" />
         <meta name="google-adsense-account" content="ca-pub-5608578086593725" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link
           href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
           rel="stylesheet"
@@ -45,7 +51,10 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider>
+          {children}
+          <TelegramToast />
+        </I18nProvider>
         <Analytics />
       </body>
     </html>

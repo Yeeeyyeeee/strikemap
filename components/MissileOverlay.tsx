@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import { MissileAlert } from "@/lib/types";
 import { startSiren, stopSiren } from "@/lib/sounds";
@@ -9,6 +9,7 @@ interface MissileOverlayProps {
   alerts: MissileAlert[];
   map: mapboxgl.Map | null;
   onAlertClick?: (alert: MissileAlert) => void;
+  soundEnabled?: boolean;
 }
 
 interface AnimState {
@@ -18,8 +19,9 @@ interface AnimState {
   clearTime: number;
 }
 
-// Flight duration: 3.5 minutes
-const FLIGHT_DURATION_MS = 3.5 * 60 * 1000;
+// Flight durations
+const MISSILE_FLIGHT_MS = 3.5 * 60 * 1000; // 3.5 min for missiles
+const DRONE_FLIGHT_MS = 8 * 60 * 1000;     // 8 min for drones (slower)
 
 /** Quadratic Bezier point at parameter t */
 function bezier(
@@ -59,11 +61,8 @@ function bezierPath(
 
 /**
  * Parse the alert timestamp into an epoch ms.
- * The alert has a timestamp like "13:28" and a date from the post.
- * We use the alert's raw timestamp field to derive when it was issued.
  */
 function getAlertEpoch(alert: MissileAlert): number {
-  // Try to extract from rawText: "(DD/MM/YYYY HH:MM)" or "(DD/MM/YYYY): HH:MM:"
   const dateMatch = alert.rawText?.match(/(\d{2})\/(\d{2})\/(\d{4})/);
   const timeMatch = alert.rawText?.match(/(\d{1,2}:\d{2})[:\s)]/);
   if (dateMatch && timeMatch) {
@@ -72,7 +71,6 @@ function getAlertEpoch(alert: MissileAlert): number {
     const d = new Date(`${yyyy}-${mm}-${dd}T${hh.padStart(2, "0")}:${min}:00+02:00`);
     if (!isNaN(d.getTime())) return d.getTime();
   }
-  // Fallback: use timestamp field "HH:MM" with today's date in Israel
   if (alert.timestamp) {
     const [hh, min] = alert.timestamp.split(":");
     const now = new Date();
@@ -89,7 +87,17 @@ const MISSILE_SVG = `<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http
   <path d="M2 12 L5 9.5 L5 14.5 Z" fill="#f97316"/>
 </svg>`;
 
-export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOverlayProps) {
+const DRONE_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 8 L20 12 L12 14 L4 12 Z" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
+  <line x1="6" y1="9" x2="18" y2="9" stroke="#a855f7" stroke-width="1.5"/>
+  <circle cx="6" cy="9" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
+  <circle cx="18" cy="9" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
+  <circle cx="6" cy="15" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
+  <circle cx="18" cy="15" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
+  <line x1="6" y1="15" x2="18" y2="15" stroke="#a855f7" stroke-width="1.5"/>
+</svg>`;
+
+export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled = true }: MissileOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const animStates = useRef<Map<string, AnimState>>(new Map());
   const rafRef = useRef<number>(0);
@@ -97,71 +105,21 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
     Map<string, { missile: HTMLDivElement; trail: SVGSVGElement; ring: HTMLDivElement }>
   >(new Map());
 
-  // Only show active (not cleared) alerts
-  const activeAlerts = alerts.filter((a) => a.lat !== 0 && a.lng !== 0 && a.status === "active");
+  // Stable reference for render loop data — avoids recreating the render callback
+  const alertsRef = useRef(alerts);
+  alertsRef.current = alerts;
+  const mapRef = useRef(map);
+  mapRef.current = map;
+  const soundRef = useRef(soundEnabled);
+  soundRef.current = soundEnabled;
+  const onAlertClickRef = useRef(onAlertClick);
+  onAlertClickRef.current = onAlertClick;
 
-  const render = useCallback(() => {
-    if (!map || !containerRef.current) return;
-    const now = Date.now();
-    let anyInFlight = false;
-
-    for (const alert of activeAlerts) {
-      const state = animStates.current.get(alert.id);
-      if (!state) continue;
-
-      const els = elementsRef.current.get(alert.id);
-      if (!els) continue;
-
-      // Project geo coords to screen pixels
-      const origin = map.project([alert.originLng, alert.originLat]);
-      const target = map.project([alert.lng, alert.lat]);
-
-      // Control point for the arc — midpoint raised upward
-      const midX = (origin.x + target.x) / 2;
-      const dist = Math.sqrt((target.x - origin.x) ** 2 + (target.y - origin.y) ** 2);
-      const arcHeight = Math.min(dist * 0.4, 400);
-      const midY = Math.min(origin.y, target.y) - arcHeight;
-      const ctrl = { x: midX, y: midY };
-
-      // Flight progress based on real alert time (survives refresh)
-      const elapsed = now - state.startTime;
-      const t = Math.min(elapsed / state.duration, 1);
-
-      // Update trail SVG
-      const pathD = bezierPath(origin, ctrl, target);
-      const pathEl = els.trail.querySelector("path");
-      if (pathEl) {
-        pathEl.setAttribute("d", pathD);
-        const totalLen = pathEl.getTotalLength?.() || dist;
-        pathEl.setAttribute("stroke-dasharray", `${totalLen * t} ${totalLen}`);
-      }
-
-      if (t < 1) {
-        // Missile in flight
-        anyInFlight = true;
-        const pos = bezier(t, origin, ctrl, target);
-        const angle = bezierAngle(t, origin, ctrl, target);
-        els.missile.style.transform = `translate(${pos.x - 10}px, ${pos.y - 10}px) rotate(${angle}rad)`;
-        els.missile.style.display = "block";
-        els.ring.style.display = "none";
-      } else {
-        // Missile reached target — show impact ring
-        anyInFlight = true;
-        els.missile.style.display = "none";
-        els.ring.style.display = "block";
-        els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
-      }
-    }
-
-    // Siren while any alert is active
-    if (anyInFlight) {
-      startSiren();
-    } else {
-      stopSiren();
-    }
-
-    rafRef.current = requestAnimationFrame(render);
-  }, [activeAlerts, map]);
+  // Memoize active alerts by ID to avoid unnecessary re-renders
+  const activeAlerts = useMemo(
+    () => alerts.filter((a) => a.lat !== 0 && a.lng !== 0 && a.status === "active"),
+    [alerts]
+  );
 
   // Create/remove DOM elements for alerts
   useEffect(() => {
@@ -172,31 +130,37 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
     for (const alert of activeAlerts) {
       if (elementsRef.current.has(alert.id)) continue;
 
-      // Use the real alert timestamp so position is consistent across refreshes
+      const isDrone = alert.threatType === "drone";
+
       if (!animStates.current.has(alert.id)) {
         const alertEpoch = getAlertEpoch(alert);
         animStates.current.set(alert.id, {
           startTime: alertEpoch,
-          duration: FLIGHT_DURATION_MS,
+          duration: isDrone ? DRONE_FLIGHT_MS : MISSILE_FLIGHT_MS,
           cleared: false,
           clearTime: 0,
         });
       }
 
-      // Create missile element
+      // Create missile/drone element
       const missile = document.createElement("div");
-      missile.className = "missile-icon";
-      missile.innerHTML = MISSILE_SVG;
+      missile.className = isDrone ? "drone-icon" : "missile-icon";
+      missile.innerHTML = isDrone ? DRONE_SVG : MISSILE_SVG;
       missile.style.pointerEvents = "auto";
       missile.style.cursor = "pointer";
-      missile.title = `Incoming hostile missiles — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`;
+      missile.title = isDrone
+        ? `Hostile drone incursion — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`
+        : `Incoming hostile missiles — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`;
+      const alertId = alert.id;
       missile.addEventListener("click", (e) => {
         e.stopPropagation();
-        onAlertClick?.(alert);
+        const current = alertsRef.current.find((a) => a.id === alertId);
+        if (current) onAlertClickRef.current?.(current);
       });
       container.appendChild(missile);
 
       // Create trail SVG
+      const trailColor = isDrone ? "#a855f7" : "#ef4444";
       const trail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       trail.setAttribute("class", "missile-trail");
       trail.style.position = "absolute";
@@ -207,9 +171,9 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
       trail.style.overflow = "visible";
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("fill", "none");
-      path.setAttribute("stroke", "#ef4444");
-      path.setAttribute("stroke-width", "2");
-      path.setAttribute("stroke-dasharray", "8 4");
+      path.setAttribute("stroke", trailColor);
+      path.setAttribute("stroke-width", isDrone ? "1.5" : "2");
+      path.setAttribute("stroke-dasharray", isDrone ? "4 6" : "8 4");
       path.setAttribute("opacity", "0.6");
       trail.appendChild(path);
       container.appendChild(trail);
@@ -222,7 +186,8 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
       ring.style.cursor = "pointer";
       ring.addEventListener("click", (e) => {
         e.stopPropagation();
-        onAlertClick?.(alert);
+        const current = alertsRef.current.find((a) => a.id === alertId);
+        if (current) onAlertClickRef.current?.(current);
       });
       container.appendChild(ring);
 
@@ -230,8 +195,9 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
     }
 
     // Remove elements for alerts no longer active
+    const activeIds = new Set(activeAlerts.map((a) => a.id));
     for (const [id, els] of elementsRef.current) {
-      if (!activeAlerts.find((a) => a.id === id)) {
+      if (!activeIds.has(id)) {
         els.missile.remove();
         els.trail.remove();
         els.ring.remove();
@@ -239,31 +205,101 @@ export default function MissileOverlay({ alerts, map, onAlertClick }: MissileOve
         animStates.current.delete(id);
       }
     }
-  }, [activeAlerts, map, onAlertClick]);
+  }, [activeAlerts, map]);
 
-  // Animation loop
+  // Animation loop — uses refs so callback is stable and never recreated
   useEffect(() => {
     if (!map || activeAlerts.length === 0) {
       stopSiren();
       return;
     }
 
+    function render() {
+      const currentMap = mapRef.current;
+      const container = containerRef.current;
+      if (!currentMap || !container) {
+        rafRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      const now = Date.now();
+      let anyInFlight = false;
+      const currentAlerts = alertsRef.current.filter(
+        (a) => a.lat !== 0 && a.lng !== 0 && a.status === "active"
+      );
+
+      for (const alert of currentAlerts) {
+        const state = animStates.current.get(alert.id);
+        if (!state) continue;
+
+        const els = elementsRef.current.get(alert.id);
+        if (!els) continue;
+
+        // Project geo coords to screen pixels
+        const origin = currentMap.project([alert.originLng, alert.originLat]);
+        const target = currentMap.project([alert.lng, alert.lat]);
+
+        // Control point for the arc
+        const isDrone = alert.threatType === "drone";
+        const midX = (origin.x + target.x) / 2;
+        const dist = Math.sqrt((target.x - origin.x) ** 2 + (target.y - origin.y) ** 2);
+        const arcHeight = isDrone ? Math.min(dist * 0.15, 120) : Math.min(dist * 0.4, 400);
+        const midY = Math.min(origin.y, target.y) - arcHeight;
+        const ctrl = { x: midX, y: midY };
+
+        // Flight progress based on real alert time
+        const elapsed = now - state.startTime;
+        const t = Math.min(elapsed / state.duration, 1);
+
+        // Update trail SVG
+        const pathD = bezierPath(origin, ctrl, target);
+        const pathEl = els.trail.querySelector("path");
+        if (pathEl) {
+          pathEl.setAttribute("d", pathD);
+          const totalLen = (pathEl as SVGPathElement).getTotalLength?.() || dist;
+          pathEl.setAttribute("stroke-dasharray", `${totalLen * t} ${totalLen}`);
+        }
+
+        if (t < 1) {
+          // Missile in flight
+          anyInFlight = true;
+          const pos = bezier(t, origin, ctrl, target);
+          const angle = bezierAngle(t, origin, ctrl, target);
+          els.missile.style.transform = `translate(${pos.x - 10}px, ${pos.y - 10}px) rotate(${angle}rad)`;
+          els.missile.style.display = "block";
+          els.ring.style.display = "none";
+        } else {
+          // Missile reached target — show impact ring
+          anyInFlight = true;
+          els.missile.style.display = "none";
+          els.ring.style.display = "block";
+          els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
+        }
+      }
+
+      // Siren while any alert is active
+      if (anyInFlight && soundRef.current) {
+        startSiren();
+      } else {
+        stopSiren();
+      }
+
+      rafRef.current = requestAnimationFrame(render);
+    }
+
     rafRef.current = requestAnimationFrame(render);
+
+    // Also re-render on map move for reprojection
+    const moveHandler = () => {}; // RAF already handles reprojection each frame
+    map.on("move", moveHandler);
+
     return () => {
       cancelAnimationFrame(rafRef.current);
+      map.off("move", moveHandler);
       stopSiren();
     };
-  }, [map, activeAlerts, render]);
-
-  // Reproject on map move
-  useEffect(() => {
-    if (!map) return;
-    const handler = () => {};
-    map.on("move", handler);
-    return () => {
-      map.off("move", handler);
-    };
-  }, [map]);
+    // Only restart the loop when activeAlerts changes (memoized) or map changes
+  }, [map, activeAlerts.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div

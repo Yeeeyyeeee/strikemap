@@ -35,7 +35,7 @@ export function LiveFeedDesktop() {
   useEffect(() => {
     if (open && tab === "telegram") {
       fetchFeed();
-      const iv = setInterval(fetchFeed, 15_000);
+      const iv = setInterval(fetchFeed, 30_000);
       return () => clearInterval(iv);
     }
   }, [open, tab, fetchFeed]);
@@ -173,7 +173,7 @@ export default memo(function LiveFeedMobile() {
   useEffect(() => {
     if (open && tab === "telegram") {
       fetchFeed();
-      const iv = setInterval(fetchFeed, 15_000);
+      const iv = setInterval(fetchFeed, 30_000);
       return () => clearInterval(iv);
     }
   }, [open, tab, fetchFeed]);

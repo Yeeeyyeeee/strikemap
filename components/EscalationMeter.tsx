@@ -1,15 +1,16 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { Incident } from "@/lib/types";
+import { Incident, NOTAM } from "@/lib/types";
 import { computeEscalation } from "@/lib/escalationScore";
 
 interface EscalationMeterProps {
   incidents: Incident[];
+  notams?: NOTAM[];
 }
 
-export default memo(function EscalationMeter({ incidents }: EscalationMeterProps) {
-  const result = useMemo(() => computeEscalation(incidents), [incidents]);
+export default memo(function EscalationMeter({ incidents, notams }: EscalationMeterProps) {
+  const result = useMemo(() => computeEscalation(incidents, notams), [incidents, notams]);
 
   return (
     <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-3 w-52">

@@ -1,8 +1,15 @@
-import { NextResponse } from "next/server";
-import { getIncidentCount } from "@/lib/incidentStore";
+import { NextRequest, NextResponse } from "next/server";
+import { getIncidentCount, reEnrichCasualties } from "@/lib/incidentStore";
 import { scrapeChannel, isIranRelated } from "@/lib/telegram";
+import { Redis } from "@upstash/redis";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Trigger casualty re-enrichment if ?enrich=casualties
+  if (req.nextUrl.searchParams.get("enrich") === "casualties") {
+    const count = await reEnrichCasualties();
+    return NextResponse.json({ enriched: count, timestamp: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
+  }
+
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     storeSize: await getIncidentCount(),
@@ -13,6 +20,52 @@ export async function GET() {
       NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? "set" : "MISSING",
     },
   };
+
+  // Direct Redis check — bypass memCache to see what's actually in Redis
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const r = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      const hashLen = await r.hlen("incidents_v3");
+      const keyType = await r.type("incidents_v3");
+      const oldKeyType = await r.type("incidents_v2");
+
+      // Direct write/read test
+      let writeTest = "not run";
+      try {
+        await r.hset("incidents_v3_test", { test_key: JSON.stringify({ id: "test", ts: Date.now() }) });
+        const readBack = await r.hget("incidents_v3_test", "test_key");
+        const testLen = await r.hlen("incidents_v3_test");
+        await r.del("incidents_v3_test");
+        writeTest = `OK (wrote 1, read back: ${typeof readBack}, hlen: ${testLen})`;
+      } catch (err) {
+        writeTest = `FAILED: ${String(err)}`;
+      }
+
+      // Also test simple SET/GET
+      let setTest = "not run";
+      try {
+        await r.set("incidents_set_test", JSON.stringify([{ id: "test" }]));
+        const readBack = await r.get("incidents_set_test");
+        await r.del("incidents_set_test");
+        setTest = `OK (read back type: ${typeof readBack})`;
+      } catch (err) {
+        setTest = `FAILED: ${String(err)}`;
+      }
+
+      diagnostics.redis = {
+        incidents_v3_type: keyType,
+        incidents_v3_hashLen: hashLen,
+        incidents_v2_type: oldKeyType,
+        writeTest,
+        setTest,
+      };
+    } catch (err) {
+      diagnostics.redis = { error: String(err) };
+    }
+  }
 
   // Test scraping one channel
   const channels = (process.env.TELEGRAM_CHANNELS || "")

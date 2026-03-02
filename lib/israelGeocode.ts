@@ -111,18 +111,25 @@ export function geocodeIsraeliLocation(name: string): Coords | null {
 
 /**
  * Infer a plausible missile launch origin based on target coordinates.
- * All origins set to Iran (western Iran / IRGC missile bases).
- * Different launch sites for variety.
+ * Northern Israel targets → Hezbollah (southern Lebanon)
+ * Central/Southern Israel targets → Iran (IRGC missile bases)
  */
 export function getOriginForTarget(targetLat: number, targetLng: number): Coords {
-  // Western Iran — Kermanshah area (closest IRGC missile base to Israel)
-  // Slight variation based on target to spread out the trajectories
-  // All launches from central Iran (Isfahan / Natanz area) with slight spread
+  // Northern Israel (above Haifa) — likely Hezbollah from southern Lebanon
   if (targetLat > 32.5) {
-    return { lat: 33.0, lng: 52.0 };
+    // Vary origin across southern Lebanon launch sites
+    if (targetLng > 35.3) {
+      return { lat: 33.85, lng: 36.05 }; // Bekaa Valley, Lebanon
+    }
+    return { lat: 33.30, lng: 35.45 }; // South Lebanon / Nabatieh area
   }
-  if (targetLat < 31.4) {
-    return { lat: 32.0, lng: 52.5 };
+
+  // Central Israel (Tel Aviv area) — could be Iran or Hezbollah
+  // Use Iran (longer range = ballistic missiles)
+  if (targetLat >= 31.4) {
+    return { lat: 32.65, lng: 51.68 }; // Isfahan, Iran
   }
-  return { lat: 32.65, lng: 51.68 };
+
+  // Southern Israel (Negev, Beer Sheva, Eilat) — Iran
+  return { lat: 32.0, lng: 52.5 }; // Central Iran
 }

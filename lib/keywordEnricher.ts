@@ -96,6 +96,16 @@ const LOCATIONS: LocationEntry[] = [
   { keywords: ["qom"], location: "Qom, Iran", lat: 34.64, lng: 50.88, military: false },
   { keywords: ["abadan"], location: "Abadan, Iran", lat: 30.34, lng: 48.30, military: false },
   { keywords: ["khorramabad"], location: "Khorramabad, Iran", lat: 33.49, lng: 48.35, military: true },
+  { keywords: ["ahvaz", "ahwaz"], location: "Ahvaz, Iran", lat: 31.32, lng: 48.67, military: false },
+  { keywords: ["karaj"], location: "Karaj, Iran", lat: 35.84, lng: 50.97, military: false },
+  { keywords: ["rasht"], location: "Rasht, Iran", lat: 37.28, lng: 49.58, military: false },
+  { keywords: ["zahedan"], location: "Zahedan, Iran", lat: 29.50, lng: 60.86, military: false },
+  { keywords: ["hamadan", "hamedan"], location: "Hamadan, Iran", lat: 34.80, lng: 48.51, military: false },
+  { keywords: ["yazd"], location: "Yazd, Iran", lat: 31.90, lng: 54.37, military: false },
+  { keywords: ["kerman"], location: "Kerman, Iran", lat: 30.28, lng: 57.08, military: false },
+  { keywords: ["sanandaj"], location: "Sanandaj, Iran", lat: 35.31, lng: 46.99, military: false },
+  { keywords: ["omidiyeh"], location: "Omidiyeh Air Base, Iran", lat: 30.83, lng: 49.53, military: true },
+  { keywords: ["konarak"], location: "Konarak, Iran", lat: 25.35, lng: 60.39, military: true },
 
   // ---- UAE ----
   { keywords: ["al dhafra", "dhafra"], location: "Al Dhafra Air Base, UAE", lat: 24.25, lng: 54.55, military: true },
@@ -241,6 +251,13 @@ const US_ISRAEL_ATTACKER_KEYWORDS = [
   "f-35", "f-15", "b-2", "b-52",
   "centcom", "us central command",
   "israel fires", "israel fired", "israel launches",
+  "us-israeli", "u.s.-israeli", "american airstrikes", "american strikes",
+  "western airstrikes", "nato",
+  "strikes on iran", "strikes against iran", "strikes in iran",
+  "bombing iran", "hit iran", "attacked iran",
+  "airstrikes in tehran", "airstrikes in isfahan", "airstrikes in tabriz",
+  "airstrikes in shiraz", "airstrikes in ahvaz", "airstrikes in iran",
+  "\ud83c\uddfa\ud83c\uddf8", "\ud83c\uddee\ud83c\uddf1",
 ];
 
 const US_ONLY_KEYWORDS = [
@@ -269,6 +286,241 @@ function matchFirst<T extends { keywords: string[] }>(
   return null;
 }
 
+// ---- Interception detection ----
+
+interface DefenseSystemEntry {
+  keywords: string[];
+  name: string;
+}
+
+const DEFENSE_SYSTEMS: DefenseSystemEntry[] = [
+  { keywords: ["iron dome", "כיפת ברזל", "القبة الحديدية"], name: "Iron Dome" },
+  { keywords: ["arrow-3", "arrow 3", "חץ 3", "חץ-3"], name: "Arrow-3" },
+  { keywords: ["arrow-2", "arrow 2", "חץ 2", "חץ-2"], name: "Arrow-2" },
+  { keywords: ["thaad"], name: "THAAD" },
+  { keywords: ["david's sling", "davids sling", "שריון דוד"], name: "David's Sling" },
+  { keywords: ["s-300", "s300", "اس-۳۰۰"], name: "S-300" },
+  { keywords: ["bavar-373", "bavar 373", "باور-۳۷۳", "باور ۳۷۳"], name: "Bavar-373" },
+  { keywords: ["khordad-15", "khordad 15", "خرداد-۱۵", "خرداد ۱۵", "third khordad", "سوم خرداد"], name: "Khordad-15" },
+];
+
+const INTERCEPT_SUCCESS_KEYWORDS = [
+  // English
+  "intercepted", "shot down", "engaged successfully", "neutralized", "destroyed in mid-air",
+  "defense system activated", "air defense engaged",
+  // Hebrew
+  "יורט",
+  // Persian
+  "رهگیری شد", "ساقط شد",
+  // Arabic
+  "اعتراض",
+];
+
+const INTERCEPT_FAILURE_KEYWORDS = [
+  // English
+  "leaked through", "hit target", "failed to intercept", "penetrated defenses",
+  "evaded", "overwhelmed defenses", "got through", "struck despite",
+  // Persian
+  "نفوذ کرد",
+];
+
+function detectInterception(text: string): {
+  intercepted_by: string;
+  intercept_success: boolean | null;
+  missiles_fired?: number;
+  missiles_intercepted?: number;
+} {
+  const lower = text.toLowerCase();
+
+  // Detect defense system
+  let interceptedBy = "";
+  for (const sys of DEFENSE_SYSTEMS) {
+    if (sys.keywords.some((kw) => lower.includes(kw) || text.includes(kw))) {
+      interceptedBy = sys.name;
+      break;
+    }
+  }
+
+  // Also detect generic interception language without specific system
+  const hasInterceptKeywords = [
+    "intercepted by", "shot down by", "engaged by", "defense system activated",
+    "air defense", "missile defense", "سامانه دفاعی", "سپر دفاعی",
+    "יורט", "כיפת ברזל", "חץ", "שריון דוד",
+    "اعتراض", "القبة الحديدية",
+    "رهگیری شد",
+  ].some((kw) => lower.includes(kw) || text.includes(kw));
+
+  // Determine outcome
+  let interceptSuccess: boolean | null = null;
+  const hasSuccess = INTERCEPT_SUCCESS_KEYWORDS.some((kw) => lower.includes(kw) || text.includes(kw));
+  const hasFailure = INTERCEPT_FAILURE_KEYWORDS.some((kw) => lower.includes(kw) || text.includes(kw));
+
+  if (hasSuccess && !hasFailure) {
+    interceptSuccess = true;
+  } else if (hasFailure && !hasSuccess) {
+    interceptSuccess = false;
+  } else if (interceptedBy && !hasSuccess && !hasFailure) {
+    // System mentioned but outcome unclear
+    interceptSuccess = null;
+  } else if (!interceptedBy && !hasInterceptKeywords) {
+    // No interception data at all
+    interceptSuccess = null;
+  }
+
+  // Extract missile counts: "12 out of 14 intercepted", "50 missiles fired", etc.
+  let missilesFired: number | undefined;
+  let missilesIntercepted: number | undefined;
+
+  // Pattern: "X out of Y intercepted" or "X of Y intercepted"
+  const outOfMatch = text.match(/(\d+)\s*(?:out\s+)?of\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:intercepted|shot down|engaged|neutralized)/i);
+  if (outOfMatch) {
+    missilesIntercepted = parseInt(outOfMatch[1], 10);
+    missilesFired = parseInt(outOfMatch[2], 10);
+  }
+
+  // Pattern: "intercepted X out of Y" or "intercepted X of Y"
+  if (!outOfMatch) {
+    const interceptedXofY = text.match(/intercepted\s+(\d+)\s*(?:out\s+)?of\s+(\d+)/i);
+    if (interceptedXofY) {
+      missilesIntercepted = parseInt(interceptedXofY[1], 10);
+      missilesFired = parseInt(interceptedXofY[2], 10);
+    }
+  }
+
+  // Pattern: "X missiles fired" or "fired X missiles"
+  if (!missilesFired) {
+    const firedMatch = text.match(/(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)\s*(?:fired|launched|sent)/i)
+      || text.match(/(?:fired|launched|sent)\s*(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
+    if (firedMatch) {
+      missilesFired = parseInt(firedMatch[1], 10);
+    }
+  }
+
+  // Pattern: "X intercepted" or "intercepted X missiles"
+  if (!missilesIntercepted) {
+    const interceptedCountMatch = text.match(/(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:were\s+)?intercepted/i)
+      || text.match(/intercepted\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
+    if (interceptedCountMatch) {
+      missilesIntercepted = parseInt(interceptedCountMatch[1], 10);
+    }
+  }
+
+  // If we have counts, infer success
+  if (missilesIntercepted != null && missilesFired != null && interceptSuccess === null) {
+    interceptSuccess = missilesIntercepted > 0;
+  }
+
+  return {
+    intercepted_by: interceptedBy,
+    intercept_success: (interceptedBy || hasInterceptKeywords) ? interceptSuccess : null,
+    missiles_fired: missilesFired,
+    missiles_intercepted: missilesIntercepted,
+  };
+}
+
+// ---- Casualty extraction ----
+
+interface CasualtyResult {
+  casualties_military: number;
+  casualties_civilian: number;
+  casualties_description: string;
+}
+
+const CIVILIAN_CONTEXT = [
+  // English
+  "civilian", "civilians", "resident", "residents", "women", "children", "child",
+  "non-combatant", "bystander", "family", "families", "citizen", "citizens",
+  "innocent", "displaced", "refugee",
+  // Persian
+  "غیرنظامی", "مردم", "زنان", "کودکان", "شهروند",
+  // Hebrew
+  "אזרח", "אזרחים", "ילדים", "נשים",
+  // Arabic
+  "مدني", "مدنيين", "نساء", "أطفال", "مواطن",
+];
+
+const MILITARY_CONTEXT = [
+  // English
+  "soldier", "soldiers", "troop", "troops", "fighter", "fighters", "militant",
+  "militants", "combatant", "combatants", "officer", "officers", "commander",
+  "operative", "operatives", "guard", "guards", "serviceman", "servicemen",
+  "personnel", "member", "members",
+  // Persian
+  "نظامی", "سرباز", "نیروی", "فرمانده", "جنگجو", "پاسدار",
+  // Hebrew
+  "חייל", "חיילים", "לוחם", "לוחמים", "קצין",
+  // Arabic
+  "جندي", "جنود", "مقاتل", "مقاتلين", "ضابط", "عسكري",
+];
+
+const CASUALTY_PATTERNS: { regex: RegExp; group: number }[] = [
+  // English patterns
+  { regex: /(\d+)\s*(?:people\s+)?(?:killed|dead|died|slain|martyred|perished)/gi, group: 1 },
+  { regex: /(?:killed|martyred|slain)\s+(\d+)/gi, group: 1 },
+  { regex: /death\s+toll\s*(?:of\s+|:\s*|reaches?\s+|rises?\s+to\s+)?(\d+)/gi, group: 1 },
+  { regex: /(\d+)\s*(?:people\s+)?(?:casualties|fatalities)/gi, group: 1 },
+  { regex: /(?:at\s+least\s+)(\d+)\s*(?:killed|dead|died)/gi, group: 1 },
+  { regex: /(\d+)\s*(?:soldiers?|troops?|fighters?|militants?|combatants?)\s*(?:killed|dead)/gi, group: 1 },
+  { regex: /(\d+)\s*(?:civilians?|residents?)\s*(?:killed|dead)/gi, group: 1 },
+  // Persian
+  { regex: /(\d+)\s*(?:نفر\s+)?(?:کشته|شهید)/gi, group: 1 },
+  { regex: /(?:شهادت|کشته شدن)\s*(\d+)/gi, group: 1 },
+  // Hebrew
+  { regex: /(\d+)\s*(?:הרוגים|נהרגו|חללים)/gi, group: 1 },
+  // Arabic
+  { regex: /(\d+)\s*(?:قتلى|شهيد|شهداء|قتيل)/gi, group: 1 },
+  { regex: /(?:استشهاد|مقتل|قتل)\s*(\d+)/gi, group: 1 },
+];
+
+function detectCasualties(text: string): CasualtyResult {
+  const lower = text.toLowerCase();
+  let totalCount = 0;
+
+  // Extract the highest casualty number mentioned
+  for (const { regex, group } of CASUALTY_PATTERNS) {
+    regex.lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const num = parseInt(match[group], 10);
+      if (num > 0 && num < 10000) { // sanity check
+        totalCount = Math.max(totalCount, num);
+      }
+    }
+  }
+
+  if (totalCount === 0) {
+    return { casualties_military: 0, casualties_civilian: 0, casualties_description: "" };
+  }
+
+  // Determine military vs civilian from context
+  const hasCivilian = CIVILIAN_CONTEXT.some((kw) => lower.includes(kw) || text.includes(kw));
+  const hasMilitary = MILITARY_CONTEXT.some((kw) => lower.includes(kw) || text.includes(kw));
+
+  let milCount = 0;
+  let civCount = 0;
+
+  if (hasCivilian && !hasMilitary) {
+    civCount = totalCount;
+  } else if (hasMilitary && !hasCivilian) {
+    milCount = totalCount;
+  } else if (hasCivilian && hasMilitary) {
+    // Both mentioned — split roughly, lean military
+    milCount = Math.ceil(totalCount * 0.6);
+    civCount = totalCount - milCount;
+  } else {
+    // No context — default to military (conservative)
+    milCount = totalCount;
+  }
+
+  const desc = `${totalCount} ${hasCivilian && !hasMilitary ? "civilian" : hasMilitary && !hasCivilian ? "military" : ""} casualties reported`.trim().replace(/\s+/g, " ");
+
+  return {
+    casualties_military: milCount,
+    casualties_civilian: civCount,
+    casualties_description: desc,
+  };
+}
+
 export function enrichWithKeywords(text: string): EnrichmentResult | null {
   if (!text || text.length < 10) return null;
 
@@ -281,27 +533,41 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   // Find weapon
   const wpn = matchFirst(text, WEAPONS);
 
-  // Determine side
+  // Determine side based on location context + keyword analysis
   let side: "iran" | "us" | "israel" = "iran";
-  const iranScore = IRAN_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
-  const usScore = US_ISRAEL_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+  const targetInIran = loc.location.includes("Iran");
+  const targetInIsrael = loc.location.includes("Israel");
+  const targetInLebanon = loc.location.includes("Lebanon");
+  const targetInYemen = loc.location.includes("Yemen");
+  const targetInSyria = loc.location.includes("Syria");
+  const targetInGaza = loc.location.includes("Gaza");
+  const targetInGulf = loc.location.includes("UAE") || loc.location.includes("Bahrain")
+    || loc.location.includes("Qatar") || loc.location.includes("Kuwait")
+    || loc.location.includes("Saudi");
 
-  if (usScore > iranScore) {
-    // Distinguish US from Israel
+  if (targetInIran) {
+    // Strikes IN Iran are by US or Israel, not by Iran on itself
     const usOnly = US_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
     const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
-    if (usOnly > ilOnly) {
-      side = "us";
-    } else if (ilOnly > usOnly) {
-      side = "israel";
-    } else {
-      // Heuristic: strikes in Iran are likely US, others likely Israel
-      side = loc.location.includes("Iran") ? "us" : "israel";
-    }
-  } else if (iranScore === 0 && usScore === 0) {
-    // Heuristic: if target is in Iran, attacker is likely US
-    if (loc.location.includes("Iran")) {
-      side = "us";
+    side = usOnly > ilOnly ? "us" : ilOnly > usOnly ? "israel" : "us";
+  } else if (targetInIsrael || targetInGulf) {
+    // Strikes on Israel or Gulf states are by Iran/proxies
+    side = "iran";
+  } else if (targetInLebanon || targetInSyria || targetInGaza) {
+    // Strikes in Lebanon/Syria/Gaza are usually by Israel
+    side = "israel";
+  } else if (targetInYemen) {
+    // Strikes in Yemen are usually by US
+    side = "us";
+  } else {
+    // Fallback: use keyword scoring
+    const iranScore = IRAN_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+    const usScore = US_ISRAEL_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+
+    if (usScore > iranScore) {
+      const usOnly = US_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+      const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+      side = usOnly > ilOnly ? "us" : ilOnly > usOnly ? "israel" : "us";
     }
   }
 
@@ -321,6 +587,12 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   else if (loc.military) targetType = "Military facility";
   else targetType = "Urban area";
 
+  // ---- Interception detection ----
+  const interceptResult = detectInterception(text);
+
+  // ---- Casualty extraction ----
+  const casualtyResult = detectCasualties(text);
+
   return {
     location: loc.location,
     lat: loc.lat,
@@ -329,12 +601,14 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
     target_type: targetType,
     side,
     target_military: loc.military,
-    intercepted_by: "",
-    intercept_success: false,
+    intercepted_by: interceptResult.intercepted_by,
+    intercept_success: interceptResult.intercept_success,
+    missiles_fired: interceptResult.missiles_fired,
+    missiles_intercepted: interceptResult.missiles_intercepted,
     damage_assessment: "Damage assessment pending",
     damage_severity: "minor",
-    casualties_military: 0,
-    casualties_civilian: 0,
-    casualties_description: "No casualties reported",
+    casualties_military: casualtyResult.casualties_military,
+    casualties_civilian: casualtyResult.casualties_civilian,
+    casualties_description: casualtyResult.casualties_description || "No casualties reported",
   };
 }

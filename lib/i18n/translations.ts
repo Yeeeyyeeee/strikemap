@@ -10,7 +10,7 @@ export function isRTL(locale: Locale): boolean {
 
 export const translations: Record<Locale, Translations> = {
   en: {
-    strikes: "STRIKES",
+    strikes: "Strikes",
     incoming: "INCOMING",
     all: "All",
     iranian: "Iranian",
@@ -19,6 +19,7 @@ export const translations: Record<Locale, Translations> = {
     stats: "Stats",
     weapons: "Weapons",
     killchain: "Kill Chain",
+    intercept: "Intercept",
     timeline: "Timeline",
     share: "Share current view",
     copied: "Copied!",
@@ -68,6 +69,8 @@ export const translations: Record<Locale, Translations> = {
     affected_areas: "Affected areas",
     source_hfc: "Source: Tzeva Adom / Home Front Command",
     incoming_hostile: "INCOMING HOSTILE MISSILES",
+    airspace: "Airspace",
+    heatmap: "Heatmap",
   },
   fa: {
     strikes: "حمله",
@@ -79,6 +82,7 @@ export const translations: Record<Locale, Translations> = {
     stats: "آمار",
     weapons: "سلاح‌ها",
     killchain: "زنجیره کشتار",
+    intercept: "رهگیری",
     timeline: "خط زمانی",
     share: "اشتراک‌گذاری نمای فعلی",
     copied: "کپی شد!",
@@ -128,6 +132,8 @@ export const translations: Record<Locale, Translations> = {
     affected_areas: "مناطق تحت تأثیر",
     source_hfc: "منبع: فرماندهی جبهه داخلی",
     incoming_hostile: "موشک‌های دشمن ورودی",
+    airspace: "فضای هوایی",
+    heatmap: "نقشه حرارتی",
   },
   he: {
     strikes: "תקיפות",
@@ -139,6 +145,7 @@ export const translations: Record<Locale, Translations> = {
     stats: "סטטיסטיקה",
     weapons: "נשק",
     killchain: "שרשרת הריגה",
+    intercept: "יירוט",
     timeline: "ציר זמן",
     share: "שתף תצוגה נוכחית",
     copied: "הועתק!",
@@ -188,6 +195,8 @@ export const translations: Record<Locale, Translations> = {
     affected_areas: "אזורים מושפעים",
     source_hfc: "מקור: צבע אדום / פיקוד העורף",
     incoming_hostile: "טילים עוינים נכנסים",
+    airspace: "מרחב אווירי",
+    heatmap: "מפת חום",
   },
   ar: {
     strikes: "ضربات",
@@ -199,6 +208,7 @@ export const translations: Record<Locale, Translations> = {
     stats: "إحصائيات",
     weapons: "أسلحة",
     killchain: "سلسلة القتل",
+    intercept: "اعتراض",
     timeline: "الخط الزمني",
     share: "مشاركة العرض الحالي",
     copied: "تم النسخ!",
@@ -248,5 +258,7 @@ export const translations: Record<Locale, Translations> = {
     affected_areas: "المناطق المتأثرة",
     source_hfc: "المصدر: قيادة الجبهة الداخلية",
     incoming_hostile: "صواريخ معادية واردة",
+    airspace: "المجال الجوي",
+    heatmap: "خريطة حرارية",
   },
 };

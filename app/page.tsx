@@ -7,14 +7,11 @@ import IncidentCard from "@/components/IncidentCard";
 import Legend from "@/components/Legend";
 import AccuracyGauge from "@/components/AccuracyGauge";
 import FeedSidebar from "@/components/FeedSidebar";
-import { Incident, MissileAlert, ViewMode } from "@/lib/types";
+import { Incident, MissileAlert, NOTAM, ViewMode } from "@/lib/types";
 import { fetchAlerts } from "@/lib/fetchAlerts";
 import { playAlertSound, playImpactSound } from "@/lib/sounds";
 import MissileOverlay from "@/components/MissileOverlay";
 import StrikeFlash from "@/components/StrikeFlash";
-import LeadershipBoard from "@/components/LeadershipBoard";
-import StatsBoard from "@/components/StatsBoard";
-import WeaponsDatabase from "@/components/WeaponsDatabase";
 import MapOverlayControls from "@/components/MapOverlayControls";
 import InterceptGauge from "@/components/InterceptGauge";
 import CasualtyTracker from "@/components/CasualtyTracker";
@@ -25,8 +22,7 @@ import { MAP_STYLES, getStoredStyle, setStoredStyle } from "@/lib/mapStyles";
 import { UserSettings, loadSettings, saveSettings } from "@/lib/settings";
 import SettingsPanel from "@/components/SettingsPanel";
 import ChatPanel from "@/components/ChatPanel";
-import KillChainView from "@/components/KillChainView";
-import InterceptDashboard from "@/components/InterceptDashboard";
+import AirspaceStatus from "@/components/AirspaceStatus";
 import Timeline from "@/components/Timeline";
 import { useTimeline } from "@/hooks/useTimeline";
 import { useShare } from "@/components/ShareButton";
@@ -37,7 +33,10 @@ import mapboxgl from "mapbox-gl";
 const MapView = dynamic(() => import("@/components/Map"), { ssr: false });
 
 const isMapView = (mode: ViewMode) =>
-  !["leadership", "stats", "weapons", "killchain", "intercept"].includes(mode);
+  !["leadership", "stats", "weapons", "killchain", "intercept", "airspace"].includes(mode);
+
+// ViewMode is now only used for strike filtering on the map page
+// Dashboard views (leadership, stats, etc.) live on their own routes
 
 export default function Home() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -55,6 +54,7 @@ export default function Home() {
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [notams, setNotams] = useState<NOTAM[]>([]);
 
   // Check if disclaimer was already accepted this session
   useEffect(() => {
@@ -173,12 +173,12 @@ export default function Home() {
   useEffect(() => {
     loadData();
 
-    // Auto-refresh every 10 seconds for near-real-time updates
-    const interval = setInterval(loadData, 10_000);
+    // Auto-refresh every 20 seconds for near-real-time updates
+    const interval = setInterval(loadData, 20_000);
     return () => clearInterval(interval);
   }, [loadData]);
 
-  // Fast polling for missile alerts (15 seconds)
+  // Polling for missile alerts (10 seconds)
   useEffect(() => {
     let firstPoll = true;
     const pollAlerts = async () => {
@@ -221,7 +221,23 @@ export default function Home() {
       setAlerts(newAlerts);
     };
     pollAlerts();
-    const interval = setInterval(pollAlerts, 5_000);
+    const interval = setInterval(pollAlerts, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poll NOTAM / airspace data (every 5 minutes)
+  useEffect(() => {
+    const pollNotams = async () => {
+      try {
+        const res = await fetch("/api/notams");
+        if (res.ok) {
+          const json = await res.json();
+          setNotams(json.notams || []);
+        }
+      } catch { /* keep existing data */ }
+    };
+    pollNotams();
+    const interval = setInterval(pollNotams, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -329,6 +345,24 @@ export default function Home() {
     setSettingsOpen((prev) => !prev);
   }, []);
 
+  const handleToggleSound = useCallback(() => {
+    setSettings((prev) => {
+      const next = { ...prev, soundEnabled: !prev.soundEnabled };
+      saveSettings(next);
+      settingsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleToggleNotifications = useCallback(() => {
+    setSettings((prev) => {
+      const next = { ...prev, notificationsEnabled: !prev.notificationsEnabled };
+      saveSettings(next);
+      settingsRef.current = next;
+      return next;
+    });
+  }, []);
+
   const mapStyleUrl = MAP_STYLES.find((s) => s.id === mapStyle)?.url;
 
   // Shareable snapshots
@@ -350,24 +384,12 @@ export default function Home() {
         onTimelineToggle={handleTimelineToggle}
         onShare={handleShare}
         shareCopied={shareCopied}
-        notificationPermission={notifSupported ? notifPermission : undefined}
-        onRequestNotifications={notifSupported ? requestPermission : undefined}
         settingsOpen={settingsOpen}
         onToggleSettings={handleToggleSettings}
         soundEnabled={settings.soundEnabled}
-        onToggleSound={() => {
-          const next = { ...settings, soundEnabled: !settings.soundEnabled };
-          setSettings(next);
-          saveSettings(next);
-          settingsRef.current = next;
-        }}
+        onToggleSound={handleToggleSound}
         notificationsEnabled={settings.notificationsEnabled}
-        onToggleNotifications={() => {
-          const next = { ...settings, notificationsEnabled: !settings.notificationsEnabled };
-          setSettings(next);
-          saveSettings(next);
-          settingsRef.current = next;
-        }}
+        onToggleNotifications={handleToggleNotifications}
       />
 
       {settingsOpen && (
@@ -396,25 +418,7 @@ export default function Home() {
 
       {/* Main content */}
       <main className="h-full w-full pt-14 relative z-0">
-        {viewMode === "leadership" ? (
-          <LeadershipBoard />
-        ) : viewMode === "stats" ? (
-          <StatsBoard incidents={incidents} />
-        ) : viewMode === "weapons" ? (
-          <WeaponsDatabase
-            onShowRange={(lat, lng, radiusKm) => {
-              setRangeWeapon({ lat, lng, radiusKm });
-              setViewMode("all");
-            }}
-          />
-        ) : viewMode === "killchain" ? (
-          <KillChainView
-            incidents={incidents}
-            onSelectIncident={handleSelectIncident}
-          />
-        ) : viewMode === "intercept" ? (
-          <InterceptDashboard incidents={incidents} />
-        ) : loading ? (
+        {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -494,7 +498,8 @@ export default function Home() {
           <LiveFeedDesktop />
           {settings.showGauges && (
             <>
-              <EscalationMeter incidents={incidents} />
+              <EscalationMeter incidents={incidents} notams={notams} />
+              <AirspaceStatus />
               {(viewMode === "all" || viewMode === "iran") && (
                 <AccuracyGauge incidents={incidents} side="iran" />
               )}

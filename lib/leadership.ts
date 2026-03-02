@@ -14,6 +14,7 @@ export interface Leader {
   deathDate?: string;
   deathCause?: string;
   imageUrl?: string;
+  faction?: "iran" | "hezbollah" | "us" | "israel";
 }
 
 export interface LeadershipUpdate {
@@ -31,6 +32,9 @@ export interface LeadershipUpdate {
 // ---------------------------------------------------------------------------
 
 export const BASE_LEADERS: Leader[] = [
+  // =====================================================================
+  // IRAN
+  // =====================================================================
   // Tier 1 — Supreme Leadership
   {
     id: "khamenei",
@@ -41,6 +45,7 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "28 Feb 2026",
     deathCause: "US-Israeli strikes, Iran",
     imageUrl: "/leaders/khamenei.jpg",
+    faction: "iran",
   },
   // Tier 2 — Senior Officials
   {
@@ -50,6 +55,7 @@ export const BASE_LEADERS: Leader[] = [
     tier: 2,
     dead: false,
     imageUrl: "/leaders/pezeshkian.jpg",
+    faction: "iran",
   },
   {
     id: "salami",
@@ -58,6 +64,7 @@ export const BASE_LEADERS: Leader[] = [
     tier: 2,
     dead: false,
     imageUrl: "/leaders/salami.jpg",
+    faction: "iran",
   },
   {
     id: "qaani",
@@ -66,6 +73,7 @@ export const BASE_LEADERS: Leader[] = [
     tier: 2,
     dead: false,
     imageUrl: "/leaders/qaani.jpg",
+    faction: "iran",
   },
   {
     id: "bagheri",
@@ -74,6 +82,7 @@ export const BASE_LEADERS: Leader[] = [
     tier: 2,
     dead: false,
     imageUrl: "/leaders/bagheri.jpg",
+    faction: "iran",
   },
   {
     id: "nasirzadeh",
@@ -82,6 +91,7 @@ export const BASE_LEADERS: Leader[] = [
     tier: 2,
     dead: false,
     imageUrl: "/leaders/nasirzadeh.jpg",
+    faction: "iran",
   },
   {
     id: "ahmadinejad",
@@ -92,8 +102,9 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "1 Mar 2026",
     deathCause: "US-Israeli strike, Tehran",
     imageUrl: "/leaders/ahmadinejad.jpg",
+    faction: "iran",
   },
-  // Tier 3 — Eliminated Commanders
+  // Tier 3 — Eliminated Iranian Commanders
   {
     id: "soleimani",
     name: "Qasem Soleimani",
@@ -103,6 +114,7 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "3 Jan 2020",
     deathCause: "US drone strike, Baghdad",
     imageUrl: "/leaders/soleimani.jpg",
+    faction: "iran",
   },
   {
     id: "fakhrizadeh",
@@ -113,26 +125,7 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "27 Nov 2020",
     deathCause: "Assassination, Absard",
     imageUrl: "/leaders/fakhrizadeh.jpg",
-  },
-  {
-    id: "haniyeh",
-    name: "Ismail Haniyeh",
-    role: "Hamas Political Bureau Chief",
-    tier: 3,
-    dead: true,
-    deathDate: "31 Jul 2024",
-    deathCause: "Assassination, Tehran",
-    imageUrl: "/leaders/haniyeh.jpg",
-  },
-  {
-    id: "nasrallah",
-    name: "Hassan Nasrallah",
-    role: "Hezbollah Secretary-General",
-    tier: 3,
-    dead: true,
-    deathDate: "27 Sep 2024",
-    deathCause: "Israeli airstrike, Beirut",
-    imageUrl: "/leaders/nasrallah.jpg",
+    faction: "iran",
   },
   {
     id: "nilforoushan",
@@ -143,6 +136,7 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "27 Sep 2024",
     deathCause: "Israeli airstrike, Beirut",
     imageUrl: "/leaders/nilforoushan.jpg",
+    faction: "iran",
   },
   {
     id: "mousavi",
@@ -153,6 +147,212 @@ export const BASE_LEADERS: Leader[] = [
     deathDate: "25 Dec 2023",
     deathCause: "Israeli airstrike, Damascus",
     imageUrl: "/leaders/mousavi.jpg",
+    faction: "iran",
+  },
+
+  // =====================================================================
+  // HEZBOLLAH / LEBANON
+  // =====================================================================
+  {
+    id: "nasrallah",
+    name: "Hassan Nasrallah",
+    role: "Secretary-General",
+    tier: 1,
+    dead: true,
+    deathDate: "27 Sep 2024",
+    deathCause: "Israeli airstrike, Beirut",
+    imageUrl: "/leaders/nasrallah.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "qassem",
+    name: "Naim Qassem",
+    role: "Secretary-General (successor)",
+    tier: 1,
+    dead: false,
+    imageUrl: "/leaders/qassem.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "safieddine",
+    name: "Hashem Safieddine",
+    role: "Head of Executive Council",
+    tier: 2,
+    dead: true,
+    deathDate: "4 Oct 2024",
+    deathCause: "Israeli airstrike, Beirut",
+    imageUrl: "/leaders/safieddine.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "aqil",
+    name: "Ibrahim Aqil",
+    role: "Radwan Force Commander",
+    tier: 2,
+    dead: true,
+    deathDate: "20 Sep 2024",
+    deathCause: "Israeli airstrike, Beirut",
+    imageUrl: "/leaders/aqil.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "karaki",
+    name: "Ali Karaki",
+    role: "Southern Front Commander",
+    tier: 2,
+    dead: true,
+    deathDate: "27 Sep 2024",
+    deathCause: "Israeli airstrike, Beirut",
+    imageUrl: "/leaders/karaki.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "haniyeh",
+    name: "Ismail Haniyeh",
+    role: "Hamas Political Bureau Chief",
+    tier: 2,
+    dead: true,
+    deathDate: "31 Jul 2024",
+    deathCause: "Assassination, Tehran",
+    imageUrl: "/leaders/haniyeh.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "sinwar",
+    name: "Yahya Sinwar",
+    role: "Hamas Leader in Gaza",
+    tier: 2,
+    dead: true,
+    deathDate: "16 Oct 2024",
+    deathCause: "IDF operation, Rafah",
+    imageUrl: "/leaders/sinwar.jpg",
+    faction: "hezbollah",
+  },
+  {
+    id: "deif",
+    name: "Mohammed Deif",
+    role: "Hamas Military Commander",
+    tier: 2,
+    dead: true,
+    deathDate: "13 Jul 2024",
+    deathCause: "Israeli airstrike, Khan Younis",
+    imageUrl: "/leaders/deif.jpg",
+    faction: "hezbollah",
+  },
+
+  // =====================================================================
+  // UNITED STATES
+  // =====================================================================
+  {
+    id: "trump",
+    name: "Donald Trump",
+    role: "President of the United States",
+    tier: 1,
+    dead: false,
+    imageUrl: "/leaders/trump.jpg",
+    faction: "us",
+  },
+  {
+    id: "hegseth",
+    name: "Pete Hegseth",
+    role: "Secretary of Defense",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/hegseth.jpg",
+    faction: "us",
+  },
+  {
+    id: "rubio",
+    name: "Marco Rubio",
+    role: "Secretary of State",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/rubio.jpg",
+    faction: "us",
+  },
+  {
+    id: "waltz",
+    name: "Mike Waltz",
+    role: "National Security Adviser",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/waltz.jpg",
+    faction: "us",
+  },
+  {
+    id: "kurilla",
+    name: "Erik Kurilla",
+    role: "CENTCOM Commander",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/kurilla.jpg",
+    faction: "us",
+  },
+  {
+    id: "brown",
+    name: "Charles Q. Brown Jr.",
+    role: "Chairman of the Joint Chiefs",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/brown.jpg",
+    faction: "us",
+  },
+
+  // =====================================================================
+  // ISRAEL
+  // =====================================================================
+  {
+    id: "netanyahu",
+    name: "Benjamin Netanyahu",
+    role: "Prime Minister of Israel",
+    tier: 1,
+    dead: false,
+    imageUrl: "/leaders/netanyahu.jpg",
+    faction: "israel",
+  },
+  {
+    id: "katz",
+    name: "Israel Katz",
+    role: "Minister of Defense",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/katz.jpg",
+    faction: "israel",
+  },
+  {
+    id: "halevi",
+    name: "Herzi Halevi",
+    role: "IDF Chief of General Staff",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/halevi.jpg",
+    faction: "israel",
+  },
+  {
+    id: "bar",
+    name: "Ronen Bar",
+    role: "Shin Bet Director",
+    tier: 2,
+    dead: false,
+    faction: "israel",
+  },
+  {
+    id: "barnea",
+    name: "David Barnea",
+    role: "Mossad Director",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/barnea.jpg",
+    faction: "israel",
+  },
+  {
+    id: "gantz",
+    name: "Benny Gantz",
+    role: "Former Defense Minister",
+    tier: 2,
+    dead: false,
+    imageUrl: "/leaders/gantz.jpg",
+    faction: "israel",
   },
 ];
 

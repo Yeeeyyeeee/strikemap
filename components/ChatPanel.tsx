@@ -37,22 +37,28 @@ export default memo(function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [unread, setUnread] = useState(0);
 
-  // Poll for new messages
-  useEffect(() => {
-    if (!open && messages.length === 0) {
-      // Do an initial fetch even when closed to show unread count
-      fetch(`/api/chat`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.messages?.length > 0) {
-            setMessages(data.messages);
-            setUnread(data.messages.length);
-            lastTimestamp.current = data.messages[data.messages.length - 1].timestamp;
-          }
-        })
-        .catch(() => {});
-    }
+  const openRef = useRef(open);
+  openRef.current = open;
 
+  // Initial fetch (once) to get unread count
+  const didInitialFetch = useRef(false);
+  useEffect(() => {
+    if (didInitialFetch.current) return;
+    didInitialFetch.current = true;
+    fetch(`/api/chat`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.messages?.length > 0) {
+          setMessages(data.messages);
+          setUnread(data.messages.length);
+          lastTimestamp.current = data.messages[data.messages.length - 1].timestamp;
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Poll for new messages — stable interval, no dependency bugs
+  useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/chat?since=${lastTimestamp.current}`);
@@ -62,7 +68,7 @@ export default memo(function ChatPanel() {
             const ids = new Set(prev.map((m) => m.id));
             const newMsgs = data.messages.filter((m: ChatMessage) => !ids.has(m.id));
             if (newMsgs.length === 0) return prev;
-            if (!open) setUnread((u) => u + newMsgs.length);
+            if (!openRef.current) setUnread((u) => u + newMsgs.length);
             return [...prev, ...newMsgs];
           });
           lastTimestamp.current = data.messages[data.messages.length - 1].timestamp;
@@ -70,10 +76,10 @@ export default memo(function ChatPanel() {
       } catch {
         // Ignore
       }
-    }, 3000);
+    }, 10_000);
 
     return () => clearInterval(interval);
-  }, [open, messages.length]);
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {

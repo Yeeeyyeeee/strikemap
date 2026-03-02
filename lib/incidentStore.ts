@@ -1,12 +1,14 @@
 /**
- * Persistent incident store backed by Upstash Redis.
- * Falls back to in-memory store if Redis is not configured.
+ * Persistent incident store backed by Upstash Redis Hash.
+ * Each incident is stored as its own field in a Redis hash,
+ * written in small batches to stay within Upstash request limits.
  */
 
 import { Incident } from "./types";
 import { Redis } from "@upstash/redis";
 
-const REDIS_KEY = "incidents_v2"; // New key to avoid corrupted old data
+const REDIS_KEY = "incidents_v3";
+const BATCH_SIZE = 50; // Max fields per HSET call
 
 let redis: Redis | null = null;
 function getRedis(): Redis | null {
@@ -25,36 +27,39 @@ function getRedis(): Redis | null {
 let memCache: Map<string, Incident> = new Map();
 let loadPromise: Promise<Map<string, Incident>> | null = null;
 
-/** Load all incidents from Redis into memory (once per cold start) */
+/** Load all incidents from Redis hash into memory (once per cold start) */
 async function ensureLoaded(): Promise<Map<string, Incident>> {
-  // If already loaded, return immediately
   if (loadPromise) return loadPromise;
 
-  // Create a single promise that all concurrent callers will await
   loadPromise = (async () => {
     const r = getRedis();
-    if (!r) return memCache;
+    if (!r) {
+      console.warn("[store] No Redis configured, using in-memory only");
+      return memCache;
+    }
 
     try {
-      const raw = await r.get(REDIS_KEY);
-      if (!raw) return memCache;
-
-      // Handle both correctly stored arrays and legacy string-encoded data
-      let incidents: Incident[];
-      if (Array.isArray(raw)) {
-        incidents = raw;
-      } else if (typeof raw === "string") {
-        incidents = JSON.parse(raw);
-      } else {
+      const raw = await r.hgetall(REDIS_KEY);
+      if (!raw || typeof raw !== "object") {
+        // Check if key exists at all
+        const exists = await r.exists(REDIS_KEY);
+        console.log(`[store] HGETALL returned empty (key exists: ${exists})`);
         return memCache;
       }
 
-      if (Array.isArray(incidents)) {
-        for (const inc of incidents) {
-          if (inc && inc.id) memCache.set(inc.id, inc);
+      let loaded = 0;
+      for (const [id, value] of Object.entries(raw)) {
+        try {
+          const inc: Incident = typeof value === "string" ? JSON.parse(value) : value as Incident;
+          if (inc && inc.id) {
+            memCache.set(inc.id, inc);
+            loaded++;
+          }
+        } catch {
+          console.warn(`[store] Skipping corrupt entry: ${id}`);
         }
-        console.log(`[store] Loaded ${memCache.size} incidents from Redis`);
       }
+      console.log(`[store] Loaded ${loaded} incidents from Redis hash`);
     } catch (err) {
       console.error("[store] Failed to load from Redis:", err);
     }
@@ -65,7 +70,7 @@ async function ensureLoaded(): Promise<Map<string, Incident>> {
   return loadPromise;
 }
 
-/** Strip verbose fields to keep Redis payload under 1MB */
+/** Strip verbose fields to keep each Redis hash entry small */
 function slimIncident(inc: Incident): Partial<Incident> {
   return {
     id: inc.id,
@@ -92,22 +97,37 @@ function slimIncident(inc: Incident): Partial<Incident> {
   };
 }
 
-/** Save current in-memory state to Redis */
-let saving = false;
-async function persistToRedis(): Promise<void> {
+/** Write incidents to Redis hash in small batches */
+async function writeToRedis(incidents: Incident[]): Promise<number> {
   const r = getRedis();
-  if (!r || saving) return;
+  if (!r || incidents.length === 0) return 0;
 
-  saving = true;
-  try {
-    const incidents = Array.from(memCache.values()).map(slimIncident);
-    await r.set(REDIS_KEY, incidents);
-    console.log(`[store] Persisted ${incidents.length} incidents to Redis`);
-  } catch (err) {
-    console.error("[store] Failed to save to Redis:", err);
-  } finally {
-    saving = false;
+  let written = 0;
+
+  for (let i = 0; i < incidents.length; i += BATCH_SIZE) {
+    const batch = incidents.slice(i, i + BATCH_SIZE);
+    const fields: Record<string, string> = {};
+    for (const inc of batch) {
+      fields[inc.id] = JSON.stringify(slimIncident(inc));
+    }
+
+    try {
+      await r.hset(REDIS_KEY, fields);
+      written += batch.length;
+    } catch (err) {
+      console.error(`[store] HSET batch failed (${i}-${i + batch.length}):`, err);
+    }
   }
+
+  // Verify the write
+  try {
+    const hashLen = await r.hlen(REDIS_KEY);
+    console.log(`[store] Wrote ${written}/${incidents.length} incidents. Redis hash now has ${hashLen} entries.`);
+  } catch {
+    // Non-critical, just log
+  }
+
+  return written;
 }
 
 /** Get all stored incidents */
@@ -133,21 +153,15 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-const DEDUP_RADIUS_KM = 30;   // Same strike if within 30km
-const DEDUP_WINDOW_MS = 600_000; // and within 10 minutes
+const DEDUP_RADIUS_KM = 30;
+const DEDUP_WINDOW_MS = 600_000;
 
-/**
- * Check if an incident is a duplicate of an existing one.
- * Two reports are considered the same strike if they are:
- * - Within 30km of each other
- * - Within 10 minutes of each other
- * - On the same side
- */
-function isDuplicate(inc: Incident, store: Map<string, Incident>): boolean {
-  if (inc.lat === 0 && inc.lng === 0) return false; // Can't dedup without coords
+/** Returns the matching existing incident if duplicate, or null */
+function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | null {
+  if (inc.lat === 0 && inc.lng === 0) return null;
 
   const incTime = inc.timestamp ? new Date(inc.timestamp).getTime() : 0;
-  if (!incTime) return false;
+  if (!incTime) return null;
 
   for (const existing of store.values()) {
     if (existing.lat === 0 && existing.lng === 0) continue;
@@ -160,46 +174,66 @@ function isDuplicate(inc: Incident, store: Map<string, Incident>): boolean {
     if (timeDiff > DEDUP_WINDOW_MS) continue;
 
     const dist = distanceKm(inc.lat, inc.lng, existing.lat, existing.lng);
-    if (dist < DEDUP_RADIUS_KM) return true;
+    if (dist < DEDUP_RADIUS_KM) return existing;
   }
 
-  return false;
+  return null;
 }
 
 /**
  * Merge new incidents into the store.
- * Deduplicates by geographic proximity + time window.
- * Returns count of newly added incidents.
+ * Writes only NEW incidents to Redis in small batches.
  */
 export async function mergeIncidents(incidents: Incident[]): Promise<number> {
   const store = await ensureLoaded();
-  let added = 0;
   let deduped = 0;
+  const newIncidents: Incident[] = [];
+  const updatedIncidents: Incident[] = [];
 
   for (const inc of incidents) {
-    if (store.has(inc.id)) continue; // Exact ID match
-    if (isDuplicate(inc, store)) {
+    if (store.has(inc.id)) continue;
+    const existing = findDuplicate(inc, store);
+    if (existing) {
       deduped++;
+      // Update existing incident's casualties if the new report has data
+      let updated = false;
+      if (inc.casualties_military && inc.casualties_military > (existing.casualties_military || 0)) {
+        existing.casualties_military = inc.casualties_military;
+        updated = true;
+      }
+      if (inc.casualties_civilian && inc.casualties_civilian > (existing.casualties_civilian || 0)) {
+        existing.casualties_civilian = inc.casualties_civilian;
+        updated = true;
+      }
+      if (inc.casualties_description && !existing.casualties_description) {
+        existing.casualties_description = inc.casualties_description;
+        updated = true;
+      }
+      if (updated) {
+        store.set(existing.id, existing);
+        updatedIncidents.push(existing);
+      }
       continue;
     }
     store.set(inc.id, inc);
-    added++;
+    newIncidents.push(inc);
   }
 
-  if (added > 0) {
-    console.log(`[store] Added ${added} new incidents, deduped ${deduped} (total: ${store.size})`);
-    await persistToRedis();
+  // Persist new and updated incidents
+  const toPersist = [...newIncidents, ...updatedIncidents];
+  if (toPersist.length > 0) {
+    const written = await writeToRedis(toPersist);
+    console.log(`[store] Added ${newIncidents.length} new, updated ${updatedIncidents.length} existing (${written} persisted), deduped ${deduped} (total: ${store.size})`);
   } else if (deduped > 0) {
     console.log(`[store] Deduped ${deduped} incidents, 0 new`);
   }
 
-  return added;
+  return newIncidents.length;
 }
 
 /**
  * Seed the store with initial data if empty.
- * NEVER persists seed data to Redis — seed is in-memory only as a baseline.
- * Real data from refreshLiveData() will merge on top and persist.
+ * Persists to Redis so seed data survives cold starts.
  */
 export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
   const store = await ensureLoaded();
@@ -207,35 +241,128 @@ export async function seedIfEmpty(incidents: Incident[]): Promise<void> {
     for (const inc of incidents) {
       store.set(inc.id, inc);
     }
-    console.log(`[store] Seeded in-memory with ${store.size} baseline incidents (not persisted to Redis)`);
+    const written = await writeToRedis(incidents);
+    console.log(`[store] Seeded ${store.size} baseline incidents (${written} persisted to Redis)`);
   }
 }
 
 /**
  * Remove duplicate incidents already in the store.
- * Keeps the first occurrence, removes later ones that match by proximity + time.
  */
 export async function deduplicateStore(): Promise<number> {
   const store = await ensureLoaded();
   const entries = Array.from(store.entries());
   const keep = new Map<string, Incident>();
-  let removed = 0;
+  const removeIds: string[] = [];
 
   for (const [id, inc] of entries) {
-    if (isDuplicate(inc, keep)) {
+    if (findDuplicate(inc, keep)) {
       store.delete(id);
-      removed++;
+      removeIds.push(id);
     } else {
       keep.set(id, inc);
     }
   }
 
-  if (removed > 0) {
-    console.log(`[store] Deduplicated: removed ${removed} duplicates (${store.size} remaining)`);
-    await persistToRedis();
+  if (removeIds.length > 0) {
+    const r = getRedis();
+    if (r) {
+      try {
+        // Batch HDEL too
+        for (let i = 0; i < removeIds.length; i += BATCH_SIZE) {
+          const batch = removeIds.slice(i, i + BATCH_SIZE);
+          await r.hdel(REDIS_KEY, ...batch);
+        }
+        console.log(`[store] Deduplicated: removed ${removeIds.length} duplicates (${store.size} remaining)`);
+      } catch (err) {
+        console.error("[store] Failed to remove duplicates from Redis:", err);
+      }
+    }
   }
 
-  return removed;
+  return removeIds.length;
+}
+
+/**
+ * Re-attribute the `side` field of ALL stored incidents based on their location.
+ * Fixes historical data that was enriched with the old keyword-only logic.
+ */
+export async function reAttributeSides(): Promise<number> {
+  const store = await ensureLoaded();
+  const updated: Incident[] = [];
+
+  for (const [, inc] of store) {
+    const loc = (inc.location || "").toLowerCase();
+    if (!loc) continue;
+
+    let newSide: "iran" | "us" | "israel" = inc.side as "iran" | "us" | "israel";
+
+    if (loc.includes("iran")) {
+      // Strikes IN Iran are by US or Israel
+      newSide = loc.includes("nuclear") || loc.includes("natanz") || loc.includes("fordow") ? "israel" : "us";
+    } else if (loc.includes("israel") || loc.includes("golan")) {
+      newSide = "iran";
+    } else if (loc.includes("lebanon") || loc.includes("syria") || loc.includes("gaza") || loc.includes("beirut") || loc.includes("damascus")) {
+      newSide = "israel";
+    } else if (loc.includes("yemen") || loc.includes("sanaa") || loc.includes("hodeidah") || loc.includes("houthi")) {
+      newSide = "us";
+    } else if (loc.includes("uae") || loc.includes("bahrain") || loc.includes("qatar") || loc.includes("kuwait") || loc.includes("saudi") || loc.includes("dubai") || loc.includes("abu dhabi") || loc.includes("doha") || loc.includes("manama")) {
+      newSide = "iran";
+    } else if (loc.includes("iraq")) {
+      // Iraq strikes are usually Iran/proxies attacking US bases, or US retaliating
+      // If it's a US base, Iran is the attacker; otherwise keep existing
+      if (loc.includes("al-asad") || loc.includes("green zone") || loc.includes("erbil") || loc.includes("harir")) {
+        newSide = "iran";
+      }
+    }
+
+    if (newSide !== inc.side) {
+      inc.side = newSide;
+      store.set(inc.id, inc);
+      updated.push(inc);
+    }
+  }
+
+  if (updated.length > 0) {
+    const written = await writeToRedis(updated);
+    console.log(`[store] Re-attributed ${updated.length} incidents (${written} persisted)`);
+  }
+
+  return updated.length;
+}
+
+/**
+ * Re-enrich all stored incidents with keyword enricher to backfill casualties.
+ */
+export async function reEnrichCasualties(): Promise<number> {
+  // Dynamic import to avoid circular deps
+  const { enrichWithKeywords } = await import("./keywordEnricher");
+  const store = await ensureLoaded();
+  const updated: Incident[] = [];
+
+  for (const [, inc] of store) {
+    // Only re-enrich incidents that have text to analyze
+    const text = inc.details || inc.description || "";
+    if (!text || text.length < 10) continue;
+    // Skip if already has casualties
+    if ((inc.casualties_military || 0) > 0 || (inc.casualties_civilian || 0) > 0) continue;
+
+    const result = enrichWithKeywords(text);
+    if (result && (result.casualties_military > 0 || result.casualties_civilian > 0)) {
+      inc.casualties_military = result.casualties_military;
+      inc.casualties_civilian = result.casualties_civilian;
+      inc.casualties_description = result.casualties_description;
+      store.set(inc.id, inc);
+      updated.push(inc);
+    }
+  }
+
+  if (updated.length > 0) {
+    const written = await writeToRedis(updated);
+    console.log(`[store] Re-enriched casualties for ${updated.length} incidents (${written} persisted)`);
+  }
+
+  return updated.length;
 }
 
 /**

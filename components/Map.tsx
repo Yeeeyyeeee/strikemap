@@ -8,6 +8,52 @@ import { MILITARY_BASES, BASE_COLORS, getBaseIcon } from "@/lib/militaryBases";
 import { PROXY_GROUPS, PROXY_CONNECTIONS, createProxyCircle } from "@/lib/proxyGroups";
 import { createCircleGeoJSON } from "@/lib/weaponsData";
 
+// ---- Time-based marker fading ----
+interface MarkerAge {
+  opacity: number;
+  saturation: number;
+  isPulsing: boolean;
+}
+
+function getMarkerAge(incident: Incident): MarkerAge {
+  const now = Date.now();
+  let ts: number;
+
+  if (incident.timestamp) {
+    ts = new Date(incident.timestamp).getTime();
+  } else if (incident.date) {
+    ts = new Date(incident.date).getTime();
+  } else {
+    // Unparseable — default mid-opacity
+    return { opacity: 0.5, saturation: 0.5, isPulsing: false };
+  }
+
+  if (isNaN(ts)) return { opacity: 0.5, saturation: 0.5, isPulsing: false };
+
+  const ageMin = (now - ts) / 60_000;
+
+  if (ageMin < 5)    return { opacity: 1.0,  saturation: 1.0,  isPulsing: true };
+  if (ageMin < 30)   return { opacity: 0.9,  saturation: 1.0,  isPulsing: false };
+  if (ageMin < 120)  return { opacity: 0.75, saturation: 0.75, isPulsing: false };
+  if (ageMin < 360)  return { opacity: 0.55, saturation: 0.55, isPulsing: false };
+  if (ageMin < 720)  return { opacity: 0.40, saturation: 0.40, isPulsing: false };
+  if (ageMin < 1440) return { opacity: 0.25, saturation: 0.25, isPulsing: false };
+  return { opacity: 0.12, saturation: 0.15, isPulsing: false };
+}
+
+function applyAgeFading(el: HTMLElement, age: MarkerAge, baseOpacity: number) {
+  el.style.opacity = String(age.opacity * baseOpacity);
+  // saturation 1.0 = full color, 0 = grayscale; keep a tint via partial desaturation
+  el.style.filter = age.saturation < 1
+    ? `saturate(${age.saturation}) drop-shadow(0 0 ${Math.round(6 * age.opacity)}px var(--marker-color, #ef4444))`
+    : `drop-shadow(0 0 6px var(--marker-color, #ef4444))`;
+  if (age.isPulsing) {
+    el.classList.add("age-pulse");
+  } else {
+    el.classList.remove("age-pulse");
+  }
+}
+
 interface MapProps {
   incidents: Incident[];
   onSelectIncident: (incident: Incident) => void;
@@ -26,7 +72,9 @@ interface MapProps {
   markerOpacity?: number;
 }
 
-type MarkerIcon = "missile" | "drone" | "ship" | "mixed";
+const ZOOM_DETAIL_THRESHOLD = 8;
+
+type MarkerIcon = "missile" | "drone" | "ship" | "mixed" | "shield" | "shield-broken" | "shield-unknown";
 
 function getIconType(weapon: string): MarkerIcon {
   const w = weapon.toLowerCase();
@@ -36,6 +84,24 @@ function getIconType(weapon: string): MarkerIcon {
   }
   if (w.includes("anti-ship") || w.includes("ship")) return "ship";
   return "missile";
+}
+
+function getInterceptIcon(incident: Incident): MarkerIcon | null {
+  if (!incident.intercepted_by) return null;
+  if (incident.intercept_success === true) return "shield";
+  if (incident.intercept_success === false) return "shield-broken";
+  return "shield-unknown";
+}
+
+function createDotElement(color: string, sizePx: number): HTMLDivElement {
+  const dot = document.createElement("div");
+  dot.style.width = `${sizePx}px`;
+  dot.style.height = `${sizePx}px`;
+  dot.style.borderRadius = "50%";
+  dot.style.backgroundColor = color;
+  dot.style.boxShadow = `0 0 ${Math.round(sizePx * 0.6)}px ${color}`;
+  dot.style.cursor = "pointer";
+  return dot;
 }
 
 function createMarkerSvg(color: string, icon: MarkerIcon): string {
@@ -74,6 +140,22 @@ function createMarkerSvg(color: string, icon: MarkerIcon): string {
         <line x1="3" y1="16" x2="8" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="24" y1="16" x2="29" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
       </svg>`,
+    shield: `
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
+        <path d="M12 16l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    "shield-broken": `
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
+        <line x1="12" y1="12" x2="20" y2="20" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <line x1="20" y1="12" x2="12" y2="20" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>`,
+    "shield-unknown": `
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
+        <text x="16" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="sans-serif">?</text>
+      </svg>`,
   };
   return icons[icon];
 }
@@ -99,15 +181,69 @@ export default function MapView({
   const map = useRef<mapboxgl.Map | null>(null);
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
+  const onSelectIncidentRef = useRef(onSelectIncident);
+  onSelectIncidentRef.current = onSelectIncident;
   const markerClickedRef = useRef(false);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const incidentDataRef = useRef<Map<string, Incident>>(new Map());
   const baseMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const proxyLabelsRef = useRef<mapboxgl.Marker[]>([]);
   const prevIncidentIds = useRef<Set<string>>(new Set());
+  const selectedIncidentRef = useRef<Incident | null>(null);
+  selectedIncidentRef.current = selectedIncident;
+  const timelineActiveRef = useRef(timelineActive);
+  timelineActiveRef.current = timelineActive;
+  const markerOpacityRef = useRef(markerOpacity);
+  markerOpacityRef.current = markerOpacity;
+  const currentZoomRef = useRef(initialZoom ?? 4);
+  const markerMetaRef = useRef<Map<string, { color: string; iconType: MarkerIcon }>>(new Map());
+
+  const swapMarkerElements = useCallback((toDetailed: boolean) => {
+    markersRef.current.forEach((marker, id) => {
+      const el = marker.getElement();
+      const meta = markerMetaRef.current.get(id);
+      if (!meta) return;
+      const { color, iconType } = meta;
+
+      if (toDetailed) {
+        // Swap to full SVG hitmarker
+        const px = Math.round(32 * markerSize);
+        el.style.width = `${px}px`;
+        el.style.height = `${px}px`;
+        el.style.borderRadius = "";
+        el.style.backgroundColor = "";
+        el.style.boxShadow = "";
+        el.innerHTML = createMarkerSvg(color, iconType);
+        // Re-apply age fading
+        const inc = incidentDataRef.current.get(id);
+        if (inc && !timelineActiveRef.current) {
+          const age = getMarkerAge(inc);
+          applyAgeFading(el, age, markerOpacityRef.current);
+        }
+      } else {
+        // Swap to simple dot
+        const dotSize = Math.round(8 * markerSize);
+        el.innerHTML = "";
+        el.style.width = `${dotSize}px`;
+        el.style.height = `${dotSize}px`;
+        el.style.borderRadius = "50%";
+        el.style.backgroundColor = color;
+        el.style.boxShadow = `0 0 ${Math.round(dotSize * 0.6)}px ${color}`;
+        // Apply age-based opacity even on dots
+        const inc = incidentDataRef.current.get(id);
+        if (inc && !timelineActiveRef.current) {
+          const age = getMarkerAge(inc);
+          el.style.opacity = String(age.opacity * markerOpacityRef.current);
+          el.style.filter = "";
+        }
+      }
+    });
+  }, [markerSize]);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current.clear();
+    markerMetaRef.current.clear();
   }, []);
 
   const clearBaseMarkers = useCallback(() => {
@@ -146,6 +282,19 @@ export default function MapView({
 
     const m = map.current;
     m.on("load", () => onMapReady?.(m));
+
+    // Zoom listener — swap marker elements at threshold
+    m.on("zoom", () => {
+      const zoom = m.getZoom();
+      const prev = currentZoomRef.current;
+      currentZoomRef.current = zoom;
+      const crossedUp = prev < ZOOM_DETAIL_THRESHOLD && zoom >= ZOOM_DETAIL_THRESHOLD;
+      const crossedDown = prev >= ZOOM_DETAIL_THRESHOLD && zoom < ZOOM_DETAIL_THRESHOLD;
+      if (crossedUp || crossedDown) {
+        swapMarkerElements(crossedUp);
+      }
+    });
+
     m.on("click", () => {
       // Skip if a marker was just clicked (marker sets the flag before this fires)
       if (markerClickedRef.current) {
@@ -202,45 +351,86 @@ export default function MapView({
         if (!currentIds.has(id)) {
           marker.remove();
           markersRef.current.delete(id);
+          incidentDataRef.current.delete(id);
+          markerMetaRef.current.delete(id);
         }
       }
 
-      // Determine the 5 most recent incidents for pulse animation
-      const sortedByDate = [...validIncidents].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      const recentIds = new Set(sortedByDate.slice(0, 5).map((i) => i.id));
-
       // Add markers only for new incidents
       for (const incident of validIncidents) {
+        incidentDataRef.current.set(incident.id, incident);
         if (markersRef.current.has(incident.id)) continue;
 
-        const color = (incident.side === "us_israel" || incident.side === "us" || incident.side === "israel")
-          ? "#3b82f6"
-          : getWeaponColor(incident.weapon);
-        const iconType = getIconType(incident.weapon);
+        const interceptIcon = getInterceptIcon(incident);
+        const color = interceptIcon === "shield" ? "#22c55e"
+          : interceptIcon === "shield-broken" ? "#ef4444"
+          : interceptIcon === "shield-unknown" ? "#6b7280"
+          : (incident.side === "us_israel" || incident.side === "us" || incident.side === "israel")
+            ? "#3b82f6"
+            : getWeaponColor(incident.weapon);
+        const iconType = interceptIcon || getIconType(incident.weapon);
+
+        // Store metadata for zoom-adaptive swapping
+        markerMetaRef.current.set(incident.id, { color, iconType });
 
         const el = document.createElement("div");
         el.className = "incident-marker";
         el.style.setProperty("--marker-color", color);
-        const px = Math.round(32 * markerSize);
-        el.style.width = `${px}px`;
-        el.style.height = `${px}px`;
-        el.style.opacity = String(markerOpacity);
-        el.innerHTML = createMarkerSvg(color, iconType);
+        el.style.cursor = "pointer";
 
-        if (recentIds.has(incident.id)) {
-          el.classList.add("recent");
+        const isDetailed = currentZoomRef.current >= ZOOM_DETAIL_THRESHOLD;
+
+        if (isDetailed) {
+          const px = Math.round(32 * markerSize);
+          el.style.width = `${px}px`;
+          el.style.height = `${px}px`;
+          el.innerHTML = createMarkerSvg(color, iconType);
+        } else {
+          const dotSize = Math.round(8 * markerSize);
+          el.style.width = `${dotSize}px`;
+          el.style.height = `${dotSize}px`;
+          el.style.borderRadius = "50%";
+          el.style.backgroundColor = color;
+          el.style.boxShadow = `0 0 ${Math.round(dotSize * 0.6)}px ${color}`;
         }
 
-        if (timelineActive && !prevIncidentIds.current.has(incident.id)) {
-          el.classList.add("timeline-new");
+        // Apply age-based fading (skip when timeline is active)
+        if (!timelineActive) {
+          const age = getMarkerAge(incident);
+          if (isDetailed) {
+            applyAgeFading(el, age, markerOpacity);
+          } else {
+            el.style.opacity = String(age.opacity * markerOpacity);
+          }
+        } else {
+          el.style.opacity = String(markerOpacity);
+          if (!prevIncidentIds.current.has(incident.id)) {
+            el.classList.add("timeline-new");
+          }
         }
+
+        // Hover: restore full opacity; mouseleave: revert to age-appropriate
+        el.addEventListener("mouseenter", () => {
+          el.style.opacity = "1";
+          el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
+          popup.addTo(map.current!);
+        });
+        el.addEventListener("mouseleave", () => {
+          popup.remove();
+          // Don't fade back if this is the selected marker
+          if (selectedIncidentRef.current?.id === incident.id) return;
+          if (timelineActiveRef.current) {
+            el.style.opacity = String(markerOpacityRef.current);
+          } else {
+            const age = getMarkerAge(incident);
+            applyAgeFading(el, age, markerOpacityRef.current);
+          }
+        });
 
         el.addEventListener("click", (e) => {
           e.stopPropagation();
           markerClickedRef.current = true;
-          onSelectIncident(incident);
+          onSelectIncidentRef.current(incident);
         });
 
         const hasVideo = Boolean(
@@ -268,9 +458,6 @@ export default function MapView({
           .setPopup(popup)
           .addTo(map.current!);
 
-        el.addEventListener("mouseenter", () => popup.addTo(map.current!));
-        el.addEventListener("mouseleave", () => popup.remove());
-
         markersRef.current.set(incident.id, marker);
       }
 
@@ -284,18 +471,62 @@ export default function MapView({
     } else {
       map.current.on("load", onMapReady);
     }
-  }, [incidents, onSelectIncident, timelineActive, markerSize, markerOpacity]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidents, timelineActive, markerSize, markerOpacity]);
 
-  // Update existing marker sizes/opacity when settings change
+  // Update existing marker sizes when settings change
   useEffect(() => {
-    const px = Math.round(32 * markerSize);
+    const isDetailed = currentZoomRef.current >= ZOOM_DETAIL_THRESHOLD;
+    const px = isDetailed ? Math.round(32 * markerSize) : Math.round(8 * markerSize);
     markersRef.current.forEach((marker) => {
       const el = marker.getElement();
       el.style.width = `${px}px`;
       el.style.height = `${px}px`;
-      el.style.opacity = String(markerOpacity);
     });
-  }, [markerSize, markerOpacity]);
+  }, [markerSize]);
+
+  // Recalculate age-based fading every 60 seconds
+  useEffect(() => {
+    const updateFading = () => {
+      if (timelineActiveRef.current) return; // skip during timeline
+      markersRef.current.forEach((marker, id) => {
+        const inc = incidentDataRef.current.get(id);
+        if (!inc) return;
+        const el = marker.getElement();
+        // Don't fade the selected marker
+        if (selectedIncidentRef.current?.id === id) {
+          el.style.opacity = "1";
+          el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
+          return;
+        }
+        const age = getMarkerAge(inc);
+        applyAgeFading(el, age, markerOpacityRef.current);
+      });
+    };
+
+    // Initial application
+    updateFading();
+    const iv = setInterval(updateFading, 60_000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Keep selected marker at full opacity
+  useEffect(() => {
+    // Restore previous selection to age-appropriate level
+    markersRef.current.forEach((marker, id) => {
+      if (selectedIncident?.id === id) {
+        const el = marker.getElement();
+        el.style.opacity = "1";
+        el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
+      } else if (!timelineActive) {
+        const inc = incidentDataRef.current.get(id);
+        if (inc) {
+          const age = getMarkerAge(inc);
+          applyAgeFading(marker.getElement(), age, markerOpacity);
+        }
+      }
+    });
+  }, [selectedIncident, timelineActive, markerOpacity]);
 
   // Fly to selected incident
   useEffect(() => {

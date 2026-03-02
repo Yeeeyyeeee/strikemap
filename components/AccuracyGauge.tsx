@@ -20,8 +20,14 @@ export default memo(function AccuracyGauge({ incidents, side }: AccuracyGaugePro
     if (side === "us_israel") return i.side === "us_israel" || i.side === "us" || i.side === "israel";
     return i.side === side;
   };
+  const UNKNOWN_TYPES = ["", "unknown", "undetermined", "unspecified"];
+  const isClassified = (i: Incident) => {
+    const t = (i.target_type || "").toLowerCase().trim();
+    return !UNKNOWN_TYPES.includes(t) && !t.startsWith("unspecified");
+  };
+
   const strikes = incidents.filter(
-    (i) => matchesSide(i) && i.lat !== 0 && i.lng !== 0
+    (i) => matchesSide(i) && i.lat !== 0 && i.lng !== 0 && isClassified(i)
   );
 
   if (strikes.length === 0) return null;

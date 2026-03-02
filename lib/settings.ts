@@ -11,7 +11,7 @@ export interface UserSettings {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   dateFrom: null,
-  markerSize: 1,
+  markerSize: 0.7,
   markerOpacity: 1,
   showGauges: true,
   showFeed: true,

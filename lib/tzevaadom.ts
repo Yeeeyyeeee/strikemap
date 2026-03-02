@@ -110,6 +110,15 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
       if (processedIds.has(item.id)) continue;
       processedIds.add(item.id);
 
+      // Determine threat type from description
+      const desc = (item.description || "").toLowerCase();
+      let threatType: "missile" | "drone" | "unknown" = "unknown";
+      if (desc.includes("כלי טיס") || desc.includes("uav") || desc.includes("drone") || desc.includes("חדירת")) {
+        threatType = "drone";
+      } else if (desc.includes("רקט") || desc.includes("טיל") || desc.includes("missile") || desc.includes("rocket") || desc.includes("ירי")) {
+        threatType = "missile";
+      }
+
       for (const alert of item.alerts) {
         const alertTimeMs = alert.time * 1000;
         const ageMs = now - alertTimeMs;
@@ -161,6 +170,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
           timeToImpact: bestCountdown,
           status: "active",
           rawText: `Red Alert: ${regionArr.join(", ")} — ${cityNames.slice(0, 10).join(", ")}`,
+          threatType,
           createdAt: alertTimeMs,
         });
       }
