@@ -20,11 +20,13 @@ import InterceptGauge from "@/components/InterceptGauge";
 import CasualtyTracker from "@/components/CasualtyTracker";
 import ConflictClock from "@/components/ConflictClock";
 import EscalationMeter from "@/components/EscalationMeter";
+import LiveFeedMobile, { LiveFeedDesktop } from "@/components/LiveFeedPlayer";
 import { MAP_STYLES, getStoredStyle, setStoredStyle } from "@/lib/mapStyles";
 import { UserSettings, loadSettings, saveSettings } from "@/lib/settings";
 import SettingsPanel from "@/components/SettingsPanel";
 import ChatPanel from "@/components/ChatPanel";
 import KillChainView from "@/components/KillChainView";
+import InterceptDashboard from "@/components/InterceptDashboard";
 import Timeline from "@/components/Timeline";
 import { useTimeline } from "@/hooks/useTimeline";
 import { useShare } from "@/components/ShareButton";
@@ -35,7 +37,7 @@ import mapboxgl from "mapbox-gl";
 const MapView = dynamic(() => import("@/components/Map"), { ssr: false });
 
 const isMapView = (mode: ViewMode) =>
-  !["leadership", "stats", "weapons", "killchain"].includes(mode);
+  !["leadership", "stats", "weapons", "killchain", "intercept"].includes(mode);
 
 export default function Home() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -320,6 +322,7 @@ export default function Home() {
   const handleSettingsChange = useCallback((next: UserSettings) => {
     setSettings(next);
     saveSettings(next);
+    settingsRef.current = next;
   }, []);
 
   const handleToggleSettings = useCallback(() => {
@@ -356,12 +359,14 @@ export default function Home() {
           const next = { ...settings, soundEnabled: !settings.soundEnabled };
           setSettings(next);
           saveSettings(next);
+          settingsRef.current = next;
         }}
         notificationsEnabled={settings.notificationsEnabled}
         onToggleNotifications={() => {
           const next = { ...settings, notificationsEnabled: !settings.notificationsEnabled };
           setSettings(next);
           saveSettings(next);
+          settingsRef.current = next;
         }}
       />
 
@@ -390,7 +395,7 @@ export default function Home() {
       )}
 
       {/* Main content */}
-      <main className="h-full w-full pt-14 relative">
+      <main className="h-full w-full pt-14 relative z-0">
         {viewMode === "leadership" ? (
           <LeadershipBoard />
         ) : viewMode === "stats" ? (
@@ -407,6 +412,8 @@ export default function Home() {
             incidents={incidents}
             onSelectIncident={handleSelectIncident}
           />
+        ) : viewMode === "intercept" ? (
+          <InterceptDashboard incidents={incidents} />
         ) : loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-3">
@@ -460,6 +467,7 @@ export default function Home() {
                 alerts={alerts}
                 map={mapInstance}
                 onAlertClick={handleAlertClick}
+                soundEnabled={settings.soundEnabled}
               />
             )}
             {timelineActive && (
@@ -480,21 +488,26 @@ export default function Home() {
         )}
       </main>
 
-      {/* Left column gauges — only on map views */}
-      {isMapView(viewMode) && settings.showGauges && (
-        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto pr-1 w-52">
-          <EscalationMeter incidents={incidents} />
-          {(viewMode === "all" || viewMode === "iran") && (
-            <AccuracyGauge incidents={incidents} side="iran" />
-          )}
-          {(viewMode === "all" || viewMode === "us_israel") && (
-            <AccuracyGauge incidents={incidents} side="us_israel" />
-          )}
-          <InterceptGauge incidents={incidents} />
-          <CasualtyTracker incidents={incidents} />
-          <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
-          {settings.showLegend && (
-            <Legend weapons={weapons} timelineActive={timelineActive} />
+      {/* Left column — Live Feed + gauges on map views */}
+      {isMapView(viewMode) && (
+        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto scrollbar-hide w-52 isolate">
+          <LiveFeedDesktop />
+          {settings.showGauges && (
+            <>
+              <EscalationMeter incidents={incidents} />
+              {(viewMode === "all" || viewMode === "iran") && (
+                <AccuracyGauge incidents={incidents} side="iran" />
+              )}
+              {(viewMode === "all" || viewMode === "us_israel") && (
+                <AccuracyGauge incidents={incidents} side="us_israel" />
+              )}
+              <InterceptGauge incidents={incidents} />
+              <CasualtyTracker incidents={incidents} />
+              <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
+              {settings.showLegend && (
+                <Legend weapons={weapons} timelineActive={timelineActive} />
+              )}
+            </>
           )}
         </div>
       )}
@@ -506,6 +519,9 @@ export default function Home() {
           <Legend weapons={weapons} timelineActive={timelineActive} />
         </div>
       )}
+
+      {/* Mobile Live Feed button — visible on map views */}
+      {isMapView(viewMode) && <LiveFeedMobile />}
 
       {/* Feed sidebar — only on map views */}
       {isMapView(viewMode) && settings.showFeed && (
