@@ -1,5 +1,7 @@
 import { MissileAlert } from "./types";
 import { getOriginForTarget } from "./israelGeocode";
+import { getRedis } from "./redis";
+import { REDIS_MANUAL_ALERTS_KEY } from "./constants";
 
 // ---------------------------------------------------------------------------
 // Types from Tzofar API
@@ -186,7 +188,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
     }
   }
 
-  return getActiveAlerts();
+  return getActiveAlertsWithRedis();
 }
 
 function getActiveAlerts(): MissileAlert[] {
@@ -194,14 +196,72 @@ function getActiveAlerts(): MissileAlert[] {
     .map(({ createdAt: _, ...rest }) => rest);
 }
 
-/** Insert a manually-created alert into the active set. */
-export function addManualAlert(alert: MissileAlert): void {
-  activeAlerts.set(alert.id, { ...alert, createdAt: Date.now() });
+/** Load manual alerts from Redis and merge with in-memory alerts. */
+async function getActiveAlertsWithRedis(): Promise<MissileAlert[]> {
+  const inMemory = getActiveAlerts();
+  const r = getRedis();
+  if (!r) return inMemory;
+
+  try {
+    const raw = await r.hgetall(REDIS_MANUAL_ALERTS_KEY);
+    if (!raw || typeof raw !== "object") return inMemory;
+
+    const now = Date.now();
+    const redisAlerts: MissileAlert[] = [];
+    for (const [id, value] of Object.entries(raw)) {
+      const alert: MissileAlert & { createdAt?: number } =
+        typeof value === "string" ? JSON.parse(value) : value as MissileAlert & { createdAt?: number };
+      // Expire: countdown + 2min buffer
+      const expiresAt = (alert.createdAt || now) + (alert.timeToImpact * 1000) + ALERT_BUFFER_MS;
+      if (now > expiresAt) {
+        r.hdel(REDIS_MANUAL_ALERTS_KEY, id).catch(() => {});
+        continue;
+      }
+      const { createdAt: _, ...rest } = alert;
+      redisAlerts.push(rest);
+    }
+    // Merge — Redis manual alerts + in-memory Tzofar alerts (dedup by id)
+    const ids = new Set(inMemory.map((a) => a.id));
+    for (const a of redisAlerts) {
+      if (!ids.has(a.id)) inMemory.push(a);
+    }
+  } catch (err) {
+    console.error("[tzevaadom] Failed to load manual alerts from Redis:", err);
+  }
+  return inMemory;
 }
 
-/** Remove a single alert by id. */
-export function clearAlert(id: string): boolean {
-  return activeAlerts.delete(id);
+/** Insert a manually-created alert into Redis. */
+export async function addManualAlert(alert: MissileAlert): Promise<void> {
+  const entry = { ...alert, createdAt: Date.now() };
+  // Also keep in memory for this instance
+  activeAlerts.set(alert.id, entry);
+  const r = getRedis();
+  if (r) {
+    await r.hset(REDIS_MANUAL_ALERTS_KEY, { [alert.id]: JSON.stringify(entry) });
+  }
+}
+
+/** Remove a single alert by id from both memory and Redis. */
+export async function clearAlert(id: string): Promise<boolean> {
+  activeAlerts.delete(id);
+  const r = getRedis();
+  if (r) {
+    await r.hdel(REDIS_MANUAL_ALERTS_KEY, id);
+  }
+  return true;
+}
+
+/** Clear all manual alerts from Redis. */
+export async function clearAllManualAlerts(): Promise<void> {
+  const r = getRedis();
+  if (r) {
+    await r.del(REDIS_MANUAL_ALERTS_KEY);
+  }
+  // Also clear from memory
+  for (const id of activeAlerts.keys()) {
+    if (id.startsWith("manual-")) activeAlerts.delete(id);
+  }
 }
 
 /** Debug version that returns diagnostics */

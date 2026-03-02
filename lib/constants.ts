@@ -49,6 +49,10 @@ export const REDIS_CHAT_KEY = "chat_messages";
 // --- Redis batch ---
 export const REDIS_BATCH_SIZE = 50;
 
+// --- Manual alerts Redis keys ---
+export const REDIS_MANUAL_ALERTS_KEY = "manual_missile_alerts";
+export const REDIS_MANUAL_SIRENS_KEY = "manual_sirens";
+
 // --- Alerts ---
 export const CITIES_CACHE_TTL_MS = 60 * 60 * 1000;
 export const ALERT_AGE_CUTOFF_MS = 15 * 60 * 1000;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchTzevAdomAlerts, fetchTzevAdomAlertsDebug, addManualAlert, clearAlert } from "@/lib/tzevaadom";
+import { fetchTzevAdomAlerts, fetchTzevAdomAlertsDebug, addManualAlert, clearAlert, clearAllManualAlerts } from "@/lib/tzevaadom";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { geocodeIsraeliLocation, getOriginForTarget } from "@/lib/israelGeocode";
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const timestamp = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 
-    addManualAlert({
+    await addManualAlert({
       id,
       postId: id,
       timestamp,
@@ -142,18 +142,12 @@ export async function POST(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
-    clearAlert(id);
+    await clearAlert(id);
     return NextResponse.json({ ok: true });
   }
 
   if (action === "clear-all") {
-    // Fetch current alerts, clear only manual ones
-    const alerts = await fetchTzevAdomAlerts();
-    for (const alert of alerts) {
-      if (alert.id.startsWith("manual-")) {
-        clearAlert(alert.id);
-      }
-    }
+    await clearAllManualAlerts();
     return NextResponse.json({ ok: true });
   }
 

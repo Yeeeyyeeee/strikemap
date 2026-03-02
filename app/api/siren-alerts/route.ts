@@ -19,7 +19,7 @@ export async function GET() {
       }
     }
 
-    const alerts = getActiveSirenAlerts();
+    const alerts = await getActiveSirenAlerts();
     return NextResponse.json(
       { sirenAlerts: alerts },
       { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }
@@ -44,13 +44,13 @@ export async function POST(req: Request) {
 
     if (action === "clear" && country) {
       console.log(`[siren-alerts] ${actor} cleared siren for ${country}`);
-      const cleared = clearSirenByCountry(country);
+      const cleared = await clearSirenByCountry(country);
       return NextResponse.json({ ok: true, cleared });
     }
 
     if (action === "clear-all") {
       console.log(`[siren-alerts] ${actor} cleared all sirens`);
-      const cleared = clearAllSirens();
+      const cleared = await clearAllSirens();
       return NextResponse.json({ ok: true, cleared });
     }
 
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "country is required" }, { status: 400 });
       }
       console.log(`[siren-alerts] ${actor} manually activated siren for ${country}`);
-      const alert = addManualSiren(country.trim());
+      const alert = await addManualSiren(country.trim());
       return NextResponse.json({ ok: true, alert });
     }
 

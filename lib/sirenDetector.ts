@@ -3,6 +3,9 @@
  * Israel sirens are excluded — those are handled by lib/tzevaadom.ts (Tzeva Adom).
  */
 
+import { getRedis } from "./redis";
+import { REDIS_MANUAL_SIRENS_KEY } from "./constants";
+
 export interface SirenAlert {
   id: string;
   country: string;
@@ -219,23 +222,50 @@ export function processSirenPosts(posts: Array<{
 
 /**
  * Return all currently active (non-expired) siren alerts.
+ * Merges in-memory (auto-detected) with Redis (manual) sirens.
  */
-export function getActiveSirenAlerts(): SirenAlert[] {
+export async function getActiveSirenAlerts(): Promise<SirenAlert[]> {
   const now = Date.now();
   for (const [id, siren] of activeSirens) {
     if (now > siren.expiresAt) {
       activeSirens.delete(id);
     }
   }
-  return Array.from(activeSirens.values())
+  const inMemory = Array.from(activeSirens.values())
     .filter((s) => s.status === "active")
     .map(({ expiresAt: _, ...rest }) => rest);
+
+  // Merge Redis manual sirens
+  const r = getRedis();
+  if (!r) return inMemory;
+
+  try {
+    const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
+    if (!raw || typeof raw !== "object") return inMemory;
+
+    const ids = new Set(inMemory.map((a) => a.id));
+    for (const [id, value] of Object.entries(raw)) {
+      const siren: SirenAlert & { expiresAt?: number } =
+        typeof value === "string" ? JSON.parse(value) : value as SirenAlert & { expiresAt?: number };
+      if (siren.expiresAt && now > siren.expiresAt) {
+        r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
+        continue;
+      }
+      if (!ids.has(siren.id)) {
+        const { expiresAt: _, ...rest } = siren;
+        inMemory.push(rest);
+      }
+    }
+  } catch (err) {
+    console.error("[siren] Failed to load manual sirens from Redis:", err);
+  }
+  return inMemory;
 }
 
 /**
- * Manually activate a siren for a country. Used by admin UI.
+ * Manually activate a siren for a country. Persists to Redis.
  */
-export function addManualSiren(country: string): SirenAlert {
+export async function addManualSiren(country: string): Promise<SirenAlert> {
   const now = Date.now();
   const id = `siren-manual-${now}`;
   const alert: SirenAlert & { expiresAt: number } = {
@@ -250,6 +280,12 @@ export function addManualSiren(country: string): SirenAlert {
   };
   activeSirens.set(id, alert);
   console.log(`[siren] MANUAL ACTIVATED: ${country}`);
+
+  const r = getRedis();
+  if (r) {
+    await r.hset(REDIS_MANUAL_SIRENS_KEY, { [id]: JSON.stringify(alert) });
+  }
+
   const { expiresAt: _, ...rest } = alert;
   return rest;
 }
@@ -257,13 +293,30 @@ export function addManualSiren(country: string): SirenAlert {
 /**
  * Clear all active sirens for a specific country. Used by admin UI.
  */
-export function clearSirenByCountry(country: string): number {
+export async function clearSirenByCountry(country: string): Promise<number> {
   let cleared = 0;
+  const r = getRedis();
   for (const [id, siren] of activeSirens) {
     if (siren.country.toLowerCase() === country.toLowerCase() && siren.status === "active") {
       activeSirens.delete(id);
+      if (r) r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
       cleared++;
     }
+  }
+  // Also clear from Redis directly
+  if (r) {
+    try {
+      const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
+      if (raw && typeof raw === "object") {
+        for (const [id, value] of Object.entries(raw)) {
+          const siren: SirenAlert = typeof value === "string" ? JSON.parse(value) : value as SirenAlert;
+          if (siren.country.toLowerCase() === country.toLowerCase()) {
+            await r.hdel(REDIS_MANUAL_SIRENS_KEY, id);
+            cleared++;
+          }
+        }
+      }
+    } catch { /* ignore */ }
   }
   if (cleared > 0) {
     console.log(`[siren] ADMIN CLEARED: ${country} (${cleared} alerts)`);
@@ -274,9 +327,13 @@ export function clearSirenByCountry(country: string): number {
 /**
  * Clear all active sirens. Used by admin UI.
  */
-export function clearAllSirens(): number {
+export async function clearAllSirens(): Promise<number> {
   const count = activeSirens.size;
   activeSirens.clear();
+  const r = getRedis();
+  if (r) {
+    await r.del(REDIS_MANUAL_SIRENS_KEY);
+  }
   if (count > 0) {
     console.log(`[siren] ADMIN CLEARED ALL: ${count} alerts`);
   }
