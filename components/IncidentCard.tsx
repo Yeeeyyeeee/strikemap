@@ -313,8 +313,10 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     </>
   );
 
-  // --- Mobile: bottom sheet ---
-  if (isMobile) {
+  const hasCoords = incident.lat !== 0 || incident.lng !== 0;
+
+  // --- Mobile or no coordinates: bottom sheet / centered panel ---
+  if (isMobile || !hasCoords) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter">
         <div

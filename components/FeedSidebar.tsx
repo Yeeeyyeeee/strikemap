@@ -17,7 +17,6 @@ export default memo(function FeedSidebar({
 }: FeedSidebarProps) {
   const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<ChannelPost[]>([]);
-  const [selectedPost, setSelectedPost] = useState<ChannelPost | null>(null);
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -42,19 +41,22 @@ export default memo(function FeedSidebar({
       const incidentId = `tg-${post.id.replace("/", "-")}`;
       const matchedIncident = incidents.find((i) => i.id === incidentId);
       if (matchedIncident && matchedIncident.lat !== 0 && matchedIncident.lng !== 0) {
-        // Has a map point — open incident card on the map, not embed
         onSelectIncident(matchedIncident);
-        setSelectedPost(null);
-      } else if (post.lat && post.lng) {
-        // No incident match yet, but feed has coordinates — create temporary incident
+      } else {
+        // Build a temporary incident from the post — works with or without coordinates
         const msgId = post.id.split("/").pop() || "";
+        const media = [];
+        if (post.videoUrl) media.push({ type: "video" as const, url: post.videoUrl });
+        for (const url of (post.imageUrls || [])) {
+          media.push({ type: "image" as const, url });
+        }
         onSelectIncident({
           id: incidentId,
           date: post.date || new Date().toISOString().split("T")[0],
           timestamp: post.timestamp || new Date().toISOString(),
           location: post.location || "",
-          lat: post.lat,
-          lng: post.lng,
+          lat: post.lat || 0,
+          lng: post.lng || 0,
           description: `[${post.channelUsername}] ${post.text.slice(0, 200)}`,
           details: post.text,
           weapon: "",
@@ -65,11 +67,8 @@ export default memo(function FeedSidebar({
           side: "iran",
           target_military: false,
           telegram_post_id: `${post.channelUsername}/${msgId}`,
+          media: media.length > 0 ? media : undefined,
         });
-        setSelectedPost(null);
-      } else {
-        // No map point — show Telegram embed
-        setSelectedPost((prev) => (prev?.id === post.id ? null : post));
       }
     },
     [incidents, onSelectIncident]
@@ -138,9 +137,7 @@ export default memo(function FeedSidebar({
               <button
                 key={post.id}
                 onClick={() => handlePostClick(post)}
-                className={`w-full text-left p-3 hover:bg-[#1a1a1a] transition-colors ${
-                  selectedPost?.id === post.id ? "bg-[#1a1a1a] border-l-2 border-blue-500" : ""
-                }`}
+                className="w-full text-left p-3 hover:bg-[#1a1a1a] transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
@@ -169,30 +166,6 @@ export default memo(function FeedSidebar({
         )}
       </div>
 
-      {/* Telegram embed panel */}
-      {selectedPost && (
-        <div className="fixed bottom-0 right-72 z-50 w-96 max-h-[70vh] panel-enter hidden md:block">
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-t-xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a2a]">
-              <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-                @{selectedPost.channelUsername}
-              </span>
-              <button
-                onClick={() => setSelectedPost(null)}
-                className="text-neutral-500 hover:text-neutral-300 text-sm"
-              >
-                ✕
-              </button>
-            </div>
-            <iframe
-              src={`https://t.me/${selectedPost.id}?embed=1&dark=1`}
-              className="w-full border-0"
-              style={{ height: "400px" }}
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 });
