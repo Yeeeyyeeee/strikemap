@@ -222,21 +222,39 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
 
     // Extract images — look for photo backgrounds and img tags
     const imageUrls: string[] = [];
+
+    // Skip channel avatar/logo images
+    const isAvatar = (url: string): boolean =>
+      url.includes("/userpic/") ||
+      url.includes("emoji") ||
+      url.includes("/profile_photos/") ||
+      url.includes("/chat_photo/") ||
+      url.includes("/avatar") ||
+      url.includes("/stickers/") ||
+      url.includes("tgme_icon") ||
+      // Small Telegram CDN thumbnails (logo-sized, usually <=100px in filename)
+      /\/[a-z]\/\d+\/\d+\/[a-f0-9]+\.jpg/i.test(url);
+
+    // Only extract images from the photo section of the message, not the header/footer
+    const photoSection = block.match(/tgme_widget_message_photo_wrap[\s\S]*?(?=tgme_widget_message_text|tgme_widget_message_footer|$)/);
+    const imageBlock = photoSection ? photoSection[0] : block;
+
     // Telegram uses background-image for photos in the message
-    const bgImageMatches = block.matchAll(/background-image:\s*url\('([^']+)'\)/gi);
+    const bgImageMatches = imageBlock.matchAll(/background-image:\s*url\('([^']+)'\)/gi);
     for (const m of bgImageMatches) {
       const url = m[1];
-      // Filter out tiny thumbnails and UI elements (avatars are typically small)
-      if (url && !url.includes("/userpic/") && !url.includes("emoji")) {
+      if (url && !isAvatar(url)) {
         imageUrls.push(url);
       }
     }
-    // Also check for <img> tags with actual content images
-    const imgMatches = block.matchAll(/<img[^>]+src="([^"]+)"[^>]*>/gi);
-    for (const m of imgMatches) {
-      const url = m[1];
-      if (url && !url.includes("/userpic/") && !url.includes("emoji") && !imageUrls.includes(url)) {
-        imageUrls.push(url);
+    // Also check for <img> tags with actual content images (only in photo section)
+    if (photoSection) {
+      const imgMatches = imageBlock.matchAll(/<img[^>]+src="([^"]+)"[^>]*>/gi);
+      for (const m of imgMatches) {
+        const url = m[1];
+        if (url && !isAvatar(url) && !imageUrls.includes(url)) {
+          imageUrls.push(url);
+        }
       }
     }
 
