@@ -382,14 +382,6 @@ export default function AdminPage() {
     return <LoginScreen onAuth={() => { setAuthed(true); }} />;
   }
 
-  if (!config) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   // ─── Dashboard ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-neutral-200">
@@ -407,7 +399,7 @@ export default function AdminPage() {
               className="text-sm font-bold uppercase tracking-wider text-neutral-300"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
-              YouTube Links
+              Admin Panel
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -664,7 +656,7 @@ export default function AdminPage() {
         </section>
 
         {/* ── Live Cams ── */}
-        <section>
+        {config && <section>
           <h2
             className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
             style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -769,10 +761,10 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
-        </section>
+        </section>}
 
         {/* ── Government Speech ── */}
-        <section>
+        {config && <section>
           <h2
             className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
             style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -846,7 +838,7 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-        </section>
+        </section>}
       </div>
     </div>
   );
