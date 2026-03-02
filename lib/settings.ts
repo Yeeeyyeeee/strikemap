@@ -10,7 +10,7 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  dateFrom: null,
+  dateFrom: "2026-03-01",
   markerSize: 0.7,
   markerOpacity: 1,
   showGauges: true,

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIncidentCount, reEnrichCasualties } from "@/lib/incidentStore";
-import { scrapeChannel, isIranRelated } from "@/lib/telegram";
-import { Redis } from "@upstash/redis";
+import { scrapeChannel, isIranRelated, getConfiguredChannels } from "@/lib/telegram";
+import { getRedis } from "@/lib/redis";
+import { requireCronAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
+  const authError = requireCronAuth(req);
+  if (authError) return authError;
   // Trigger casualty re-enrichment if ?enrich=casualties
   if (req.nextUrl.searchParams.get("enrich") === "casualties") {
     const count = await reEnrichCasualties();
@@ -22,12 +25,9 @@ export async function GET(req: NextRequest) {
   };
 
   // Direct Redis check — bypass memCache to see what's actually in Redis
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const r = getRedis();
+  if (r) {
     try {
-      const r = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
       const hashLen = await r.hlen("incidents_v3");
       const keyType = await r.type("incidents_v3");
       const oldKeyType = await r.type("incidents_v2");
@@ -68,10 +68,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Test scraping one channel
-  const channels = (process.env.TELEGRAM_CHANNELS || "")
-    .split(",")
-    .map((c) => c.trim().replace(/^@/, ""))
-    .filter(Boolean);
+  const channels = getConfiguredChannels();
 
   if (channels.length > 0) {
     const testChannel = channels[0];

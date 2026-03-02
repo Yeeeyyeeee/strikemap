@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { memo, useCallback, useRef } from "react";
 
 interface TimelineProps {
   allDates: string[];
@@ -26,7 +26,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export default function Timeline({
+export default memo(function Timeline({
   allDates,
   currentIndex,
   totalIncidents,
@@ -94,7 +94,7 @@ export default function Timeline({
       className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] w-[min(28rem,calc(100vw-2rem))]"
       style={{ fontFamily: "JetBrains Mono, monospace" }}
     >
-      <div className="bg-[#1a1a1a]/95 backdrop-blur-xl border border-[#2a2a2a] rounded-2xl shadow-2xl shadow-black/50 px-4 py-3">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl shadow-black/50 px-4 py-3">
         {/* Top: date + counter + close */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -193,4 +193,4 @@ export default function Timeline({
       </div>
     </div>
   );
-}
+});

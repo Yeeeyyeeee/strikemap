@@ -5,23 +5,12 @@
  */
 
 import { Incident } from "./types";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "./redis";
+import { haversineKm } from "./geo";
+import { REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY, DEDUP_RADIUS_KM, DEDUP_WINDOW_MS } from "./constants";
 
-const REDIS_KEY = "incidents_v3";
-const BATCH_SIZE = 50; // Max fields per HSET call
-
-let redis: Redis | null = null;
-function getRedis(): Redis | null {
-  if (redis) return redis;
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-    return redis;
-  }
-  return null;
-}
+const REDIS_KEY = REDIS_INCIDENTS_KEY;
+const BATCH_SIZE = REDIS_BATCH_SIZE;
 
 // In-memory cache
 let memCache: Map<string, Incident> = new Map();
@@ -143,19 +132,6 @@ export async function getIncidentCount(): Promise<number> {
   return store.size;
 }
 
-/** Haversine distance in km between two lat/lng points */
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-const DEDUP_RADIUS_KM = 30;
-const DEDUP_WINDOW_MS = 600_000;
 
 /** Returns the matching existing incident if duplicate, or null */
 function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | null {
@@ -174,7 +150,7 @@ function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | 
     const timeDiff = Math.abs(incTime - existTime);
     if (timeDiff > DEDUP_WINDOW_MS) continue;
 
-    const dist = distanceKm(inc.lat, inc.lng, existing.lat, existing.lng);
+    const dist = haversineKm(inc.lat, inc.lng, existing.lat, existing.lng);
     if (dist < DEDUP_RADIUS_KM) return existing;
   }
 
@@ -375,7 +351,7 @@ export async function clearStore(): Promise<void> {
   const r = getRedis();
   if (r) {
     await r.del(REDIS_KEY);
-    await r.del("lastRefreshAt");
+    await r.del(REDIS_REFRESH_KEY);
     console.log("[store] Cleared Redis store");
   }
 }

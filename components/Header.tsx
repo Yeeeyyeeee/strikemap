@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { memo, useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Incident, ViewMode } from "@/lib/types";
@@ -69,7 +69,7 @@ const MILITARY_TABS: { path: string; label: string; activeClass: string }[] = [
 
 const MILITARY_PATHS = new Set(MILITARY_TABS.map((t) => t.path));
 
-export default function Header({
+export default memo(function Header({
   incidents,
   viewMode = "all",
   onViewModeChange,
@@ -100,7 +100,7 @@ export default function Header({
   const strikeLabel = viewMode === "iran" ? t("iranian") : viewMode === "us_israel" ? t("us_israel") : t("all");
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-[#2a2a2a]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a] border-b border-[#2a2a2a]">
       <div className="flex items-center justify-between px-4 md:px-6 h-14">
         {/* Left: logo + badges + controls */}
         <div className="flex items-center gap-3">
@@ -129,7 +129,7 @@ export default function Header({
             </span>
             {activeAlertCount > 0 && (
               <span className="inline-flex items-center gap-1.5 bg-red-600/30 text-red-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-red-500/50 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 {activeAlertCount} {t("incoming")}
               </span>
             )}
@@ -316,7 +316,7 @@ export default function Header({
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-[#0a0a0a]/95 backdrop-blur-md border-b border-[#2a2a2a] px-4 py-3 flex flex-col gap-2">
+        <div className="md:hidden bg-[#0a0a0a] border-b border-[#2a2a2a] px-4 py-3 flex flex-col gap-2">
           {TABS.map((tab) => {
             const isActive = tab.path === "/" ? isHome : pathname === tab.path;
             const label = tab.label === "strikes" ? `${t("strikes")} (${incidents.length})` : tab.label === "airspace" ? "Airspace" : t(tab.label as Parameters<typeof t>[0]);
@@ -380,4 +380,4 @@ export default function Header({
       )}
     </header>
   );
-}
+});

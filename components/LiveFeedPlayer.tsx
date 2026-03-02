@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
+import { memo, useState, useEffect, useCallback } from "react";
 
-const YOUTUBE_VIDEO_ID = "yw-8lJwXzOU";
+function useYouTubeIds() {
+  const [ids, setIds] = useState<string[]>([]);
+  useEffect(() => {
+    fetch("/api/youtube-links")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.liveCams?.length) setIds(d.liveCams.map((c: { id: string }) => c.id));
+      })
+      .catch(() => {});
+  }, []);
+  return ids;
+}
 
 // -------------------------------------------------------
 // Telegram feed types (minimal, matches /api/feed)
@@ -17,10 +28,12 @@ interface FeedPost {
 }
 
 /** Desktop version — collapsible panel in left sidebar with Telegram / YouTube tabs */
-export function LiveFeedDesktop() {
+export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const YOUTUBE_VIDEO_IDS = useYouTubeIds();
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -41,14 +54,14 @@ export function LiveFeedDesktop() {
   }, [open, tab, fetchFeed]);
 
   return (
-    <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg w-full overflow-hidden">
+    <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg w-full overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between p-3 hover:bg-[#222] transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
           <h3
@@ -94,7 +107,7 @@ export function LiveFeedDesktop() {
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
               </span>
               Live Cam
@@ -103,15 +116,18 @@ export function LiveFeedDesktop() {
 
           {/* Tab content */}
           {tab === "youtube" ? (
-            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1&mute=1`}
-                title="Live Feed"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                frameBorder="0"
-              />
+            <div className="max-h-64 overflow-y-auto">
+              {YOUTUBE_VIDEO_IDS.map((vid, i) => (
+                <iframe
+                  key={vid}
+                  className="w-full aspect-video block"
+                  src={`https://www.youtube.com/embed/${vid}?autoplay=${i === 0 ? 1 : 0}&mute=1`}
+                  title={`Live Cam ${i + 1}`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  frameBorder="0"
+                />
+              ))}
             </div>
           ) : (
             <div className="max-h-64 overflow-y-auto divide-y divide-[#2a2a2a]/50">
@@ -120,31 +136,38 @@ export function LiveFeedDesktop() {
                   <span className="text-neutral-600 text-[10px]">Loading feed...</span>
                 </div>
               ) : (
-                posts.map((post) => (
-                  <div key={post.id} className="px-3 py-2">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400">
-                        {post.channelUsername}
-                      </span>
-                      {post.videoUrl && (
-                        <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                          VID
+                posts.map((post) => {
+                  const isExp = expandedId === post.id;
+                  return (
+                    <button
+                      key={post.id}
+                      onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
+                      className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                          {post.channelUsername}
                         </span>
-                      )}
-                      <span className="text-neutral-600 text-[9px]">
-                        {post.timestamp
-                          ? new Date(post.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : post.date}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-neutral-300 line-clamp-2 leading-tight">
-                      {post.text}
-                    </p>
-                  </div>
-                ))
+                        {post.videoUrl && (
+                          <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                            VID
+                          </span>
+                        )}
+                        <span className="text-neutral-600 text-[9px]">
+                          {post.timestamp
+                            ? new Date(post.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : post.date}
+                        </span>
+                      </div>
+                      <p className={`text-[10px] text-neutral-300 leading-tight ${isExp ? "whitespace-pre-line" : "line-clamp-2"}`}>
+                        {post.text}
+                      </p>
+                    </button>
+                  );
+                })
               )}
             </div>
           )}
@@ -152,13 +175,15 @@ export function LiveFeedDesktop() {
       )}
     </div>
   );
-}
+});
 
 /** Mobile version — floating pill + bottom-sheet with Telegram / YouTube tabs */
 export default memo(function LiveFeedMobile() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const YOUTUBE_VIDEO_IDS = useYouTubeIds();
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -184,10 +209,10 @@ export default memo(function LiveFeedMobile() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-20 left-3 z-50 md:hidden flex items-center gap-1.5 bg-[#1a1a1a]/95 backdrop-blur-sm border border-[#2a2a2a] rounded-full px-3 py-2 shadow-lg active:scale-95 transition-transform"
+          className="fixed bottom-20 left-3 z-50 md:hidden flex items-center gap-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full px-3 py-2 shadow-lg active:scale-95 transition-transform"
         >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
           <span
@@ -202,7 +227,7 @@ export default memo(function LiveFeedMobile() {
       {/* Bottom-sheet */}
       {open && (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-          <div className="bg-[#111]/95 backdrop-blur-md border-t border-[#2a2a2a] rounded-t-xl">
+          <div className="bg-[#111] border-t border-[#2a2a2a] rounded-t-xl">
             {/* Header with tabs + close */}
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-1 bg-[#0a0a0a] rounded-lg p-0.5">
@@ -227,7 +252,7 @@ export default memo(function LiveFeedMobile() {
                   style={{ fontFamily: "JetBrains Mono, monospace" }}
                 >
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
                   </span>
                   Live Cam
@@ -246,15 +271,18 @@ export default memo(function LiveFeedMobile() {
 
             {/* Tab content */}
             {tab === "youtube" ? (
-              <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                <iframe
-                  className="absolute inset-0 w-full h-full"
-                  src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1&mute=1&playsinline=1`}
-                  title="Live Feed"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  frameBorder="0"
-                />
+              <div className="max-h-[50vh] overflow-y-auto">
+                {YOUTUBE_VIDEO_IDS.map((vid, i) => (
+                  <iframe
+                    key={vid}
+                    className="w-full aspect-video block"
+                    src={`https://www.youtube.com/embed/${vid}?autoplay=${i === 0 ? 1 : 0}&mute=1&playsinline=1`}
+                    title={`Live Cam ${i + 1}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    frameBorder="0"
+                  />
+                ))}
               </div>
             ) : (
               <div className="max-h-[50vh] overflow-y-auto divide-y divide-[#2a2a2a]/50">
@@ -263,31 +291,38 @@ export default memo(function LiveFeedMobile() {
                     <span className="text-neutral-600 text-xs">Loading feed...</span>
                   </div>
                 ) : (
-                  posts.map((post) => (
-                    <div key={post.id} className="px-4 py-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
-                          {post.channelUsername}
-                        </span>
-                        {post.videoUrl && (
-                          <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                            VID
+                  posts.map((post) => {
+                    const isExp = expandedId === post.id;
+                    return (
+                      <button
+                        key={post.id}
+                        onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
+                        className="w-full text-left px-4 py-3 hover:bg-[#1a1a1a] transition-colors"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                            {post.channelUsername}
                           </span>
-                        )}
-                        <span className="text-neutral-600 text-[10px]">
-                          {post.timestamp
-                            ? new Date(post.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : post.date}
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-300 line-clamp-3">
-                        {post.text}
-                      </p>
-                    </div>
-                  ))
+                          {post.videoUrl && (
+                            <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                              VID
+                            </span>
+                          )}
+                          <span className="text-neutral-600 text-[10px]">
+                            {post.timestamp
+                              ? new Date(post.timestamp).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : post.date}
+                          </span>
+                        </div>
+                        <p className={`text-xs text-neutral-300 ${isExp ? "whitespace-pre-line" : "line-clamp-3"}`}>
+                          {post.text}
+                        </p>
+                      </button>
+                    );
+                  })
                 )}
               </div>
             )}

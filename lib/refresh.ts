@@ -2,20 +2,10 @@ import { mergeIncidents } from "./incidentStore";
 import { fetchSheetData } from "./fetchSheetData";
 import { fetchRSSIncidents } from "./rss";
 import { fetchTelegramIncidents } from "./telegram";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "./redis";
+import { REFRESH_INTERVAL_MS, REDIS_REFRESH_KEY, SHEET_FETCH_TIMEOUT_MS, RSS_FETCH_TIMEOUT_MS, TELEGRAM_FETCH_TIMEOUT_MS } from "./constants";
 
-const REFRESH_INTERVAL = 60_000; // 1 minute between refreshes
 let refreshing = false;
-
-function getRedis(): Redis | null {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return null;
-}
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -30,7 +20,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export async function resetDebounce(): Promise<void> {
   refreshing = false;
   const r = getRedis();
-  if (r) await r.del("lastRefreshAt").catch(() => {});
+  if (r) await r.del(REDIS_REFRESH_KEY).catch(() => {});
 }
 
 /**
@@ -45,8 +35,8 @@ export async function refreshLiveData(): Promise<number> {
   const r = getRedis();
   if (r) {
     try {
-      const lastRefresh = await r.get<number>("lastRefreshAt");
-      if (lastRefresh && Date.now() - lastRefresh < REFRESH_INTERVAL) {
+      const lastRefresh = await r.get<number>(REDIS_REFRESH_KEY);
+      if (lastRefresh && Date.now() - lastRefresh < REFRESH_INTERVAL_MS) {
         return 0; // Recently refreshed by another instance
       }
     } catch {
@@ -59,19 +49,19 @@ export async function refreshLiveData(): Promise<number> {
   try {
     // Mark refresh start in Redis immediately (prevents other instances from also refreshing)
     if (r) {
-      await r.set("lastRefreshAt", Date.now()).catch(() => {});
+      await r.set(REDIS_REFRESH_KEY, Date.now()).catch(() => {});
     }
 
     const [sheetData, rssData, telegramData] = await Promise.all([
-      withTimeout(fetchSheetData(), 10_000).catch((err) => {
+      withTimeout(fetchSheetData(), SHEET_FETCH_TIMEOUT_MS).catch((err) => {
         console.warn(`[refresh] Sheet fetch failed: ${err?.message || err}`);
         return [] as Awaited<ReturnType<typeof fetchSheetData>>;
       }),
-      withTimeout(fetchRSSIncidents(), 15_000).catch((err) => {
+      withTimeout(fetchRSSIncidents(), RSS_FETCH_TIMEOUT_MS).catch((err) => {
         console.warn(`[refresh] RSS fetch failed: ${err?.message || err}`);
         return [] as Awaited<ReturnType<typeof fetchRSSIncidents>>;
       }),
-      withTimeout(fetchTelegramIncidents(), 45_000).catch((err) => {
+      withTimeout(fetchTelegramIncidents(), TELEGRAM_FETCH_TIMEOUT_MS).catch((err) => {
         console.warn(`[refresh] Telegram fetch failed: ${err?.message || err}`);
         return [] as Awaited<ReturnType<typeof fetchTelegramIncidents>>;
       }),

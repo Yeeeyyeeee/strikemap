@@ -13,7 +13,7 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
 
   return (
     <div className="fixed top-14 left-0 right-0 z-45 settings-panel">
-      <div className="bg-[#111]/95 backdrop-blur-md border-b border-[#2a2a2a] px-4 md:px-6 py-4">
+      <div className="bg-[#111] border-b border-[#2a2a2a] px-4 md:px-6 py-4">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
           {/* Date Filter */}

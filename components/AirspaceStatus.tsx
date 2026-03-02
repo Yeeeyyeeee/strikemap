@@ -84,7 +84,7 @@ export default memo(function AirspaceStatus() {
   const israelClosed = countryStatuses.find((c) => c.code === "IL")?.status === "closed";
 
   return (
-    <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-3 w-52">
+    <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg p-3 w-52">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <h3

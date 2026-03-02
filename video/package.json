@@ -1,0 +1,27 @@
+{
+  "name": "strikemap-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts",
+    "render:breaking": "remotion render src/index.ts Breaking",
+    "render:daily": "remotion render src/index.ts Daily",
+    "render:weapons": "remotion render src/index.ts Weapons",
+    "render:leadership": "remotion render src/index.ts Leadership",
+    "render:weekly": "remotion render src/index.ts Weekly"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.242",
+    "@remotion/tailwind": "4.0.242",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.242"
+  },
+  "devDependencies": {
+    "@remotion/bundler": "4.0.242",
+    "@types/node": "25.3.3",
+    "@types/react": "^19.0.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}

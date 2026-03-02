@@ -7,9 +7,7 @@ import IncidentCard from "@/components/IncidentCard";
 import Legend from "@/components/Legend";
 import AccuracyGauge from "@/components/AccuracyGauge";
 import FeedSidebar from "@/components/FeedSidebar";
-import { Incident, MissileAlert, NOTAM, ViewMode } from "@/lib/types";
-import { fetchAlerts } from "@/lib/fetchAlerts";
-import { playAlertSound, playImpactSound } from "@/lib/sounds";
+import { Incident, MissileAlert, ViewMode } from "@/lib/types";
 import MissileOverlay from "@/components/MissileOverlay";
 import StrikeFlash from "@/components/StrikeFlash";
 import MapOverlayControls from "@/components/MapOverlayControls";
@@ -23,10 +21,16 @@ import { UserSettings, loadSettings, saveSettings } from "@/lib/settings";
 import SettingsPanel from "@/components/SettingsPanel";
 import ChatPanel from "@/components/ChatPanel";
 import AirspaceStatus from "@/components/AirspaceStatus";
+import SpeechPanel from "@/components/SpeechPanel";
 import Timeline from "@/components/Timeline";
 import { useTimeline } from "@/hooks/useTimeline";
 import { useShare } from "@/components/ShareButton";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useIncidentPolling } from "@/hooks/useIncidentPolling";
+import { useAlertPolling } from "@/hooks/useAlertPolling";
+import { useNotamPolling } from "@/hooks/useNotamPolling";
+import { useSirenPolling } from "@/hooks/useSirenPolling";
+import SirenBanner from "@/components/SirenBanner";
 import { decodeState } from "@/lib/urlState";
 import mapboxgl from "mapbox-gl";
 
@@ -35,33 +39,18 @@ const MapView = dynamic(() => import("@/components/Map"), { ssr: false });
 const isMapView = (mode: ViewMode) =>
   !["leadership", "stats", "weapons", "killchain", "intercept", "airspace"].includes(mode);
 
-// ViewMode is now only used for strike filtering on the map page
-// Dashboard views (leadership, stats, etc.) live on their own routes
-
 export default function Home() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("all");
-  const [loading, setLoading] = useState(true);
-  const [alerts, setAlerts] = useState<MissileAlert[]>([]);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<MissileAlert | null>(null);
-  const [flashActive, setFlashActive] = useState(false);
-  const flashKey = useRef(0);
   const [showBases, setShowBases] = useState(false);
   const [showProxies, setShowProxies] = useState(false);
   const [rangeWeapon, setRangeWeapon] = useState<{ lat: number; lng: number; radiusKm: number } | null>(null);
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [notams, setNotams] = useState<NOTAM[]>([]);
-
-  // Check if disclaimer was already accepted this session
-  useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("strikemap-disclaimer") === "1") {
-      setDisclaimerAccepted(true);
-    }
-  }, []);
+  const [speechConfig, setSpeechConfig] = useState<{ id: string; title: string; enabled: boolean } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Timeline state
@@ -71,16 +60,25 @@ export default function Home() {
   const [timelineSpeed, setTimelineSpeed] = useState(1);
 
   // Notifications
-  const { permission: notifPermission, requestPermission, sendNotification, supported: notifSupported } = useNotifications();
+  const { sendNotification } = useNotifications();
   const sendNotificationRef = useRef(sendNotification);
   sendNotificationRef.current = sendNotification;
-  const mapRef = useRef(mapInstance);
-  mapRef.current = mapInstance;
+
+  // Settings ref for polling callbacks
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   // URL state restoration
   const pendingSelectedId = useRef<string | null>(null);
   const [initialCenter, setInitialCenter] = useState<[number, number] | undefined>();
   const [initialZoom, setInitialZoom] = useState<number | undefined>();
+
+  // Check if disclaimer was already accepted this session
+  useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem("strikemap-disclaimer") === "1") {
+      setDisclaimerAccepted(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -89,173 +87,83 @@ export default function Home() {
     if (state.center) setInitialCenter(state.center);
     if (state.zoom != null) setInitialZoom(state.zoom);
     if (state.selectedId) pendingSelectedId.current = state.selectedId;
-    // Restore saved map style
     const savedStyle = getStoredStyle();
     if (savedStyle !== "dark") setMapStyle(savedStyle);
   }, []);
 
-  // Track seen IDs for sound triggers
-  const seenAlertIds = useRef<Set<string>>(new Set());
-  const seenIncidentIds = useRef<Set<string>>(new Set());
-  const isFirstLoad = useRef(true);
+  // Polling hooks
+  const {
+    incidents,
+    loading,
+    flashActive: incidentFlashActive,
+    flashKey: incidentFlashKey,
+    lastIranStrikeAt,
+    lastUSStrikeAt,
+    lastIsraelStrikeAt,
+  } = useIncidentPolling({
+    soundEnabled: settingsRef.current.soundEnabled,
+    notificationsEnabled: settingsRef.current.notificationsEnabled,
+    sendNotification: sendNotificationRef.current,
+    mapInstance,
+    onNewStrikes: (newIncs) => {
+      // Auto-select the first new strike so the incident card appears
+      if (newIncs.length > 0) setSelectedIncident(newIncs[0]);
+    },
+  });
 
-  // Track real timestamps when new strikes are detected (not the date string)
-  const [lastIranStrikeAt, setLastIranStrikeAt] = useState<number>(0);
-  const [lastUSStrikeAt, setLastUSStrikeAt] = useState<number>(0);
-  const [lastIsraelStrikeAt, setLastIsraelStrikeAt] = useState<number>(0);
+  const {
+    alerts,
+    flashActive: alertFlashActive,
+    flashKey: alertFlashKey,
+  } = useAlertPolling({
+    soundEnabled: settingsRef.current.soundEnabled,
+    notificationsEnabled: settingsRef.current.notificationsEnabled,
+    sendNotification: sendNotificationRef.current,
+    mapInstance,
+  });
 
-  // Fetch all incidents from the persistent server-side store
-  const loadData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/incidents");
-      const data = await res.json();
-      const allData: Incident[] = data.incidents || [];
+  const notams = useNotamPolling();
 
-      if (isFirstLoad.current) {
-        // Seed seen IDs on first load — no sounds
-        for (const inc of allData) {
-          if (inc.lat !== 0 && inc.lng !== 0) seenIncidentIds.current.add(inc.id);
-        }
-        isFirstLoad.current = false;
-      } else {
-        // Collect new strikes before marking as seen
-        const newIncs = allData.filter(
-          (inc: Incident) => inc.lat !== 0 && inc.lng !== 0 && !seenIncidentIds.current.has(inc.id)
-        );
-        for (const inc of newIncs) {
-          seenIncidentIds.current.add(inc.id);
-        }
-        if (newIncs.length > 0) {
-          // Record real timestamps for conflict clock
-          const now = Date.now();
-          if (newIncs.some((i) => i.side === "iran")) setLastIranStrikeAt(now);
-          if (newIncs.some((i) => i.side === "us" || (i.side === "us_israel" && i.location?.includes("Iran")))) setLastUSStrikeAt(now);
-          if (newIncs.some((i) => i.side === "israel" || (i.side === "us_israel" && !i.location?.includes("Iran")))) setLastIsraelStrikeAt(now);
+  const { sirenAlerts } = useSirenPolling({
+    soundEnabled: settingsRef.current.soundEnabled,
+    notificationsEnabled: settingsRef.current.notificationsEnabled,
+    sendNotification: sendNotificationRef.current,
+  });
 
-          if (settingsRef.current.soundEnabled) playImpactSound();
-          flashKey.current += 1;
-          setFlashActive(true);
-          setTimeout(() => setFlashActive(false), 600);
+  const flashActive = incidentFlashActive || alertFlashActive;
+  const flashKeyTotal = incidentFlashKey + alertFlashKey;
 
-          // Fly to the new strike
-          const first = newIncs[0];
-          mapRef.current?.flyTo({
-            center: [first.lng, first.lat],
-            zoom: 7,
-            duration: 1500,
-          });
-
-          // Push notification for new strikes
-          if (settingsRef.current.notificationsEnabled) {
-            sendNotificationRef.current("New Strike Detected", {
-              body: `${first.weapon || "Strike"} at ${first.location} — ${first.description.slice(0, 100)}`,
-              tag: `strike-${first.id}`,
-            });
-          }
-        }
-      }
-
-      setIncidents(allData);
-
-      // Resolve pending selected incident from URL state
-      if (pendingSelectedId.current && allData.length > 0) {
-        const found = allData.find((i: Incident) => i.id === pendingSelectedId.current);
-        if (found) setSelectedIncident(found);
-        pendingSelectedId.current = null;
-      }
-    } catch {
-      // Keep whatever we already have
-    } finally {
-      setLoading(false);
+  // Resolve pending selected incident from URL state
+  useEffect(() => {
+    if (pendingSelectedId.current && incidents.length > 0) {
+      const found = incidents.find((i: Incident) => i.id === pendingSelectedId.current);
+      if (found) setSelectedIncident(found);
+      pendingSelectedId.current = null;
     }
+  }, [incidents]);
+
+  // Fetch YouTube speech config
+  useEffect(() => {
+    fetch("/api/youtube-links")
+      .then((r) => r.json())
+      .then((d) => { if (d.speech) setSpeechConfig(d.speech); })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    loadData();
-
-    // Auto-refresh every 20 seconds for near-real-time updates
-    const interval = setInterval(loadData, 20_000);
-    return () => clearInterval(interval);
-  }, [loadData]);
-
-  // Polling for missile alerts (10 seconds)
-  useEffect(() => {
-    let firstPoll = true;
-    const pollAlerts = async () => {
-      const newAlerts = await fetchAlerts();
-
-      // Play alert sound for genuinely new alerts (not on first poll)
-      if (!firstPoll) {
-        for (const alert of newAlerts) {
-          if (!seenAlertIds.current.has(alert.id)) {
-            if (settingsRef.current.soundEnabled) playAlertSound();
-            flashKey.current += 1;
-            setFlashActive(true);
-            setTimeout(() => setFlashActive(false), 600);
-
-            // Fly to the alert target
-            if (alert.lat && alert.lng) {
-              mapRef.current?.flyTo({
-                center: [alert.lng, alert.lat],
-                zoom: 7,
-                duration: 1500,
-              });
-            }
-
-            // Push notification for missile alerts
-            if (settingsRef.current.notificationsEnabled) {
-              sendNotificationRef.current("INCOMING HOSTILE MISSILES", {
-                body: `Alert: ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")} — Shelter in ${alert.timeToImpact}s`,
-                tag: `alert-${alert.id}`,
-              });
-            }
-            break; // one sound per poll is enough
-          }
-        }
-      }
-
-      // Update seen set
-      seenAlertIds.current = new Set(newAlerts.map((a) => a.id));
-      firstPoll = false;
-
-      setAlerts(newAlerts);
-    };
-    pollAlerts();
-    const interval = setInterval(pollAlerts, 10_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Poll NOTAM / airspace data (every 5 minutes)
-  useEffect(() => {
-    const pollNotams = async () => {
-      try {
-        const res = await fetch("/api/notams");
-        if (res.ok) {
-          const json = await res.json();
-          setNotams(json.notams || []);
-        }
-      } catch { /* keep existing data */ }
-    };
-    pollNotams();
-    const interval = setInterval(pollNotams, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Filter by view mode (stats/weapons/leadership show all data)
+  // Filter by view mode
   const filteredIncidents = useMemo(() => {
     let result = viewMode === "all" || !isMapView(viewMode)
       ? incidents
       : viewMode === "us_israel"
         ? incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel")
         : incidents.filter((i) => i.side === viewMode);
-    // Apply date filter from settings
     if (settings.dateFrom) {
       result = result.filter((i) => i.date >= settings.dateFrom!);
     }
     return result;
   }, [viewMode, incidents, settings.dateFrom]);
 
-  // Timeline: sorted unique dates from ALL incidents (stable range across side filters)
+  // Timeline: sorted unique dates from ALL incidents
   const allDates = useMemo(() => {
     const dateSet = new Set(incidents.map((i) => i.date));
     return Array.from(dateSet).sort();
@@ -268,7 +176,12 @@ export default function Home() {
     return filteredIncidents.filter((i) => i.date <= cutoffDate);
   }, [timelineActive, timelineIndex, allDates, filteredIncidents]);
 
-  // Auto-play hook
+  // Only pass incidents with valid coordinates to the map (skip ~58% that have none)
+  const mapIncidents = useMemo(
+    () => timelineFilteredIncidents.filter((i) => i.lat !== 0 && i.lng !== 0),
+    [timelineFilteredIncidents]
+  );
+
   useTimeline({
     totalSteps: allDates.length,
     currentIndex: timelineIndex,
@@ -332,9 +245,6 @@ export default function Home() {
     setMapStyle(id);
   }, []);
 
-  const settingsRef = useRef(settings);
-  settingsRef.current = settings;
-
   const handleSettingsChange = useCallback((next: UserSettings) => {
     setSettings(next);
     saveSettings(next);
@@ -365,7 +275,6 @@ export default function Home() {
 
   const mapStyleUrl = MAP_STYLES.find((s) => s.id === mapStyle)?.url;
 
-  // Shareable snapshots
   const { handleShare, copied: shareCopied } = useShare({
     mapInstance,
     viewMode,
@@ -374,7 +283,8 @@ export default function Home() {
 
   return (
     <div className="h-screen w-screen overflow-hidden">
-      <StrikeFlash key={flashKey.current} active={flashActive} />
+      <StrikeFlash key={flashKeyTotal} active={flashActive} />
+      <SirenBanner alerts={sirenAlerts} />
       <Header
         incidents={incidents}
         viewMode={viewMode}
@@ -399,7 +309,7 @@ export default function Home() {
       {/* Info banner */}
       {!disclaimerAccepted && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
-          <div className="bg-[#1a1a1a]/95 backdrop-blur-md border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-start gap-3 shadow-lg">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-start gap-3 shadow-lg">
             <p className="text-xs text-neutral-400 leading-relaxed flex-1">
               All data is aggregated from publicly available OSINT sources and presented for informational purposes only. Content does not reflect the views of the site operator. Use at your own discretion.
             </p>
@@ -434,7 +344,7 @@ export default function Home() {
           <>
             <div className="relative w-full h-full">
               <MapView
-                incidents={timelineFilteredIncidents}
+                incidents={mapIncidents}
                 onSelectIncident={handleSelectIncident}
                 selectedIncident={selectedIncident}
                 onMapReady={setMapInstance}
@@ -494,8 +404,7 @@ export default function Home() {
 
       {/* Left column — Live Feed + gauges on map views */}
       {isMapView(viewMode) && (
-        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto scrollbar-hide w-52 isolate">
-          <LiveFeedDesktop />
+        <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto overflow-x-hidden scrollbar-hide w-60 isolate">
           {settings.showGauges && (
             <>
               <EscalationMeter incidents={incidents} notams={notams} />
@@ -509,20 +418,21 @@ export default function Home() {
               <InterceptGauge incidents={incidents} />
               <CasualtyTracker incidents={incidents} />
               <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
-              {settings.showLegend && (
-                <Legend weapons={weapons} timelineActive={timelineActive} />
-              )}
             </>
           )}
         </div>
       )}
 
-      {/* Legend standalone — when gauges are off but legend is on */}
-      {isMapView(viewMode) && !settings.showGauges && settings.showLegend && (
+      {/* Conflict clock standalone — when gauges are off */}
+      {isMapView(viewMode) && !settings.showGauges && (
         <div className="fixed left-4 bottom-4 z-40 hidden md:flex flex-col gap-3">
           <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />
-          <Legend weapons={weapons} timelineActive={timelineActive} />
         </div>
+      )}
+
+      {/* Government speech livestream */}
+      {isMapView(viewMode) && speechConfig?.enabled && speechConfig.id && (
+        <SpeechPanel videoId={speechConfig.id} title={speechConfig.title} />
       )}
 
       {/* Mobile Live Feed button — visible on map views */}
@@ -535,8 +445,6 @@ export default function Home() {
           onSelectIncident={handleSelectIncident}
         />
       )}
-
-      {/* Detail card is rendered inside the map container above */}
 
       {/* Alert detail panel */}
       {selectedAlert && (

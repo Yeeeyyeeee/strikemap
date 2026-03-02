@@ -1,5 +1,6 @@
 import { Incident } from "./types";
 import { enrichBatch } from "./geocodeWithAI";
+import { isIranRelated } from "./telegram";
 
 interface RSSItem {
   title: string;
@@ -29,26 +30,6 @@ function parseRSSXml(xml: string): RSSItem[] {
   }
 
   return items;
-}
-
-const IRAN_KEYWORDS = [
-  "iran",
-  "irgc",
-  "iranian",
-  "ballistic missile",
-  "cruise missile",
-  "shahed",
-  "fateh",
-  "emad",
-  "ghadr",
-  "sejjil",
-  "khorramshahr",
-  "tehran",
-];
-
-function isIranRelated(text: string): boolean {
-  const lower = text.toLowerCase();
-  return IRAN_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 export async function fetchRSSIncidents(): Promise<Incident[]> {

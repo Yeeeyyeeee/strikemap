@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { scrapeChannel, isIranRelated } from "@/lib/telegram";
+import { scrapeChannel, isIranRelated, getConfiguredChannels } from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
+import { processSirenPosts } from "@/lib/sirenDetector";
 
 export const maxDuration = 30;
 
 export async function GET() {
-  const channels = (process.env.TELEGRAM_CHANNELS || "")
-    .split(",")
-    .map((c) => c.trim().replace(/^@/, ""))
-    .filter(Boolean);
+  const channels = getConfiguredChannels();
 
   if (channels.length === 0) {
     return NextResponse.json({ posts: [], error: "No channels configured" });
@@ -27,6 +25,9 @@ export async function GET() {
       .sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1))
       .slice(0, 100);
 
+    // Process posts for siren detection (populates server-side state)
+    processSirenPosts(posts);
+
     // Enrich Iran-related posts with coordinates so feed clicks can navigate the map
     for (const post of posts) {
       if (isIranRelated(post.text)) {
@@ -41,7 +42,12 @@ export async function GET() {
 
     return NextResponse.json(
       { posts, count: posts.length },
-      { headers: { "Cache-Control": "no-store" } }
+      {
+        headers: {
+          // CDN caches for 30s — Telegram doesn't update faster than this
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        },
+      }
     );
   } catch {
     return NextResponse.json({ posts: [], error: "Scrape failed" });

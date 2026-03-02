@@ -5,24 +5,24 @@ import { Analytics } from "@vercel/analytics/react";
 import TelegramToast from "@/components/TelegramToast";
 
 export const metadata: Metadata = {
-  title: "StrikeMap — Live Military Strike Tracker",
+  title: "StrikeMap — Live US/Israel Iran Tracker",
   description:
-    "Live map tracking military strikes on targets worldwide in real-time",
+    "Live map tracking US/Israel and Iran military activity in real-time",
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
   },
   openGraph: {
-    title: "StrikeMap — Live Military Strike Tracker",
-    description: "Live map tracking military strikes in real-time",
+    title: "StrikeMap — Live US/Israel Iran Tracker",
+    description: "Live map tracking US/Israel and Iran military activity in real-time",
     siteName: "StrikeMap",
     type: "website",
     images: [{ url: "/icon.png", width: 1080, height: 1080 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "StrikeMap — Live Military Strike Tracker",
-    description: "Live map tracking military strikes in real-time",
+    title: "StrikeMap — Live US/Israel Iran Tracker",
+    description: "Live map tracking US/Israel and Iran military activity in real-time",
   },
 };
 

@@ -1,6 +1,8 @@
 /**
- * Telegram Bot API client for broadcasting incidents to a channel.
- * Uses plain fetch — no extra dependencies needed.
+ * Telegram Bot API client for broadcasting to a channel.
+ * Sends two distinct message types:
+ *   1. STRIKE alerts — enriched incidents with map coords, location pin, media
+ *   2. FEED posts   — raw channel posts forwarded with media
  *
  * Required env vars:
  *   TELEGRAM_BOT_TOKEN  — from @BotFather
@@ -29,7 +31,92 @@ function esc(text: string): string {
   return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
 }
 
-/** Build a formatted Telegram message from an incident */
+// ─── Low-level API helpers ──────────────────────────────────────
+
+async function apiCall(method: string, body: Record<string, unknown>): Promise<boolean> {
+  const token = getToken();
+  const res = await fetch(`${API}${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`[bot] ${method} failed (${res.status}):`, text);
+    return false;
+  }
+  return true;
+}
+
+/** Send a MarkdownV2 text message */
+export async function sendMessage(text: string): Promise<boolean> {
+  return apiCall("sendMessage", {
+    chat_id: getChannelId(),
+    text,
+    parse_mode: "MarkdownV2",
+    disable_web_page_preview: true,
+  });
+}
+
+/** Send a location pin (silent) */
+async function sendLocation(lat: number, lng: number): Promise<boolean> {
+  return apiCall("sendLocation", {
+    chat_id: getChannelId(),
+    latitude: lat,
+    longitude: lng,
+    disable_notification: true,
+  });
+}
+
+/** Send a single photo with optional MarkdownV2 caption */
+async function sendPhoto(photoUrl: string, caption?: string): Promise<boolean> {
+  return apiCall("sendPhoto", {
+    chat_id: getChannelId(),
+    photo: photoUrl,
+    ...(caption ? { caption, parse_mode: "MarkdownV2" } : {}),
+  });
+}
+
+/** Send a single video with optional MarkdownV2 caption */
+async function sendVideo(videoUrl: string, caption?: string): Promise<boolean> {
+  return apiCall("sendVideo", {
+    chat_id: getChannelId(),
+    video: videoUrl,
+    ...(caption ? { caption, parse_mode: "MarkdownV2" } : {}),
+  });
+}
+
+/**
+ * Send a media group (2-10 items). Caption goes on the first item.
+ * Returns false if the API call fails.
+ */
+async function sendMediaGroup(
+  media: { type: "photo" | "video"; url: string }[],
+  caption?: string,
+): Promise<boolean> {
+  if (media.length === 0) return true;
+  if (media.length === 1) {
+    // Telegram requires >=2 items for sendMediaGroup, fall back to single
+    return media[0].type === "video"
+      ? sendVideo(media[0].url, caption)
+      : sendPhoto(media[0].url, caption);
+  }
+
+  const items = media.slice(0, 10).map((m, i) => ({
+    type: m.type,
+    media: m.url,
+    ...(i === 0 && caption ? { caption, parse_mode: "MarkdownV2" } : {}),
+  }));
+
+  return apiCall("sendMediaGroup", {
+    chat_id: getChannelId(),
+    media: items,
+  });
+}
+
+// ─── Formatting ─────────────────────────────────────────────────
+
+/** Build a STRIKE message from an enriched incident */
 export function formatIncident(inc: Incident, siteUrl: string): string {
   const side =
     inc.side === "iran"
@@ -42,7 +129,7 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
 
   const lines: string[] = [];
 
-  lines.push(`\u{1F6A8} *NEW STRIKE DETECTED*`);
+  lines.push(`\u{1F534}\u{1F534}\u{1F534} *STRIKE ALERT* \u{1F534}\u{1F534}\u{1F534}`);
   lines.push("");
   lines.push(`\u{1F4CD} *Location:* ${esc(inc.location || "Unknown")}`);
   lines.push(`\u{2694}\u{FE0F} *By:* ${side}`);
@@ -67,9 +154,24 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
       `\u{1F4CA} *Missiles:* ${inc.missiles_fired} fired${inc.missiles_intercepted != null ? `, ${inc.missiles_intercepted} intercepted` : ""}`
     );
   }
+  if (inc.damage_severity) {
+    const sevIcon =
+      inc.damage_severity === "catastrophic" ? "\u{1F4A5}"
+        : inc.damage_severity === "severe" ? "\u{1F525}"
+          : inc.damage_severity === "moderate" ? "\u{26A0}\u{FE0F}"
+            : "\u{2022}";
+    lines.push(`${sevIcon} *Damage:* ${esc(inc.damage_severity)}`);
+  }
+  if ((inc.casualties_military || 0) > 0 || (inc.casualties_civilian || 0) > 0) {
+    const parts: string[] = [];
+    if (inc.casualties_military) parts.push(`${inc.casualties_military} military`);
+    if (inc.casualties_civilian) parts.push(`${inc.casualties_civilian} civilian`);
+    lines.push(`\u{1F480} *Casualties:* ${esc(parts.join(", "))}`);
+  }
+
   if (inc.description) {
     lines.push("");
-    lines.push(esc(inc.description.slice(0, 300)));
+    lines.push(esc(inc.description.slice(0, 400)));
   }
   if (inc.timestamp) {
     const d = new Date(inc.timestamp);
@@ -83,63 +185,14 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
   return lines.join("\n");
 }
 
-/** Send a MarkdownV2 message to the configured channel */
-export async function sendMessage(text: string): Promise<boolean> {
-  const token = getToken();
-  const chatId = getChannelId();
-
-  const res = await fetch(`${API}${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "MarkdownV2",
-      disable_web_page_preview: false,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`[bot] sendMessage failed (${res.status}):`, body);
-    return false;
-  }
-
-  return true;
-}
-
-/** Send a location pin followed by a text message */
-export async function sendIncident(inc: Incident, siteUrl: string): Promise<boolean> {
-  const token = getToken();
-  const chatId = getChannelId();
-
-  // Send location pin if we have coordinates
-  if (inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
-    await fetch(`${API}${token}/sendLocation`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        latitude: inc.lat,
-        longitude: inc.lng,
-        disable_notification: true,
-      }),
-    }).catch(() => { /* non-critical */ });
-  }
-
-  const text = formatIncident(inc, siteUrl);
-  return sendMessage(text);
-}
-
-/** Format a raw feed post for Telegram */
+/** Build a FEED message from a raw channel post */
 export function formatFeedPost(post: ChannelPost, siteUrl: string): string {
   const lines: string[] = [];
 
   lines.push(`\u{1F4E2} *${esc(post.channelUsername)}*`);
   lines.push("");
 
-  // Post text (truncated)
-  const text = post.text.slice(0, 500);
+  const text = post.text.slice(0, 600);
   lines.push(esc(text));
 
   if (post.location) {
@@ -159,30 +212,109 @@ export function formatFeedPost(post: ChannelPost, siteUrl: string): string {
   return lines.join("\n");
 }
 
-/** Send a feed post to the channel */
-export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<boolean> {
-  const text = formatFeedPost(post, siteUrl);
-  return sendMessage(text);
+// ─── High-level send functions ──────────────────────────────────
+
+/**
+ * Collect media items from a ChannelPost: images + video.
+ */
+function collectMedia(post: ChannelPost): { type: "photo" | "video"; url: string }[] {
+  const items: { type: "photo" | "video"; url: string }[] = [];
+  for (const url of post.imageUrls) {
+    items.push({ type: "photo", url });
+  }
+  if (post.videoUrl) {
+    items.push({ type: "video", url: post.videoUrl });
+  }
+  return items;
 }
 
-/** Broadcast multiple incidents (newest first, capped) */
+/**
+ * Collect media items from an Incident's media array.
+ */
+function collectIncidentMedia(inc: Incident): { type: "photo" | "video"; url: string }[] {
+  const items: { type: "photo" | "video"; url: string }[] = [];
+  if (inc.media) {
+    for (const m of inc.media) {
+      items.push({ type: m.type === "video" ? "video" : "photo", url: m.url });
+    }
+  }
+  // Fallback: if incident has video_url but no media array entry for it
+  if (inc.video_url && !items.some((i) => i.url === inc.video_url)) {
+    items.push({ type: "video", url: inc.video_url });
+  }
+  return items;
+}
+
+/**
+ * Send a STRIKE notification — location pin + incident report + media.
+ * This is the high-visibility format for map markers.
+ */
+export async function sendIncident(
+  inc: Incident,
+  post: ChannelPost | null,
+  siteUrl: string,
+): Promise<boolean> {
+  // 1. Location pin
+  if (inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
+    await sendLocation(inc.lat, inc.lng).catch(() => {});
+    await sleep(300);
+  }
+
+  const caption = formatIncident(inc, siteUrl);
+
+  // 2. Collect media from the post (preferred, has original URLs) or incident
+  const media = post ? collectMedia(post) : collectIncidentMedia(inc);
+
+  // 3. Send media group with caption, or text-only
+  if (media.length > 0) {
+    const ok = await sendMediaGroup(media, caption);
+    // If media group fails (e.g. URL expired), fall back to text
+    if (!ok) return sendMessage(caption);
+    return true;
+  }
+
+  return sendMessage(caption);
+}
+
+/**
+ * Send a FEED post — lighter format for general channel updates.
+ */
+export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<boolean> {
+  const caption = formatFeedPost(post, siteUrl);
+  const media = collectMedia(post);
+
+  if (media.length > 0) {
+    const ok = await sendMediaGroup(media, caption);
+    if (!ok) return sendMessage(caption);
+    return true;
+  }
+
+  return sendMessage(caption);
+}
+
+/**
+ * Broadcast multiple incidents (newest first, capped).
+ */
 export async function broadcastIncidents(
   incidents: Incident[],
   siteUrl: string,
-  limit = 5
+  limit = 5,
 ): Promise<number> {
   const sorted = [...incidents].sort(
-    (a, b) => (b.timestamp || "").localeCompare(a.timestamp || "")
+    (a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""),
   );
   const batch = sorted.slice(0, limit);
   let sent = 0;
 
   for (const inc of batch) {
-    const ok = await sendIncident(inc, siteUrl);
+    const ok = await sendIncident(inc, null, siteUrl);
     if (ok) sent++;
-    // Telegram rate limit: ~30 msg/sec to a channel, but be safe
-    await new Promise((r) => setTimeout(r, 1000));
+    await sleep(1000);
   }
 
   return sent;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }

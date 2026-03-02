@@ -48,7 +48,7 @@ export default memo(function MapOverlayControls({
         activeColor="#22c55e"
       />
       {onMapStyleChange && (
-        <div className="flex gap-1 bg-[#1a1a1a]/80 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-0.5">
+        <div className="flex gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
           {MAP_STYLES.map((s) => (
             <button
               key={s.id}
@@ -64,6 +64,28 @@ export default memo(function MapOverlayControls({
           ))}
         </div>
       )}
+      {/* Strike type color key */}
+      <div className="bg-[#1a1a1a]/90 border border-[#2a2a2a] rounded-lg px-3 py-2 space-y-1">
+        <div className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+          Strike Type
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#ef4444" }} />
+          <span className="text-[10px] text-neutral-400">Iranian Missile</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#a855f7" }} />
+          <span className="text-[10px] text-neutral-400">Iranian Drone</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#3b82f6" }} />
+          <span className="text-[10px] text-neutral-400">US / Israeli Strike</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#22c55e" }} />
+          <span className="text-[10px] text-neutral-400">Intercepted</span>
+        </div>
+      </div>
     </div>
   );
 });
@@ -87,7 +109,7 @@ function ToggleButton({
       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
         active
           ? "text-white shadow-lg"
-          : "bg-[#1a1a1a]/80 border-[#2a2a2a] text-neutral-500 hover:text-neutral-300 backdrop-blur-sm"
+          : "bg-[#1a1a1a] border-[#2a2a2a] text-neutral-500 hover:text-neutral-300"
       }`}
       style={
         active

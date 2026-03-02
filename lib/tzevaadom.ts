@@ -80,8 +80,7 @@ function getAreaName(areaId: number): string {
 const activeAlerts = new Map<string, MissileAlert & { createdAt: number }>();
 const processedIds = new Set<number>();
 
-// Alert is "active" only for its countdown + 2 min buffer after the alert time.
-// This ensures alerts disappear once the threat window has passed.
+// Alert stays "active" for its countdown + 2 min buffer after the alert time.
 const ALERT_BUFFER_MS = 2 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -123,8 +122,8 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
         const alertTimeMs = alert.time * 1000;
         const ageMs = now - alertTimeMs;
 
-        // Skip alerts that are clearly old (> 5 minutes — no active alert lasts that long)
-        if (ageMs > 5 * 60 * 1000) continue;
+        // Skip alerts older than 30 minutes
+        if (ageMs > 30 * 60 * 1000) continue;
 
         // Resolve cities to coordinates
         const regions = new Set<string>();
@@ -148,7 +147,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
 
         if (!bestLat || !bestLng) continue;
 
-        const origin = getOriginForTarget(bestLat, bestLng);
+        const origin = getOriginForTarget(bestLat, bestLng, threatType, bestCountdown);
         const alertId = `tzofar-${item.id}-${alert.time}`;
 
         // Format time
@@ -193,4 +192,71 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
 function getActiveAlerts(): MissileAlert[] {
   return Array.from(activeAlerts.values())
     .map(({ createdAt: _, ...rest }) => rest);
+}
+
+/** Insert a manually-created alert into the active set. */
+export function addManualAlert(alert: MissileAlert): void {
+  activeAlerts.set(alert.id, { ...alert, createdAt: Date.now() });
+}
+
+/** Remove a single alert by id. */
+export function clearAlert(id: string): boolean {
+  return activeAlerts.delete(id);
+}
+
+/** Debug version that returns diagnostics */
+export async function fetchTzevAdomAlertsDebug() {
+  const now = Date.now();
+  const diag: Record<string, unknown> = { timestamp: new Date().toISOString() };
+
+  // 1. Test cities.json
+  try {
+    await loadCitiesData();
+    diag.citiesLoaded = !!citiesCache;
+    diag.citiesCount = citiesCache ? Object.keys(citiesCache).length : 0;
+  } catch (err) {
+    diag.citiesError = String(err);
+  }
+
+  // 2. Test Tzofar API
+  try {
+    const res = await fetch("https://api.tzevaadom.co.il/alerts-history/", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      cache: "no-store",
+    });
+    diag.tzofarStatus = res.status;
+    diag.tzofarOk = res.ok;
+
+    if (res.ok) {
+      const history = await res.json();
+      diag.historyCount = history.length;
+      diag.recentAlerts = history.slice(0, 3).map((item: TzofarHistoryItem) => ({
+        id: item.id,
+        description: item.description,
+        alertCount: item.alerts.length,
+        alerts: item.alerts.map((a: TzofarAlertEntry) => ({
+          time: a.time,
+          ageMinutes: ((now - a.time * 1000) / 60000).toFixed(1),
+          withinWindow: (now - a.time * 1000) < 5 * 60 * 1000,
+          cities: a.cities,
+          cityLookup: a.cities.map((c: string) => {
+            const city = lookupCity(c);
+            return city ? { name: city.en, lat: city.lat, lng: city.lng } : { name: c, found: false };
+          }),
+        })),
+      }));
+    }
+  } catch (err) {
+    diag.tzofarError = String(err);
+  }
+
+  // 3. Current state
+  diag.activeAlertsCount = activeAlerts.size;
+  diag.processedIdsCount = processedIds.size;
+
+  // 4. Run normal fetch and return result
+  const alerts = await fetchTzevAdomAlerts();
+  diag.alerts = alerts;
+
+  return diag;
 }

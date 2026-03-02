@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   // Only allow known RSS feed domains
   const allowed = ["financialjuice.com", "rss.app"];
   const parsedUrl = new URL(url);
-  if (!allowed.some((d) => parsedUrl.hostname.includes(d))) {
+  if (!allowed.some((d) => parsedUrl.hostname === d || parsedUrl.hostname.endsWith("." + d))) {
     return NextResponse.json({ error: "Domain not allowed" }, { status: 403 });
   }
 

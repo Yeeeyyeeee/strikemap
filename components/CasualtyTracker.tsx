@@ -38,7 +38,7 @@ export default memo(function CasualtyTracker({ incidents }: CasualtyTrackerProps
   const maxSide = Math.max(stats.iranMilitary + stats.iranCivilian, stats.usMilitary + stats.usCivilian, 1);
 
   return (
-    <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-3 w-52">
+    <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg p-3 w-52">
       <h3
         className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2"
         style={{ fontFamily: "JetBrains Mono, monospace" }}

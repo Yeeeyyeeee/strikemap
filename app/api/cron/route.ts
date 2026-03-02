@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
 import { seedIfEmpty } from "@/lib/incidentStore";
-import { SAMPLE_INCIDENTS } from "@/lib/sampleData";
 import { refreshLiveData } from "@/lib/refresh";
+import { requireCronAuth } from "@/lib/apiAuth";
 
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authError = requireCronAuth(request);
+  if (authError) return authError;
+
+  try {
+    const { SAMPLE_INCIDENTS } = await import("@/lib/sampleData");
+    await seedIfEmpty(SAMPLE_INCIDENTS);
+    const added = await refreshLiveData();
+
+    return NextResponse.json({
+      ok: true,
+      added,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[cron] Failed:", err);
+    return NextResponse.json(
+      { ok: false, error: String(err) },
+      { status: 500 },
+    );
   }
-
-  await seedIfEmpty(SAMPLE_INCIDENTS);
-  const added = await refreshLiveData();
-
-  return NextResponse.json({
-    ok: true,
-    added,
-    timestamp: new Date().toISOString(),
-  });
 }

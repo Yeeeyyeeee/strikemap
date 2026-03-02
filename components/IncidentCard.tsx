@@ -3,31 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
+import { getYouTubeEmbedUrl, isDirectVideoUrl } from "@/lib/videoUtils";
 
 interface IncidentCardProps {
   incident: Incident;
   map: mapboxgl.Map;
   onClose: () => void;
-}
-
-// --- Video helpers (reused from IncidentPanel) ---
-
-function getYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/
-  );
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
-}
-
-function isDirectVideoUrl(url: string): boolean {
-  if (!url) return false;
-  return (
-    url.includes("telesco.pe") ||
-    url.includes("telegram") ||
-    url.includes("cdn") ||
-    /\.(mp4|webm|mov)(\?|$)/i.test(url)
-  );
 }
 
 function getVideoStrategy(incident: Incident): {
@@ -66,13 +47,14 @@ function useIsMobile() {
 }
 
 export default function IncidentCard({ incident, map, onClose }: IncidentCardProps) {
-  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [flipLeft, setFlipLeft] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const initialZoom = useRef(map.getZoom());
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const isMobile = useIsMobile();
+  const posRef = useRef({ x: 0, y: 0 });
+  const flipLeftRef = useRef(false);
+  const rafId = useRef(0);
 
   // Video state
   const video = getVideoStrategy(incident);
@@ -86,24 +68,37 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     initialZoom.current = map.getZoom();
   }, [incident.id, map]);
 
-  // Position update function
-  const updatePosition = useCallback(() => {
-    if (!incident.lat || !incident.lng) return;
+  // Position update — direct DOM manipulation, no React state
+  const updatePositionDOM = useCallback(() => {
+    if (!incident.lat || !incident.lng || !cardRef.current) return;
     const point = map.project([incident.lng, incident.lat]);
     const container = map.getContainer();
     const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
 
-    // Flip to left side if card would overflow right edge
     const wouldOverflowRight = point.x + CARD_OFFSET + CARD_WIDTH > containerWidth - 20;
-    setFlipLeft(wouldOverflowRight);
-    setPos({ x: point.x, y: point.y });
+    flipLeftRef.current = wouldOverflowRight;
+    posRef.current = { x: point.x, y: point.y };
+
+    const cardHeight = cardRef.current.offsetHeight || 300;
+    let top = point.y - cardHeight / 2;
+    top = Math.max(60, Math.min(top, containerHeight - cardHeight - 20));
+    const left = wouldOverflowRight
+      ? point.x - CARD_OFFSET - CARD_WIDTH
+      : point.x + CARD_OFFSET;
+
+    cardRef.current.style.left = `${left}px`;
+    cardRef.current.style.top = `${top}px`;
   }, [map, incident.lng, incident.lat]);
 
-  // Track map movement + zoom dismiss
+  // Track map movement with RAF — no React re-renders during pan/zoom
   useEffect(() => {
-    updatePosition();
+    updatePositionDOM();
 
-    const onMove = () => updatePosition();
+    const onMove = () => {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(updatePositionDOM);
+    };
     const onZoom = () => {
       if (map.getZoom() < initialZoom.current - 1.5) {
         onCloseRef.current();
@@ -113,26 +108,15 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     map.on("move", onMove);
     map.on("zoom", onZoom);
     return () => {
+      cancelAnimationFrame(rafId.current);
       map.off("move", onMove);
       map.off("zoom", onZoom);
     };
-  }, [map, updatePosition]);
+  }, [map, updatePositionDOM]);
 
   const description = incident.details || incident.description;
   const isLong = description.length > 200;
   const displayText = expanded || !isLong ? description : description.slice(0, 200) + "...";
-
-  const cardHeight = cardRef.current?.offsetHeight || 300;
-  const container = map.getContainer();
-  const containerHeight = container.clientHeight;
-
-  // Clamp vertical position so card stays in viewport
-  let top = pos.y - cardHeight / 2;
-  top = Math.max(60, Math.min(top, containerHeight - cardHeight - 20));
-
-  const left = flipLeft
-    ? pos.x - CARD_OFFSET - CARD_WIDTH
-    : pos.x + CARD_OFFSET;
 
   const sevColors = SEVERITY_COLORS[incident.damage_severity || "minor"] || SEVERITY_COLORS.minor;
 
@@ -254,7 +238,16 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             {incident.location || "Location unconfirmed"}
           </h2>
           <div className="flex items-center gap-2 mt-0.5 text-[11px] text-neutral-500">
-            <span>{incident.date}</span>
+            <span>
+              {incident.date}
+              {incident.timestamp && (() => {
+                const d = new Date(incident.timestamp);
+                if (!isNaN(d.getTime())) {
+                  return ` ${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")} UTC`;
+                }
+                return "";
+              })()}
+            </span>
             {incident.target_type && (
               <>
                 <span className="text-neutral-700">|</span>
@@ -369,26 +362,15 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     );
   }
 
-  // --- Desktop: marker-anchored card ---
+  // --- Desktop: marker-anchored card (position managed by RAF/DOM) ---
   return (
     <div
       ref={cardRef}
       className="absolute z-50 pointer-events-auto"
       style={{
-        left: `${left}px`,
-        top: `${top}px`,
         width: `${CARD_WIDTH}px`,
       }}
     >
-      {/* Connector line to marker */}
-      <div
-        className="absolute top-1/2 w-4 border-t border-dashed border-neutral-600"
-        style={
-          flipLeft
-            ? { right: -16, transform: "translateY(-50%)" }
-            : { left: -16, transform: "translateY(-50%)" }
-        }
-      />
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden max-h-[70vh] flex flex-col">
         <button
           onClick={onClose}

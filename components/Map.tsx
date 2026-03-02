@@ -8,14 +8,18 @@ import { MILITARY_BASES, BASE_COLORS, getBaseIcon } from "@/lib/militaryBases";
 import { PROXY_GROUPS, PROXY_CONNECTIONS, createProxyCircle } from "@/lib/proxyGroups";
 import { createCircleGeoJSON } from "@/lib/weaponsData";
 
-// ---- Time-based marker fading ----
-interface MarkerAge {
-  opacity: number;
-  saturation: number;
-  isPulsing: boolean;
+/** Escape HTML entities to prevent XSS in Mapbox popup setHTML() */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-function getMarkerAge(incident: Incident): MarkerAge {
+// ---- Time-based marker fading ----
+function getMarkerOpacity(incident: Incident): number {
   const now = Date.now();
   let ts: number;
 
@@ -24,34 +28,20 @@ function getMarkerAge(incident: Incident): MarkerAge {
   } else if (incident.date) {
     ts = new Date(incident.date).getTime();
   } else {
-    // Unparseable — default mid-opacity
-    return { opacity: 0.5, saturation: 0.5, isPulsing: false };
+    return 0.5;
   }
 
-  if (isNaN(ts)) return { opacity: 0.5, saturation: 0.5, isPulsing: false };
+  if (isNaN(ts)) return 0.5;
 
   const ageMin = (now - ts) / 60_000;
 
-  if (ageMin < 5)    return { opacity: 1.0,  saturation: 1.0,  isPulsing: true };
-  if (ageMin < 30)   return { opacity: 0.9,  saturation: 1.0,  isPulsing: false };
-  if (ageMin < 120)  return { opacity: 0.75, saturation: 0.75, isPulsing: false };
-  if (ageMin < 360)  return { opacity: 0.55, saturation: 0.55, isPulsing: false };
-  if (ageMin < 720)  return { opacity: 0.40, saturation: 0.40, isPulsing: false };
-  if (ageMin < 1440) return { opacity: 0.25, saturation: 0.25, isPulsing: false };
-  return { opacity: 0.12, saturation: 0.15, isPulsing: false };
-}
-
-function applyAgeFading(el: HTMLElement, age: MarkerAge, baseOpacity: number) {
-  el.style.opacity = String(age.opacity * baseOpacity);
-  // saturation 1.0 = full color, 0 = grayscale; keep a tint via partial desaturation
-  el.style.filter = age.saturation < 1
-    ? `saturate(${age.saturation}) drop-shadow(0 0 ${Math.round(6 * age.opacity)}px var(--marker-color, #ef4444))`
-    : `drop-shadow(0 0 6px var(--marker-color, #ef4444))`;
-  if (age.isPulsing) {
-    el.classList.add("age-pulse");
-  } else {
-    el.classList.remove("age-pulse");
-  }
+  if (ageMin < 5) return 1.0;
+  if (ageMin < 30) return 0.9;
+  if (ageMin < 120) return 0.75;
+  if (ageMin < 360) return 0.55;
+  if (ageMin < 720) return 0.4;
+  if (ageMin < 1440) return 0.25;
+  return 0.12;
 }
 
 interface MapProps {
@@ -72,92 +62,60 @@ interface MapProps {
   markerOpacity?: number;
 }
 
-const ZOOM_DETAIL_THRESHOLD = 8;
-
-type MarkerIcon = "missile" | "drone" | "ship" | "mixed" | "shield" | "shield-broken" | "shield-unknown";
-
-function getIconType(weapon: string): MarkerIcon {
-  const w = weapon.toLowerCase();
-  if (w.includes("drone") || w.includes("shahed")) {
-    if (w.includes("missile") || w.includes("ballistic")) return "mixed";
-    return "drone";
+function getIncidentColor(incident: Incident): string {
+  if (incident.intercepted_by) {
+    if (incident.intercept_success === true) return "#22c55e";
+    if (incident.intercept_success === false) return "#ef4444";
+    return "#6b7280";
   }
-  if (w.includes("anti-ship") || w.includes("ship")) return "ship";
-  return "missile";
+  if (
+    incident.side === "us_israel" ||
+    incident.side === "us" ||
+    incident.side === "israel"
+  )
+    return "#3b82f6";
+  return getWeaponColor(incident.weapon);
 }
 
-function getInterceptIcon(incident: Incident): MarkerIcon | null {
-  if (!incident.intercepted_by) return null;
-  if (incident.intercept_success === true) return "shield";
-  if (incident.intercept_success === false) return "shield-broken";
-  return "shield-unknown";
-}
+// Source & layer IDs
+const SRC = "incidents-src";
+const LAYER_CLUSTERS = "incident-clusters";
+const LAYER_CLUSTER_COUNT = "incident-cluster-count";
+const LAYER_POINTS = "incident-points";
+const LAYER_SELECTED = "incident-selected";
+const SRC_SELECTED = "incident-selected-src";
 
-function createDotElement(color: string, sizePx: number): HTMLDivElement {
-  const dot = document.createElement("div");
-  dot.style.width = `${sizePx}px`;
-  dot.style.height = `${sizePx}px`;
-  dot.style.borderRadius = "50%";
-  dot.style.backgroundColor = color;
-  dot.style.boxShadow = `0 0 ${Math.round(sizePx * 0.6)}px ${color}`;
-  dot.style.cursor = "pointer";
-  return dot;
-}
-
-function createMarkerSvg(color: string, icon: MarkerIcon): string {
-  const icons: Record<MarkerIcon, string> = {
-    missile: `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="10" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4"/>
-        <circle cx="16" cy="16" r="5" fill="${color}" opacity="0.9"/>
-        <circle cx="16" cy="16" r="2" fill="#fff" opacity="0.8"/>
-        <line x1="16" y1="2" x2="16" y2="9" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="16" y1="23" x2="16" y2="30" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="2" y1="16" x2="9" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="23" y1="16" x2="30" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>`,
-    drone: `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="10" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4"/>
-        <polygon points="16,6 24,22 16,18 8,22" fill="${color}" opacity="0.9"/>
-        <circle cx="16" cy="14" r="2" fill="#fff" opacity="0.8"/>
-      </svg>`,
-    ship: `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="10" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4"/>
-        <circle cx="16" cy="12" r="3" fill="none" stroke="${color}" stroke-width="2"/>
-        <line x1="16" y1="15" x2="16" y2="26" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-        <path d="M10,22 Q16,28 22,22" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-        <line x1="12" y1="16" x2="20" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>`,
-    mixed: `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="10" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4"/>
-        <rect x="10" y="10" width="12" height="12" rx="2" transform="rotate(45 16 16)" fill="${color}" opacity="0.9"/>
-        <circle cx="16" cy="16" r="2" fill="#fff" opacity="0.8"/>
-        <line x1="16" y1="3" x2="16" y2="8" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="16" y1="24" x2="16" y2="29" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="3" y1="16" x2="8" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="24" y1="16" x2="29" y2="16" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>`,
-    shield: `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
-        <path d="M12 16l3 3 5-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`,
-    "shield-broken": `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
-        <line x1="12" y1="12" x2="20" y2="20" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-        <line x1="20" y1="12" x2="12" y2="20" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-      </svg>`,
-    "shield-unknown": `
-      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 3L6 8v7c0 7.2 4.3 13.2 10 15 5.7-1.8 10-7.8 10-15V8L16 3z" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1.5"/>
-        <text x="16" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold" font-family="sans-serif">?</text>
-      </svg>`,
+function buildGeoJSON(
+  incidents: Incident[],
+  timelineActive: boolean,
+  baseOpacity: number
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: incidents.map((inc) => ({
+      type: "Feature" as const,
+      properties: {
+        id: inc.id,
+        color: getIncidentColor(inc),
+        opacity: timelineActive ? baseOpacity : getMarkerOpacity(inc) * baseOpacity,
+        location: inc.location || "",
+        date: inc.date || "",
+        weapon: inc.weapon || "Strike",
+        description: (inc.description || "").slice(0, 120),
+        hasVideo: Boolean(
+          inc.video_url ||
+            inc.telegram_post_id ||
+            (inc.source_url && /t\.me\/\w+\/\d+/.test(inc.source_url))
+        )
+          ? "1"
+          : "",
+      },
+      geometry: {
+        type: "Point" as const,
+        coordinates: [inc.lng, inc.lat],
+      },
+    })),
   };
-  return icons[icon];
 }
 
 export default function MapView({
@@ -183,68 +141,17 @@ export default function MapView({
   onMapClickRef.current = onMapClick;
   const onSelectIncidentRef = useRef(onSelectIncident);
   onSelectIncidentRef.current = onSelectIncident;
-  const markerClickedRef = useRef(false);
-  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
-  const incidentDataRef = useRef<Map<string, Incident>>(new Map());
+  const incidentMapRef = useRef<Map<string, Incident>>(new Map());
   const baseMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const proxyLabelsRef = useRef<mapboxgl.Marker[]>([]);
-  const prevIncidentIds = useRef<Set<string>>(new Set());
   const selectedIncidentRef = useRef<Incident | null>(null);
   selectedIncidentRef.current = selectedIncident;
   const timelineActiveRef = useRef(timelineActive);
   timelineActiveRef.current = timelineActive;
   const markerOpacityRef = useRef(markerOpacity);
   markerOpacityRef.current = markerOpacity;
-  const currentZoomRef = useRef(initialZoom ?? 4);
-  const markerMetaRef = useRef<Map<string, { color: string; iconType: MarkerIcon }>>(new Map());
-
-  const swapMarkerElements = useCallback((toDetailed: boolean) => {
-    markersRef.current.forEach((marker, id) => {
-      const el = marker.getElement();
-      const meta = markerMetaRef.current.get(id);
-      if (!meta) return;
-      const { color, iconType } = meta;
-
-      if (toDetailed) {
-        // Swap to full SVG hitmarker
-        const px = Math.round(32 * markerSize);
-        el.style.width = `${px}px`;
-        el.style.height = `${px}px`;
-        el.style.borderRadius = "";
-        el.style.backgroundColor = "";
-        el.style.boxShadow = "";
-        el.innerHTML = createMarkerSvg(color, iconType);
-        // Re-apply age fading
-        const inc = incidentDataRef.current.get(id);
-        if (inc && !timelineActiveRef.current) {
-          const age = getMarkerAge(inc);
-          applyAgeFading(el, age, markerOpacityRef.current);
-        }
-      } else {
-        // Swap to simple dot
-        const dotSize = Math.round(8 * markerSize);
-        el.innerHTML = "";
-        el.style.width = `${dotSize}px`;
-        el.style.height = `${dotSize}px`;
-        el.style.borderRadius = "50%";
-        el.style.backgroundColor = color;
-        el.style.boxShadow = `0 0 ${Math.round(dotSize * 0.6)}px ${color}`;
-        // Apply age-based opacity even on dots
-        const inc = incidentDataRef.current.get(id);
-        if (inc && !timelineActiveRef.current) {
-          const age = getMarkerAge(inc);
-          el.style.opacity = String(age.opacity * markerOpacityRef.current);
-          el.style.filter = "";
-        }
-      }
-    });
-  }, [markerSize]);
-
-  const clearMarkers = useCallback(() => {
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current.clear();
-    markerMetaRef.current.clear();
-  }, []);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const layersReady = useRef(false);
 
   const clearBaseMarkers = useCallback(() => {
     baseMarkersRef.current.forEach((m) => m.remove());
@@ -256,6 +163,137 @@ export default function MapView({
     proxyLabelsRef.current = [];
   }, []);
 
+  // Add incident layers to the map (called after style loads)
+  const addIncidentLayers = useCallback((m: mapboxgl.Map) => {
+    if (m.getSource(SRC)) return; // already added
+
+    m.addSource(SRC, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+      cluster: true,
+      clusterMaxZoom: 7,
+      clusterRadius: 40,
+    });
+
+    // Cluster circles
+    m.addLayer({
+      id: LAYER_CLUSTERS,
+      type: "circle",
+      source: SRC,
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": [
+          "step",
+          ["get", "point_count"],
+          "#ef4444",
+          20,
+          "#f97316",
+          50,
+          "#eab308",
+        ],
+        "circle-radius": [
+          "step",
+          ["get", "point_count"],
+          14,
+          10,
+          18,
+          50,
+          24,
+        ],
+        "circle-opacity": 0.75,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "rgba(0,0,0,0.3)",
+      },
+    });
+
+    // Cluster count labels
+    m.addLayer({
+      id: LAYER_CLUSTER_COUNT,
+      type: "symbol",
+      source: SRC,
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": "{point_count_abbreviated}",
+        "text-size": 12,
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
+      },
+      paint: {
+        "text-color": "#ffffff",
+      },
+    });
+
+    // Individual points — GPU-rendered circles
+    m.addLayer({
+      id: LAYER_POINTS,
+      type: "circle",
+      source: SRC,
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": ["get", "color"],
+        "circle-opacity": ["get", "opacity"],
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          3,
+          3 * markerSize,
+          6,
+          5 * markerSize,
+          10,
+          7 * markerSize,
+          14,
+          10 * markerSize,
+        ],
+        "circle-stroke-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          3,
+          0,
+          8,
+          1.5,
+        ],
+        "circle-stroke-color": ["get", "color"],
+        "circle-stroke-opacity": 0.4,
+      },
+    });
+
+    // Selected point highlight
+    m.addSource(SRC_SELECTED, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+
+    m.addLayer({
+      id: LAYER_SELECTED,
+      type: "circle",
+      source: SRC_SELECTED,
+      paint: {
+        "circle-color": ["get", "color"],
+        "circle-opacity": 1,
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          3,
+          6 * markerSize,
+          6,
+          9 * markerSize,
+          10,
+          12 * markerSize,
+          14,
+          16 * markerSize,
+        ],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-opacity": 0.8,
+      },
+    });
+
+    layersReady.current = true;
+  }, [markerSize]);
+
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -281,53 +319,110 @@ export default function MapView({
     );
 
     const m = map.current;
-    m.on("load", () => onMapReady?.(m));
 
-    // Zoom listener — swap marker elements at threshold
-    m.on("zoom", () => {
-      const zoom = m.getZoom();
-      const prev = currentZoomRef.current;
-      currentZoomRef.current = zoom;
-      const crossedUp = prev < ZOOM_DETAIL_THRESHOLD && zoom >= ZOOM_DETAIL_THRESHOLD;
-      const crossedDown = prev >= ZOOM_DETAIL_THRESHOLD && zoom < ZOOM_DETAIL_THRESHOLD;
-      if (crossedUp || crossedDown) {
-        swapMarkerElements(crossedUp);
+    // Reusable popup for hover
+    popupRef.current = new mapboxgl.Popup({
+      offset: 14,
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: "240px",
+    });
+
+    m.on("load", () => {
+      addIncidentLayers(m);
+      onMapReady?.(m);
+    });
+
+    // Click on individual point — select incident
+    m.on("click", LAYER_POINTS, (e) => {
+      if (!e.features || e.features.length === 0) return;
+      const id = e.features[0].properties?.id;
+      const incident = incidentMapRef.current.get(id);
+      if (incident) onSelectIncidentRef.current(incident);
+    });
+
+    // Click on cluster — zoom in
+    m.on("click", LAYER_CLUSTERS, (e) => {
+      if (!e.features || e.features.length === 0) return;
+      const clusterId = e.features[0].properties?.cluster_id;
+      const src = m.getSource(SRC) as mapboxgl.GeoJSONSource;
+      src.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err || zoom == null) return;
+        const coords = (e.features![0].geometry as GeoJSON.Point).coordinates;
+        m.easeTo({ center: coords as [number, number], zoom });
+      });
+    });
+
+    // Click on empty area — deselect
+    m.on("click", (e) => {
+      const features = m.queryRenderedFeatures(e.point, {
+        layers: [LAYER_POINTS, LAYER_CLUSTERS, LAYER_SELECTED],
+      });
+      if (features.length === 0) {
+        onMapClickRef.current?.();
       }
     });
 
-    m.on("click", () => {
-      // Skip if a marker was just clicked (marker sets the flag before this fires)
-      if (markerClickedRef.current) {
-        markerClickedRef.current = false;
-        return;
-      }
-      onMapClickRef.current?.();
+    // Hover popup on points
+    m.on("mousemove", LAYER_POINTS, (e) => {
+      if (!e.features || e.features.length === 0) return;
+      m.getCanvas().style.cursor = "pointer";
+      const props = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point)
+        .coordinates as [number, number];
+      const videoTag =
+        props.hasVideo === "1"
+          ? ' · <span style="color:#a855f7;">VIDEO</span>'
+          : "";
+      popupRef.current!
+        .setLngLat(coords)
+        .setHTML(
+          `<div>
+            <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(props.location)}</div>
+            <div style="color:#999;font-size:11px;">${escapeHtml(props.date)} · ${escapeHtml(props.weapon)}${videoTag}</div>
+            <div style="color:#ccc;font-size:12px;margin-top:6px;">${escapeHtml(props.description)}</div>
+            <div style="color:${props.color};font-size:10px;margin-top:6px;cursor:pointer;">Click for details →</div>
+          </div>`
+        )
+        .addTo(m);
+    });
+
+    m.on("mouseleave", LAYER_POINTS, () => {
+      m.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    });
+
+    // Cursor on clusters
+    m.on("mouseenter", LAYER_CLUSTERS, () => {
+      m.getCanvas().style.cursor = "pointer";
+    });
+    m.on("mouseleave", LAYER_CLUSTERS, () => {
+      m.getCanvas().style.cursor = "";
     });
 
     return () => {
-      clearMarkers();
+      layersReady.current = false;
+      popupRef.current?.remove();
       clearBaseMarkers();
       clearProxyLabels();
       map.current?.remove();
     };
-  }, [clearMarkers, clearBaseMarkers, clearProxyLabels, onMapReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearBaseMarkers, clearProxyLabels, onMapReady, addIncidentLayers]);
 
-  // Handle map style changes (skip the initial value)
+  // Handle map style changes
   const initialStyleRef = useRef(mapStyleUrl);
   useEffect(() => {
     const m = map.current;
     if (!m || !mapStyleUrl) return;
-
-    // Skip the first render — the map was initialized with this style
     if (mapStyleUrl === initialStyleRef.current) return;
-    initialStyleRef.current = undefined; // only skip once
+    initialStyleRef.current = undefined;
 
-    // Wait until the map is fully loaded before changing style
     const applyStyle = () => {
+      layersReady.current = false;
       m.setStyle(mapStyleUrl);
       m.once("style.load", () => {
-        clearMarkers();
-        prevIncidentIds.current.clear();
+        addIncidentLayers(m);
       });
     };
 
@@ -336,204 +431,106 @@ export default function MapView({
     } else {
       m.once("load", applyStyle);
     }
-  }, [mapStyleUrl, clearMarkers]);
+  }, [mapStyleUrl, addIncidentLayers]);
 
-  // Incident markers — diff-based: only add/remove changed markers
+  // Update GeoJSON source when incidents change
   useEffect(() => {
-    if (!map.current) return;
+    const m = map.current;
+    if (!m) return;
 
-    const onMapReady = () => {
-      const validIncidents = incidents.filter((i) => i.lat !== 0 && i.lng !== 0);
-      const currentIds = new Set(validIncidents.map((i) => i.id));
+    const update = () => {
+      if (!layersReady.current) return;
 
-      // Remove markers that are no longer in the incident list
-      for (const [id, marker] of markersRef.current) {
-        if (!currentIds.has(id)) {
-          marker.remove();
-          markersRef.current.delete(id);
-          incidentDataRef.current.delete(id);
-          markerMetaRef.current.delete(id);
-        }
+      // Update incident lookup map
+      incidentMapRef.current.clear();
+      for (const inc of incidents) {
+        incidentMapRef.current.set(inc.id, inc);
       }
 
-      // Add markers only for new incidents
-      for (const incident of validIncidents) {
-        incidentDataRef.current.set(incident.id, incident);
-        if (markersRef.current.has(incident.id)) continue;
-
-        const interceptIcon = getInterceptIcon(incident);
-        const color = interceptIcon === "shield" ? "#22c55e"
-          : interceptIcon === "shield-broken" ? "#ef4444"
-          : interceptIcon === "shield-unknown" ? "#6b7280"
-          : (incident.side === "us_israel" || incident.side === "us" || incident.side === "israel")
-            ? "#3b82f6"
-            : getWeaponColor(incident.weapon);
-        const iconType = interceptIcon || getIconType(incident.weapon);
-
-        // Store metadata for zoom-adaptive swapping
-        markerMetaRef.current.set(incident.id, { color, iconType });
-
-        const el = document.createElement("div");
-        el.className = "incident-marker";
-        el.style.setProperty("--marker-color", color);
-        el.style.cursor = "pointer";
-
-        const isDetailed = currentZoomRef.current >= ZOOM_DETAIL_THRESHOLD;
-
-        if (isDetailed) {
-          const px = Math.round(32 * markerSize);
-          el.style.width = `${px}px`;
-          el.style.height = `${px}px`;
-          el.innerHTML = createMarkerSvg(color, iconType);
-        } else {
-          const dotSize = Math.round(8 * markerSize);
-          el.style.width = `${dotSize}px`;
-          el.style.height = `${dotSize}px`;
-          el.style.borderRadius = "50%";
-          el.style.backgroundColor = color;
-          el.style.boxShadow = `0 0 ${Math.round(dotSize * 0.6)}px ${color}`;
-        }
-
-        // Apply age-based fading (skip when timeline is active)
-        if (!timelineActive) {
-          const age = getMarkerAge(incident);
-          if (isDetailed) {
-            applyAgeFading(el, age, markerOpacity);
-          } else {
-            el.style.opacity = String(age.opacity * markerOpacity);
-          }
-        } else {
-          el.style.opacity = String(markerOpacity);
-          if (!prevIncidentIds.current.has(incident.id)) {
-            el.classList.add("timeline-new");
-          }
-        }
-
-        // Hover: restore full opacity; mouseleave: revert to age-appropriate
-        el.addEventListener("mouseenter", () => {
-          el.style.opacity = "1";
-          el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
-          popup.addTo(map.current!);
-        });
-        el.addEventListener("mouseleave", () => {
-          popup.remove();
-          // Don't fade back if this is the selected marker
-          if (selectedIncidentRef.current?.id === incident.id) return;
-          if (timelineActiveRef.current) {
-            el.style.opacity = String(markerOpacityRef.current);
-          } else {
-            const age = getMarkerAge(incident);
-            applyAgeFading(el, age, markerOpacityRef.current);
-          }
-        });
-
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          markerClickedRef.current = true;
-          onSelectIncidentRef.current(incident);
-        });
-
-        const hasVideo = Boolean(
-          incident.video_url ||
-          incident.telegram_post_id ||
-          (incident.source_url && /t\.me\/\w+\/\d+/.test(incident.source_url))
-        );
-
-        const popup = new mapboxgl.Popup({
-          offset: 18,
-          closeButton: false,
-          closeOnClick: false,
-          maxWidth: "240px",
-        }).setHTML(
-          `<div>
-            <div style="font-weight:600;margin-bottom:4px;">${incident.location}</div>
-            <div style="color:#999;font-size:11px;">${incident.date} · ${incident.weapon || "Strike"}${hasVideo ? ' · <span style="color:#a855f7;">VIDEO</span>' : ""}</div>
-            <div style="color:#ccc;font-size:12px;margin-top:6px;">${incident.description}</div>
-            <div style="color:${color};font-size:10px;margin-top:6px;cursor:pointer;">Click for details →</div>
-          </div>`
-        );
-
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([incident.lng, incident.lat])
-          .setPopup(popup)
-          .addTo(map.current!);
-
-        markersRef.current.set(incident.id, marker);
-      }
-
-      if (timelineActive) {
-        prevIncidentIds.current = new Set(currentIds);
-      }
+      const geojson = buildGeoJSON(incidents, timelineActive, markerOpacity);
+      const src = m.getSource(SRC) as mapboxgl.GeoJSONSource | undefined;
+      if (src) src.setData(geojson);
     };
 
-    if (map.current.loaded()) {
-      onMapReady();
+    if (m.loaded() && layersReady.current) {
+      update();
     } else {
-      map.current.on("load", onMapReady);
+      m.once("load", () => {
+        // Small delay to ensure layers are added
+        requestAnimationFrame(update);
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidents, timelineActive, markerSize, markerOpacity]);
+  }, [incidents, timelineActive, markerOpacity]);
 
-  // Update existing marker sizes when settings change
+  // Update marker sizes when settings change
   useEffect(() => {
-    const isDetailed = currentZoomRef.current >= ZOOM_DETAIL_THRESHOLD;
-    const px = isDetailed ? Math.round(32 * markerSize) : Math.round(8 * markerSize);
-    markersRef.current.forEach((marker) => {
-      const el = marker.getElement();
-      el.style.width = `${px}px`;
-      el.style.height = `${px}px`;
-    });
+    const m = map.current;
+    if (!m || !layersReady.current) return;
+    try {
+      if (m.getLayer(LAYER_POINTS)) {
+        m.setPaintProperty(LAYER_POINTS, "circle-radius", [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          3, 3 * markerSize,
+          6, 5 * markerSize,
+          10, 7 * markerSize,
+          14, 10 * markerSize,
+        ]);
+      }
+    } catch { /* layer might not exist yet */ }
   }, [markerSize]);
 
   // Recalculate age-based fading every 60 seconds
   useEffect(() => {
-    const updateFading = () => {
-      if (timelineActiveRef.current) return; // skip during timeline
-      markersRef.current.forEach((marker, id) => {
-        const inc = incidentDataRef.current.get(id);
-        if (!inc) return;
-        const el = marker.getElement();
-        // Don't fade the selected marker
-        if (selectedIncidentRef.current?.id === id) {
-          el.style.opacity = "1";
-          el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
-          return;
-        }
-        const age = getMarkerAge(inc);
-        applyAgeFading(el, age, markerOpacityRef.current);
-      });
-    };
-
-    // Initial application
-    updateFading();
-    const iv = setInterval(updateFading, 60_000);
+    const iv = setInterval(() => {
+      const m = map.current;
+      if (!m || !layersReady.current || timelineActiveRef.current) return;
+      const geojson = buildGeoJSON(
+        Array.from(incidentMapRef.current.values()),
+        false,
+        markerOpacityRef.current
+      );
+      const src = m.getSource(SRC) as mapboxgl.GeoJSONSource | undefined;
+      if (src) src.setData(geojson);
+    }, 60_000);
     return () => clearInterval(iv);
   }, []);
 
-  // Keep selected marker at full opacity
+  // Update selected incident highlight
   useEffect(() => {
-    // Restore previous selection to age-appropriate level
-    markersRef.current.forEach((marker, id) => {
-      if (selectedIncident?.id === id) {
-        const el = marker.getElement();
-        el.style.opacity = "1";
-        el.style.filter = "drop-shadow(0 0 6px var(--marker-color, #ef4444))";
-      } else if (!timelineActive) {
-        const inc = incidentDataRef.current.get(id);
-        if (inc) {
-          const age = getMarkerAge(inc);
-          applyAgeFading(marker.getElement(), age, markerOpacity);
-        }
-      }
-    });
-  }, [selectedIncident, timelineActive, markerOpacity]);
+    const m = map.current;
+    if (!m || !layersReady.current) return;
 
-  // Fly to selected incident
+    const src = m.getSource(SRC_SELECTED) as mapboxgl.GeoJSONSource | undefined;
+    if (!src) return;
+
+    if (selectedIncident && selectedIncident.lat && selectedIncident.lng) {
+      src.setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { color: getIncidentColor(selectedIncident) },
+            geometry: {
+              type: "Point",
+              coordinates: [selectedIncident.lng, selectedIncident.lat],
+            },
+          },
+        ],
+      });
+    } else {
+      src.setData({ type: "FeatureCollection", features: [] });
+    }
+  }, [selectedIncident]);
+
+  // Fly to selected incident — zoom in but never zoom out
   useEffect(() => {
     if (selectedIncident && map.current && selectedIncident.lat && selectedIncident.lng) {
+      const currentZoom = map.current.getZoom();
       map.current.flyTo({
         center: [selectedIncident.lng, selectedIncident.lat],
-        zoom: 7,
+        zoom: Math.max(currentZoom, 7),
         duration: 1000,
       });
     }
@@ -562,10 +559,10 @@ export default function MapView({
           maxWidth: "220px",
         }).setHTML(
           `<div>
-            <div style="font-weight:600;color:${color};margin-bottom:4px;">${base.name}</div>
+            <div style="font-weight:600;color:${color};margin-bottom:4px;">${escapeHtml(base.name)}</div>
             <div style="color:#999;font-size:11px;">
               ${base.operator === "iran" ? "Iranian" : base.operator === "israel" ? "Israeli" : "US/Coalition"}
-              · ${base.type.charAt(0).toUpperCase() + base.type.slice(1)} Base
+              · ${escapeHtml(base.type.charAt(0).toUpperCase() + base.type.slice(1))} Base
             </div>
           </div>`
         );
@@ -608,7 +605,9 @@ export default function MapView({
         if (m.getLayer(lineLayerId)) m.removeLayer(lineLayerId);
         if (m.getSource(sourceId)) m.removeSource(sourceId);
         if (m.getSource(lineSourceId)) m.removeSource(lineSourceId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     if (!showProxies) {
@@ -619,7 +618,6 @@ export default function MapView({
     const addProxies = () => {
       cleanup();
 
-      // Territory circles
       const features = PROXY_GROUPS.map((g) => {
         const feat = createProxyCircle(g.centerLat, g.centerLng, g.radiusKm);
         feat.properties = { color: g.color, name: g.name };
@@ -653,7 +651,6 @@ export default function MapView({
         },
       });
 
-      // Connection lines from Tehran
       const lineFeatures = PROXY_CONNECTIONS.map((c) => ({
         type: "Feature" as const,
         properties: {},
@@ -680,7 +677,6 @@ export default function MapView({
         },
       });
 
-      // DOM labels at group centers
       PROXY_GROUPS.forEach((g) => {
         const el = document.createElement("div");
         el.className = "proxy-label";
@@ -718,7 +714,9 @@ export default function MapView({
         if (m.getLayer(rangeLayerId)) m.removeLayer(rangeLayerId);
         if (m.getLayer(rangeBorderId)) m.removeLayer(rangeBorderId);
         if (m.getSource(rangeSourceId)) m.removeSource(rangeSourceId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     if (!rangeWeapon) {
@@ -729,7 +727,11 @@ export default function MapView({
     const addRange = () => {
       cleanup();
 
-      const circle = createCircleGeoJSON(rangeWeapon.lat, rangeWeapon.lng, rangeWeapon.radiusKm);
+      const circle = createCircleGeoJSON(
+        rangeWeapon.lat,
+        rangeWeapon.lng,
+        rangeWeapon.radiusKm
+      );
 
       m.addSource(rangeSourceId, {
         type: "geojson",
@@ -758,14 +760,12 @@ export default function MapView({
         },
       });
 
-      // Fly to the range area
       m.flyTo({
         center: [rangeWeapon.lng, rangeWeapon.lat],
         zoom: 4.5,
         duration: 1200,
       });
 
-      // Auto-clear after 15 seconds
       setTimeout(() => {
         onRangeWeaponClear?.();
       }, 15000);
@@ -780,7 +780,5 @@ export default function MapView({
     return cleanup;
   }, [rangeWeapon, onRangeWeaponClear]);
 
-  return (
-    <div ref={mapContainer} className="w-full h-full" />
-  );
+  return <div ref={mapContainer} className="w-full h-full" />;
 }

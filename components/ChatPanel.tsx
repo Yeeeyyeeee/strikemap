@@ -7,6 +7,7 @@ interface ChatMessage {
   text: string;
   nickname: string;
   timestamp: number;
+  role?: "dev";
 }
 
 function getOrCreateNickname(): string {
@@ -138,7 +139,7 @@ export default memo(function ChatPanel() {
         className={`fixed right-4 bottom-4 z-50 w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
           open
             ? "bg-neutral-700 border-neutral-600 text-white"
-            : "bg-[#1a1a1a]/90 backdrop-blur-sm border-[#2a2a2a] text-neutral-500 hover:text-neutral-300"
+            : "bg-[#1a1a1a] border-[#2a2a2a] text-neutral-500 hover:text-neutral-300"
         }`}
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -175,6 +176,9 @@ export default memo(function ChatPanel() {
             {messages.map((msg) => (
               <div key={msg.id} className="text-sm">
                 <span className="font-semibold text-neutral-300 text-xs">{msg.nickname}</span>
+                {msg.role === "dev" && (
+                  <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">dev</span>
+                )}
                 <span className="text-neutral-600 text-[10px] ml-1.5">{relativeTime(msg.timestamp)}</span>
                 <p className="text-neutral-400 text-xs mt-0.5 break-words">{msg.text}</p>
               </div>

@@ -110,26 +110,61 @@ export function geocodeIsraeliLocation(name: string): Coords | null {
 }
 
 /**
- * Infer a plausible missile launch origin based on target coordinates.
- * Northern Israel targets → Hezbollah (southern Lebanon)
- * Central/Southern Israel targets → Iran (IRGC missile bases)
+ * Infer a plausible missile launch origin based on target coordinates,
+ * threat type, and countdown time.
+ *
+ * Key insight: the Tzeva Adom countdown tells us distance:
+ *   - 0-15s  → Gaza (very close)
+ *   - 15-45s → Lebanon/Syria (nearby)
+ *   - 60s+   → Iran/Iraq/Yemen (long-range ballistic)
+ *
+ * threatType also helps: "drone" with long countdown = Iran (Shahed),
+ * "missile" with long countdown = Iran (ballistic).
  */
-export function getOriginForTarget(targetLat: number, targetLng: number): Coords {
-  // Northern Israel (above Haifa) — likely Hezbollah from southern Lebanon
+export function getOriginForTarget(
+  targetLat: number,
+  targetLng: number,
+  threatType?: "missile" | "drone" | "unknown",
+  countdown?: number,
+): Coords {
+  // Long countdown (90s+) → long-range from Iran, regardless of target location
+  if (countdown && countdown >= 90) {
+    if (threatType === "drone") {
+      // Drones launched from western Iran (closer staging)
+      return { lat: 33.49, lng: 48.35 }; // Khorramabad, Iran (western launch site)
+    }
+    return { lat: 32.65, lng: 51.68 }; // Isfahan, Iran (ballistic missile)
+  }
+
+  // Medium countdown (45-89s) → Iraq/Syria proxies or Iran
+  if (countdown && countdown >= 45) {
+    // Could be Iran or Iraq-based proxies
+    if (targetLat > 32.5) {
+      // Northern target with medium countdown → could be Syria/Iraq
+      return { lat: 34.80, lng: 47.07 }; // Kermanshah, Iran (western border)
+    }
+    return { lat: 32.65, lng: 51.68 }; // Isfahan, Iran
+  }
+
+  // Short countdown or no countdown data → use geography
+  // Gaza targets (southern, very short countdown)
+  if (countdown && countdown <= 15 && targetLat < 31.8) {
+    return { lat: 31.50, lng: 34.47 }; // Gaza
+  }
+
+  // Northern Israel (above Haifa lat) with short countdown → Lebanon
   if (targetLat > 32.5) {
-    // Vary origin across southern Lebanon launch sites
     if (targetLng > 35.3) {
       return { lat: 33.85, lng: 36.05 }; // Bekaa Valley, Lebanon
     }
     return { lat: 33.30, lng: 35.45 }; // South Lebanon / Nabatieh area
   }
 
-  // Central Israel (Tel Aviv area) — could be Iran or Hezbollah
-  // Use Iran (longer range = ballistic missiles)
+  // Central Israel — default to Iran (ballistic)
   if (targetLat >= 31.4) {
     return { lat: 32.65, lng: 51.68 }; // Isfahan, Iran
   }
 
-  // Southern Israel (Negev, Beer Sheva, Eilat) — Iran
+  // Southern Israel — Iran
   return { lat: 32.0, lng: 52.5 }; // Central Iran
 }

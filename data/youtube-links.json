@@ -1,0 +1,11 @@
+{
+  "liveCams": [
+    { "id": "yw-8lJwXzOU", "label": "Live Cam 1" },
+    { "id": "4E-iFtUM2kk", "label": "Live Cam 2" }
+  ],
+  "speech": {
+    "id": "XMT5crvHvVc",
+    "title": "Trump Address",
+    "enabled": true
+  }
+}

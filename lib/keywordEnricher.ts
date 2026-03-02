@@ -521,10 +521,41 @@ function detectCasualties(text: string): CasualtyResult {
   };
 }
 
+// At least one of these must appear for a post to be considered an actual military event
+const STRIKE_INDICATORS = [
+  // English action words
+  "strike", "struck", "attack", "attacked", "bomb", "bombed", "bombing",
+  "shell", "shelled", "shelling", "launch", "launched", "fire", "fired",
+  "missile", "rocket", "drone", "airstrike", "air strike",
+  "intercept", "intercepted", "shoot down", "shot down",
+  "explod", "explosion", "blast", "detonate", "detonation",
+  "target", "targeted", "destroy", "destroyed",
+  "raid", "assault", "offensive",
+  "casualties", "killed", "dead", "wounded", "injured",
+  "damage", "crater", "impact",
+  "siren", "alert", "alarm", "tzeva adom", "red alert",
+  "escalation", "retaliation", "retaliate",
+  "shahed", "fateh", "fattah", "emad", "ghadr", "sejjil", "tomahawk", "jdam",
+  "iron dome", "arrow-3", "thaad", "david's sling",
+  "war ", "warplane", "warship",
+  // Persian
+  "حمله", "موشک", "پهپاد", "بمباران", "شلیک", "اصابت", "انفجار",
+  "شهید", "کشته", "مجروح",
+  // Hebrew
+  "תקיפה", "ירי", "רקטה", "טיל", "פיצוץ", "אזעקה", "צבע אדום",
+  // Arabic
+  "ضربة", "صاروخ", "قصف", "هجوم", "استهداف", "انفجار",
+];
+
 export function enrichWithKeywords(text: string): EnrichmentResult | null {
   if (!text || text.length < 10) return null;
 
   const lower = text.toLowerCase();
+
+  // Require at least one military/strike indicator — filters out political announcements,
+  // press conferences, speeches, sanctions, negotiations, etc.
+  const hasStrikeIndicator = STRIKE_INDICATORS.some((kw) => lower.includes(kw) || text.includes(kw));
+  if (!hasStrikeIndicator) return null;
 
   // Find location
   const loc = matchFirst(text, LOCATIONS);

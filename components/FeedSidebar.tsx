@@ -3,21 +3,11 @@
 import { memo, useState, useEffect, useCallback } from "react";
 import { Incident } from "@/lib/types";
 import { ChannelPost } from "@/lib/telegram";
+import { isDirectVideoUrl } from "@/lib/videoUtils";
 
 interface FeedSidebarProps {
   incidents: Incident[];
   onSelectIncident: (incident: Incident) => void;
-}
-
-const YOUTUBE_VIDEO_ID = "yw-8lJwXzOU";
-
-function isDirectVideo(url: string): boolean {
-  return (
-    url.includes("telesco.pe") ||
-    url.includes("telegram") ||
-    url.includes("cdn") ||
-    /\.(mp4|webm|mov)(\?|$)/i.test(url)
-  );
 }
 
 export default memo(function FeedSidebar({
@@ -27,6 +17,16 @@ export default memo(function FeedSidebar({
   const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<ChannelPost[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [YOUTUBE_VIDEO_IDS, setYouTubeIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/youtube-links")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.liveCams?.length) setYouTubeIds(d.liveCams.map((c: { id: string }) => c.id));
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -105,7 +105,7 @@ export default memo(function FeedSidebar({
   if (posts.length === 0) return null;
 
   return (
-    <div className="fixed top-14 right-0 w-72 h-[calc(100vh-3.5rem)] bg-[#111]/90 backdrop-blur-sm border-l border-[#2a2a2a] z-40 hidden md:flex flex-col">
+    <div className="fixed top-14 right-0 w-72 h-[calc(100vh-3.5rem)] bg-[#111] border-l border-[#2a2a2a] z-40 hidden md:flex flex-col">
       {/* Tab header */}
       <div className="p-2 border-b border-[#2a2a2a] flex items-center gap-1 bg-[#0a0a0a]/50">
         <button
@@ -129,7 +129,7 @@ export default memo(function FeedSidebar({
           style={{ fontFamily: "JetBrains Mono, monospace" }}
         >
           <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
           </span>
           Live Cam
@@ -138,25 +138,18 @@ export default memo(function FeedSidebar({
 
       {/* Tab content */}
       {tab === "youtube" ? (
-        <div className="flex-1 flex flex-col">
-          <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+        <div className="flex-1 overflow-y-auto">
+          {YOUTUBE_VIDEO_IDS.map((vid, i) => (
             <iframe
-              className="absolute inset-0 w-full h-full"
-              src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?autoplay=1&mute=1`}
-              title="Live Cam"
+              key={vid}
+              className="w-full aspect-video block"
+              src={`https://www.youtube.com/embed/${vid}?autoplay=${i === 0 ? 1 : 0}&mute=1`}
+              title={`Live Cam ${i + 1}`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               frameBorder="0"
             />
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <p
-              className="text-[10px] text-neutral-600 uppercase tracking-wider px-4 text-center"
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Live camera feed
-            </p>
-          </div>
+          ))}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto divide-y divide-[#2a2a2a]/50">
@@ -167,33 +160,40 @@ export default memo(function FeedSidebar({
 
             return (
               <div key={post.id}>
-                {/* Collapsed row — always visible */}
+                {/* Collapsed row — fixed height, uniform size */}
                 <button
-                  onClick={() => handlePostClick(post)}
-                  className={`w-full text-left p-3 hover:bg-[#1a1a1a] transition-colors ${
+                  onClick={() => {
+                    if (onMap) {
+                      handlePostClick(post);
+                    } else {
+                      setExpandedId((prev) => (prev === post.id ? null : post.id));
+                    }
+                  }}
+                  className={`w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors ${
                     isExpanded ? "bg-[#1a1a1a]" : ""
                   }`}
+                  style={{ height: 68 }}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                  <div className="flex items-center gap-1.5 mb-1 overflow-hidden h-[18px]">
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 shrink-0">
                       {post.channelUsername}
                     </span>
                     {post.videoUrl && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 shrink-0">
                         VID
                       </span>
                     )}
                     {(post.imageUrls || []).length > 0 && !post.videoUrl && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-green-500/20 text-green-400">
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
                         IMG
                       </span>
                     )}
                     {onMap && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400">
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
                         MAP
                       </span>
                     )}
-                    <span className="text-neutral-600 text-[10px] ml-auto">
+                    <span className="text-neutral-600 text-[10px] ml-auto shrink-0">
                       {post.timestamp
                         ? new Date(post.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -202,16 +202,23 @@ export default memo(function FeedSidebar({
                         : post.date}
                     </span>
                   </div>
-                  <p className={`text-xs text-neutral-300 ${isExpanded ? "" : "line-clamp-3"}`}>
+                  <p className="text-xs text-neutral-300 line-clamp-2 leading-tight">
                     {post.text}
                   </p>
                 </button>
 
-                {/* Expanded content — media + full text + source */}
+                {/* Expanded content — full text + media + source (only on click) */}
                 {isExpanded && (
                   <div className="bg-[#0e0e0e] border-t border-[#2a2a2a]/50">
+                    {/* Full text */}
+                    <div className="px-3 py-2">
+                      <p className="text-xs text-neutral-300 whitespace-pre-line leading-relaxed">
+                        {post.text}
+                      </p>
+                    </div>
+
                     {/* Video */}
-                    {post.videoUrl && isDirectVideo(post.videoUrl) && (
+                    {post.videoUrl && isDirectVideoUrl(post.videoUrl) && (
                       <video
                         src={post.videoUrl}
                         controls
@@ -220,7 +227,7 @@ export default memo(function FeedSidebar({
                         className="w-full max-h-[180px] object-contain bg-black"
                       />
                     )}
-                    {post.videoUrl && !isDirectVideo(post.videoUrl) && (
+                    {post.videoUrl && !isDirectVideoUrl(post.videoUrl) && (
                       <div className="px-3 py-2">
                         <a
                           href={post.videoUrl}

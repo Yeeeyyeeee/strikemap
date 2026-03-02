@@ -1,4 +1,6 @@
 import { Incident, StrikeSide } from "./types";
+import { haversineKm } from "./geo";
+import { KILL_CHAIN_RADIUS_KM } from "./constants";
 
 export interface KillChainStage {
   type: "launch" | "intercept" | "impact";
@@ -19,22 +21,6 @@ export interface KillChainEvent {
   impacted: number;
   weapons: string[];
   damageSeverity?: string;
-}
-
-/** Haversine distance in km between two lat/lng points */
-function haversineKm(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
@@ -62,7 +48,7 @@ export function groupIntoKillChains(incidents: Incident[]): KillChainEvent[] {
       if (other.side !== inc.side) continue;
 
       const dist = haversineKm(inc.lat, inc.lng, other.lat, other.lng);
-      if (dist < 100) {
+      if (dist < KILL_CHAIN_RADIUS_KM) {
         group.push(other);
         used.add(other.id);
       }

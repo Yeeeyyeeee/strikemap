@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 interface StrikeFlashProps {
   active: boolean;
 }
 
-export default function StrikeFlash({ active }: StrikeFlashProps) {
+export default memo(function StrikeFlash({ active }: StrikeFlashProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -22,4 +22,4 @@ export default function StrikeFlash({ active }: StrikeFlashProps) {
   return (
     <div className="strike-flash fixed inset-0 z-[100] pointer-events-none" />
   );
-}
+});

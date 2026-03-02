@@ -1,6 +1,7 @@
 import { Incident, MediaItem } from "./types";
 import { enrichBatch } from "./geocodeWithAI";
 import { enrichWithKeywords } from "./keywordEnricher";
+import { applyEnrichment } from "./enrichmentUtils";
 
 const IRAN_KEYWORDS = [
   "iran",
@@ -88,7 +89,7 @@ export function getTelegramEmbedUrl(postId: string): string {
   return `https://t.me/${postId}?embed=1&dark=1`;
 }
 
-function getConfiguredChannels(): string[] {
+export function getConfiguredChannels(): string[] {
   const channels = process.env.TELEGRAM_CHANNELS || "";
   return channels
     .split(",")
@@ -275,7 +276,7 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
   return posts;
 }
 
-function postToIncident(post: ChannelPost): Incident {
+export function postToIncident(post: ChannelPost): Incident {
   const msgId = post.id.split("/").pop() || "";
 
   // Build media array from video + images
@@ -339,22 +340,7 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
 
       const kwResult = enrichWithKeywords(post.text);
       if (kwResult) {
-        inc.location = kwResult.location;
-        inc.lat = kwResult.lat;
-        inc.lng = kwResult.lng;
-        inc.weapon = kwResult.weapon || inc.weapon;
-        inc.target_type = kwResult.target_type || inc.target_type;
-        inc.side = kwResult.side;
-        inc.target_military = kwResult.target_military;
-        if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
-        if (kwResult.casualties_civilian) inc.casualties_civilian = kwResult.casualties_civilian;
-        if (kwResult.casualties_description && kwResult.casualties_description !== "No casualties reported") {
-          inc.casualties_description = kwResult.casualties_description;
-        }
-        if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
-        if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
-        if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
-        if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
+        applyEnrichment(inc, kwResult);
       } else {
         needsAI.push(post);
       }
@@ -431,22 +417,7 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
 
       const kwResult = enrichWithKeywords(post.text);
       if (kwResult) {
-        inc.location = kwResult.location;
-        inc.lat = kwResult.lat;
-        inc.lng = kwResult.lng;
-        inc.weapon = kwResult.weapon || inc.weapon;
-        inc.target_type = kwResult.target_type || inc.target_type;
-        inc.side = kwResult.side;
-        inc.target_military = kwResult.target_military;
-        if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
-        if (kwResult.casualties_civilian) inc.casualties_civilian = kwResult.casualties_civilian;
-        if (kwResult.casualties_description && kwResult.casualties_description !== "No casualties reported") {
-          inc.casualties_description = kwResult.casualties_description;
-        }
-        if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
-        if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
-        if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
-        if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
+        applyEnrichment(inc, kwResult);
       } else {
         needsAI.push(post);
       }

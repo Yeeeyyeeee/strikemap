@@ -23,7 +23,7 @@ export default memo(function Legend({ weapons, timelineActive }: { weapons: stri
   const hasAirstrike = weapons.some((w) => w.toLowerCase().includes("airstrike"));
 
   return (
-    <div className="bg-[#1a1a1a]/90 backdrop-blur-sm border border-[#2a2a2a] rounded-lg p-3">
+    <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg p-3">
       <h3
         className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2"
         style={{ fontFamily: "JetBrains Mono, monospace" }}

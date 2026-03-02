@@ -6,11 +6,16 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "video:setup": "bash scripts/video/setup.sh",
+    "video:daily": "bash scripts/video/make-video.sh daily --capture",
+    "video:breaking": "bash scripts/video/make-video.sh breaking --capture",
+    "video:leadership": "bash scripts/video/make-video.sh leadership --capture",
+    "video:weapons": "bash scripts/video/make-video.sh weapons --capture",
+    "video:weekly": "bash scripts/video/make-video.sh weekly --capture"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@mapbox/point-geometry": "^1.1.0",
     "@upstash/redis": "^1.36.3",
     "@vercel/analytics": "^1.6.1",
     "mapbox-gl": "^3.9.4",
@@ -28,6 +33,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.2.0",
     "postcss": "^8.5.0",
+    "puppeteer": "^24.37.5",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"
   }

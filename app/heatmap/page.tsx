@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import HeatmapMap from "@/components/HeatmapMap";
 import MediaFeedPanel from "@/components/MediaFeedPanel";
+import SirenBanner from "@/components/SirenBanner";
 import { useIncidents } from "@/hooks/useIncidents";
+import { useSirenPolling } from "@/hooks/useSirenPolling";
 
 interface HeatmapArea {
   lat: number;
@@ -16,6 +18,11 @@ export default function HeatmapPage() {
   const { incidents } = useIncidents();
   const [selectedArea, setSelectedArea] = useState<HeatmapArea | null>(null);
   const [warningDismissed, setWarningDismissed] = useState(true);
+
+  const { sirenAlerts } = useSirenPolling({
+    soundEnabled: false,
+    notificationsEnabled: false,
+  });
 
   // Content warning — check localStorage on mount
   useEffect(() => {
@@ -30,6 +37,7 @@ export default function HeatmapPage() {
 
   return (
     <div className="h-screen w-screen overflow-hidden">
+      <SirenBanner alerts={sirenAlerts} />
       <Header incidents={incidents} />
       <main className="h-full w-full pt-14 relative z-0 flex">
         <HeatmapMap onAreaSelect={setSelectedArea} className="flex-1" />
