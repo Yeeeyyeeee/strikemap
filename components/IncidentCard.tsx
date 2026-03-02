@@ -77,10 +77,12 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
   // Video state
   const video = getVideoStrategy(incident);
   const [expanded, setExpanded] = useState(false);
+  const [mediaIndex, setMediaIndex] = useState(0);
 
   // Reset state when incident changes
   useEffect(() => {
     setExpanded(false);
+    setMediaIndex(0);
     initialZoom.current = map.getZoom();
   }, [incident.id, map]);
 
@@ -134,25 +136,27 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
 
   const sevColors = SEVERITY_COLORS[incident.damage_severity || "minor"] || SEVERITY_COLORS.minor;
 
-  // Collect all media: from media array, then fallback to video_url
-  const mediaItems = incident.media && incident.media.length > 0
+  // Collect media: prefer media array, fallback to video_url — only videos (skip standalone images to avoid clutter)
+  const allMedia = incident.media && incident.media.length > 0
     ? incident.media
     : video.type !== "none"
-      ? [{ type: video.type === "youtube" ? "video" as const : "video" as const, url: video.type === "youtube" ? video.url : incident.video_url }]
+      ? [{ type: "video" as const, url: video.type === "youtube" ? video.url : incident.video_url }]
       : [];
+
+  const currentMedia = allMedia[mediaIndex] || null;
 
   // Shared card body (media + details)
   const cardBody = (
     <>
-      {/* === MEDIA ON TOP === */}
-      {mediaItems.length > 0 && (
-        <div className="border-b border-[#2a2a2a] bg-black">
-          {mediaItems.map((item, idx) => {
-            if (item.type === "video") {
-              const ytUrl = getYouTubeEmbedUrl(item.url);
+      {/* === SINGLE MEDIA ITEM ON TOP === */}
+      {currentMedia && (
+        <div className="border-b border-[#2a2a2a] bg-black relative">
+          {currentMedia.type === "video" ? (
+            (() => {
+              const ytUrl = getYouTubeEmbedUrl(currentMedia.url);
               if (ytUrl) {
                 return (
-                  <div key={idx} className="aspect-video">
+                  <div className="aspect-video">
                     <iframe
                       src={ytUrl}
                       className="w-full h-full"
@@ -163,11 +167,11 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
                   </div>
                 );
               }
-              if (isDirectVideoUrl(item.url)) {
+              if (isDirectVideoUrl(currentMedia.url)) {
                 return (
                   <video
-                    key={idx}
-                    src={item.url}
+                    key={currentMedia.url}
+                    src={currentMedia.url}
                     controls
                     playsInline
                     preload="metadata"
@@ -176,9 +180,9 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
                 );
               }
               return (
-                <div key={idx} className="px-4 py-3">
+                <div className="px-4 py-3">
                   <a
-                    href={item.url}
+                    href={currentMedia.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 underline underline-offset-2"
@@ -187,18 +191,43 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
                   </a>
                 </div>
               );
-            }
-            // Image
-            return (
-              <img
-                key={idx}
-                src={item.url}
-                alt={incident.location || "Incident"}
-                className="w-full max-h-[220px] object-cover"
-                loading="lazy"
-              />
-            );
-          })}
+            })()
+          ) : (
+            <img
+              key={currentMedia.url}
+              src={currentMedia.url}
+              alt={incident.location || "Incident"}
+              className="w-full max-h-[200px] object-cover"
+              loading="lazy"
+            />
+          )}
+
+          {/* Carousel arrows — only if multiple media */}
+          {allMedia.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMediaIndex((i) => (i - 1 + allMedia.length) % allMedia.length); }}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M7 1L2 5l5 4V1z" /></svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMediaIndex((i) => (i + 1) % allMedia.length); }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M3 1l5 4-5 4V1z" /></svg>
+              </button>
+              {/* Dots indicator */}
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+                {allMedia.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === mediaIndex ? "bg-white" : "bg-white/30"}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
