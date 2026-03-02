@@ -134,46 +134,71 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
 
   const sevColors = SEVERITY_COLORS[incident.damage_severity || "minor"] || SEVERITY_COLORS.minor;
 
-  // Shared card body (video + details)
+  // Collect all media: from media array, then fallback to video_url
+  const mediaItems = incident.media && incident.media.length > 0
+    ? incident.media
+    : video.type !== "none"
+      ? [{ type: video.type === "youtube" ? "video" as const : "video" as const, url: video.type === "youtube" ? video.url : incident.video_url }]
+      : [];
+
+  // Shared card body (media + details)
   const cardBody = (
     <>
-      {/* === VIDEO ON TOP === */}
-      {video.type === "youtube" && (
-        <div className="aspect-video border-b border-[#2a2a2a]">
-          <iframe
-            src={video.url}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Incident video"
-          />
-        </div>
-      )}
-
-      {video.type === "direct" && (
+      {/* === MEDIA ON TOP === */}
+      {mediaItems.length > 0 && (
         <div className="border-b border-[#2a2a2a] bg-black">
-          <video
-            src={video.url}
-            controls
-            playsInline
-            preload="metadata"
-            className="w-full max-h-[200px] object-contain"
-          >
-            Your browser does not support video playback.
-          </video>
-        </div>
-      )}
-
-      {video.type === "link" && (
-        <div className="border-b border-[#2a2a2a] px-4 py-3 bg-[#111]">
-          <a
-            href={video.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 underline underline-offset-2"
-          >
-            Watch video ↗
-          </a>
+          {mediaItems.map((item, idx) => {
+            if (item.type === "video") {
+              const ytUrl = getYouTubeEmbedUrl(item.url);
+              if (ytUrl) {
+                return (
+                  <div key={idx} className="aspect-video">
+                    <iframe
+                      src={ytUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Incident video"
+                    />
+                  </div>
+                );
+              }
+              if (isDirectVideoUrl(item.url)) {
+                return (
+                  <video
+                    key={idx}
+                    src={item.url}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full max-h-[200px] object-contain"
+                  />
+                );
+              }
+              return (
+                <div key={idx} className="px-4 py-3">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 underline underline-offset-2"
+                  >
+                    Watch video ↗
+                  </a>
+                </div>
+              );
+            }
+            // Image
+            return (
+              <img
+                key={idx}
+                src={item.url}
+                alt={incident.location || "Incident"}
+                className="w-full max-h-[220px] object-cover"
+                loading="lazy"
+              />
+            );
+          })}
         </div>
       )}
 
