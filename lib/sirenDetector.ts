@@ -100,6 +100,11 @@ const ISRAEL_KEYWORDS = [
 const activeSirens = new Map<string, SirenAlert & { expiresAt: number }>();
 
 const SIREN_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes auto-expire
+const SUPPRESS_DURATION_MS = 60 * 60 * 1000; // 1 hour suppress after admin clear
+
+// Countries suppressed by admin — won't be auto-recreated from Telegram
+// Key: lowercase country name, Value: suppress until timestamp
+const suppressedCountries = new Map<string, number>();
 
 let lastProcessedAt = 0;
 
@@ -139,12 +144,35 @@ export function hasRecentProcessing(): boolean {
  * Process a batch of Telegram posts and update the active siren state.
  * Called as a side effect from /api/feed.
  */
+/** Load suppression list from Redis (cold start sync). */
+async function loadSuppressions(): Promise<void> {
+  if (suppressedCountries.size > 0) return; // already loaded
+  const r = getRedis();
+  if (!r) return;
+  try {
+    const raw = await r.hgetall("siren_suppressed");
+    if (!raw || typeof raw !== "object") return;
+    const now = Date.now();
+    for (const [country, until] of Object.entries(raw)) {
+      const ts = Number(until);
+      if (ts > now) {
+        suppressedCountries.set(country, ts);
+      } else {
+        r.hdel("siren_suppressed", country).catch(() => {});
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 export function processSirenPosts(posts: Array<{
   id: string;
   channelUsername: string;
   text: string;
   timestamp: string;
 }>): void {
+  // Fire-and-forget load suppressions from Redis on first call
+  loadSuppressions().catch(() => {});
+
   const now = Date.now();
   lastProcessedAt = now;
 
@@ -177,6 +205,10 @@ export function processSirenPosts(posts: Array<{
 
     // Check for siren activation
     if (hasSirenKeywords(text)) {
+      // Skip if this country was recently cleared by admin
+      const suppressUntil = suppressedCountries.get(country.toLowerCase());
+      if (suppressUntil && now < suppressUntil) continue;
+
       // Extend existing siren for this country
       let existing = false;
       for (const siren of activeSirens.values()) {
@@ -279,11 +311,14 @@ export async function addManualSiren(country: string): Promise<SirenAlert> {
     expiresAt: now + SIREN_EXPIRY_MS,
   };
   activeSirens.set(id, alert);
+  // Un-suppress this country since admin is explicitly activating it
+  suppressedCountries.delete(country.toLowerCase());
   console.log(`[siren] MANUAL ACTIVATED: ${country}`);
 
   const r = getRedis();
   if (r) {
     await r.hset(REDIS_MANUAL_SIRENS_KEY, { [id]: JSON.stringify(alert) });
+    r.hdel("siren_suppressed", country.toLowerCase()).catch(() => {});
   }
 
   const { expiresAt: _, ...rest } = alert;
@@ -318,8 +353,16 @@ export async function clearSirenByCountry(country: string): Promise<number> {
       }
     } catch { /* ignore */ }
   }
+  // Suppress this country from being auto-recreated by Telegram scraper
+  const now = Date.now();
+  suppressedCountries.set(country.toLowerCase(), now + SUPPRESS_DURATION_MS);
+  const r2 = getRedis();
+  if (r2) {
+    r2.hset("siren_suppressed", { [country.toLowerCase()]: String(now + SUPPRESS_DURATION_MS) }).catch(() => {});
+  }
+
   if (cleared > 0) {
-    console.log(`[siren] ADMIN CLEARED: ${country} (${cleared} alerts)`);
+    console.log(`[siren] ADMIN CLEARED: ${country} (${cleared} alerts, suppressed for 1h)`);
   }
   return cleared;
 }
@@ -328,14 +371,25 @@ export async function clearSirenByCountry(country: string): Promise<number> {
  * Clear all active sirens. Used by admin UI.
  */
 export async function clearAllSirens(): Promise<number> {
+  const now = Date.now();
+  // Suppress all currently active countries
+  for (const siren of activeSirens.values()) {
+    suppressedCountries.set(siren.country.toLowerCase(), now + SUPPRESS_DURATION_MS);
+  }
   const count = activeSirens.size;
   activeSirens.clear();
   const r = getRedis();
   if (r) {
     await r.del(REDIS_MANUAL_SIRENS_KEY);
+    // Persist suppressions to Redis
+    if (suppressedCountries.size > 0) {
+      const entries: Record<string, string> = {};
+      for (const [c, until] of suppressedCountries) entries[c] = String(until);
+      r.hset("siren_suppressed", entries).catch(() => {});
+    }
   }
   if (count > 0) {
-    console.log(`[siren] ADMIN CLEARED ALL: ${count} alerts`);
+    console.log(`[siren] ADMIN CLEARED ALL: ${count} alerts, countries suppressed for 1h`);
   }
   return count;
 }
