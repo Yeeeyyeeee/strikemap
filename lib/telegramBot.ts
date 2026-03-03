@@ -491,7 +491,7 @@ export async function sendIncident(
       const { getSatelliteImagery, generateBeforeAfterComposite } = await import("./sentinel");
       const imagery = await getSatelliteImagery(inc.id, inc.lat, inc.lng, inc.date);
       if (imagery) {
-        const composite = await generateBeforeAfterComposite(imagery.lat, imagery.lng, imagery.beforeDate, imagery.afterDate);
+        const composite = await generateBeforeAfterComposite(imagery.lat, imagery.lng, imagery.beforeDateFrom, imagery.beforeDateTo, imagery.afterDateFrom, imagery.afterDateTo);
         if (composite) {
           await sendPhotoBuffer(composite, `\u{1F6F0}\u{FE0F} *Satellite Before/After* \\- ${esc(inc.location || "Strike zone")}`).catch(() => {});
           await sleep(300);

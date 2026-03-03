@@ -103,11 +103,15 @@ export interface SatelliteImagery {
   incidentId: string;
   lat: number;
   lng: number;
-  beforeDate: string;
+  beforeDateFrom: string; // start of before search window
+  beforeDateTo: string;   // end of before search window
+  afterDateFrom: string;  // start of after search window
+  afterDateTo: string;    // end of after search window
+  beforeDate: string;     // best date from catalog (or window end as fallback)
   afterDate: string;
-  beforeCloudCover?: number; // actual cloud cover % from catalog
+  beforeCloudCover?: number;
   afterCloudCover?: number;
-  catalogBeforeId?: string; // Sentinel-2 scene ID
+  catalogBeforeId?: string;
   catalogAfterId?: string;
-  fetchedAt: string; // ISO timestamp
+  fetchedAt: string;
 }

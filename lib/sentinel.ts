@@ -129,16 +129,20 @@ export async function getSatelliteImagery(
   afterStart.setDate(afterStart.getDate() - 3);
   const afterStartStr = afterStart.toISOString().split("T")[0];
 
-  // Search catalog for clearest images in both windows
+  // Search catalog for clearest images in both windows (non-blocking, for metadata)
   const [beforeResult, afterResult] = await Promise.all([
-    findClearestImage(token, lat, lng, beforeStartStr, beforeEndStr),
-    findClearestImage(token, lat, lng, afterStartStr, today),
+    findClearestImage(token, lat, lng, beforeStartStr, beforeEndStr).catch(() => null),
+    findClearestImage(token, lat, lng, afterStartStr, today).catch(() => null),
   ]);
 
   const imagery: SatelliteImagery = {
     incidentId,
     lat,
     lng,
+    beforeDateFrom: beforeStartStr,
+    beforeDateTo: beforeEndStr,
+    afterDateFrom: afterStartStr,
+    afterDateTo: today,
     beforeDate: beforeResult?.datetime?.split("T")[0] || beforeEndStr,
     afterDate: afterResult?.datetime?.split("T")[0] || today,
     beforeCloudCover: beforeResult?.cloudCover,
@@ -168,18 +172,19 @@ export async function getSatelliteImagery(
 export async function downloadSatelliteImage(
   lat: number,
   lng: number,
-  date: string,
+  dateFrom: string,
+  dateTo: string,
 ): Promise<Buffer | null> {
   const token = await getAccessToken();
   if (!token) return null;
 
   try {
-    const rawBuf = await fetchL2ARGB(token, lat, lng, date);
+    const rawBuf = await fetchL2ARGB(token, lat, lng, dateFrom, dateTo);
     if (!rawBuf) return null;
 
     // Reject blank/black tiles
     if (await isBlankImage(rawBuf)) {
-      console.warn(`[sentinel] Rejected blank image for ${lat},${lng} on ${date}`);
+      console.warn(`[sentinel] Rejected blank image for ${lat},${lng} on ${dateFrom}/${dateTo}`);
       return null;
     }
 
@@ -201,16 +206,18 @@ export async function downloadSatelliteImage(
 export async function generateBeforeAfterComposite(
   lat: number,
   lng: number,
-  beforeDate: string,
-  afterDate: string,
+  beforeDateFrom: string,
+  beforeDateTo: string,
+  afterDateFrom: string,
+  afterDateTo: string,
 ): Promise<Buffer | null> {
   const token = await getAccessToken();
   if (!token) return null;
 
-  // Download both raw images in parallel
+  // Download both raw images in parallel (wide date ranges, leastCC mosaicking)
   const [beforeRaw, afterRaw] = await Promise.all([
-    fetchL2ARGB(token, lat, lng, beforeDate),
-    fetchL2ARGB(token, lat, lng, afterDate),
+    fetchL2ARGB(token, lat, lng, beforeDateFrom, beforeDateTo),
+    fetchL2ARGB(token, lat, lng, afterDateFrom, afterDateTo),
   ]);
 
   if (!beforeRaw || !afterRaw) return null;

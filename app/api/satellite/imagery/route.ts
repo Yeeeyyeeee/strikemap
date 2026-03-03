@@ -91,9 +91,11 @@ export async function GET(request: Request) {
     ).catch(() => null);
 
     // ─── Step 3: Download L2A RGB images via Process API ─────────
+    // Use full date ranges with mosaickingOrder: "leastCC" so the
+    // Process API picks the clearest image automatically
     const [beforeRaw, afterRaw] = await Promise.all([
-      fetchL2ARGB(token, lat, lng, imagery.beforeDate),
-      fetchL2ARGB(token, lat, lng, imagery.afterDate),
+      fetchL2ARGB(token, lat, lng, imagery.beforeDateFrom, imagery.beforeDateTo),
+      fetchL2ARGB(token, lat, lng, imagery.afterDateFrom, imagery.afterDateTo),
     ]);
 
     // Check for blank images

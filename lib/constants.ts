@@ -77,7 +77,7 @@ export const SIREN_EXPIRY_MS = 30 * 60 * 1000;
 
 // --- Satellite / FIRMS ---
 export const REDIS_FIRMS_KEY = "firms_hotspots_v1";
-export const REDIS_SENTINEL_KEY = "sentinel_imagery_v6";
+export const REDIS_SENTINEL_KEY = "sentinel_imagery_v7";
 export const REDIS_SENTINEL_TOKEN_KEY = "sentinel_oauth_token";
 export const FIRMS_CACHE_TTL_S = 600; // 10 min
 export const SENTINEL_IMAGERY_TTL_S = 3600; // 1 hour

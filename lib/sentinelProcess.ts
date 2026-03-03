@@ -95,6 +95,8 @@ export async function fetchProcessedImage(
       from: `${dateFrom}T00:00:00Z`,
       to: `${dateTo}T23:59:59Z`,
     },
+    // Pick the least cloudy image when multiple exist in the time range
+    mosaickingOrder: "leastCC",
   };
   if (maxCloudCoverage !== undefined) {
     dataFilter.maxCloudCoverage = maxCloudCoverage;
@@ -151,15 +153,18 @@ export async function fetchProcessedImage(
 // ─── L2A RGB ────────────────────────────────────────────────────
 
 /**
- * Fetch L2A true-color RGB with SCL cloud masking for a specific date.
+ * Fetch L2A true-color RGB with SCL cloud masking for a date range.
  * Uses the 10m bands (B02, B03, B04) with Scene Classification Layer
  * to mask clouds, cloud shadows, and cirrus.
+ * mosaickingOrder: "leastCC" ensures the clearest image is selected
+ * when multiple acquisitions exist in the range.
  */
 export async function fetchL2ARGB(
   token: string,
   lat: number,
   lng: number,
-  date: string,
+  dateFrom: string,
+  dateTo: string,
   width = IMG_WIDTH,
   height = IMG_HEIGHT,
 ): Promise<Buffer | null> {
@@ -173,8 +178,8 @@ export async function fetchL2ARGB(
   return fetchProcessedImage(
     token,
     bbox,
-    date,
-    date,
+    dateFrom,
+    dateTo,
     L2A_RGB_EVALSCRIPT,
     "sentinel-2-l2a",
     width,
