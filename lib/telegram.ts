@@ -295,7 +295,7 @@ export function postToIncident(post: ChannelPost): Incident {
     location: "",
     lat: 0,
     lng: 0,
-    description: `[${post.channelUsername}] ${post.text.slice(0, 200)}${post.text.length > 200 ? "..." : ""}`,
+    description: `${post.text.slice(0, 200)}${post.text.length > 200 ? "..." : ""}`,
     details: post.text,
     weapon: "",
     target_type: "",

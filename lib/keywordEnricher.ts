@@ -143,6 +143,12 @@ const LOCATIONS: LocationEntry[] = [
   { keywords: ["kuwait airport", "kuwait international"], location: "Kuwait International Airport", lat: 29.23, lng: 47.97, military: false },
   { keywords: ["kuwait"], location: "Kuwait", lat: 29.31, lng: 47.48, military: false },
 
+  // ---- Oman ----
+  { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
+  { keywords: ["salalah"], location: "Salalah, Oman", lat: 17.02, lng: 54.09, military: false },
+  { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.70, military: true },
+  { keywords: ["oman"], location: "Oman", lat: 23.59, lng: 58.14, military: false },
+
   // ---- Saudi Arabia ----
   { keywords: ["prince sultan", "psab"], location: "Prince Sultan Air Base, Saudi Arabia", lat: 24.06, lng: 47.58, military: true },
   { keywords: ["king khalid military"], location: "King Khalid Military City, Saudi Arabia", lat: 27.90, lng: 45.54, military: true },
@@ -533,7 +539,6 @@ const STRIKE_INDICATORS = [
   "raid", "assault", "offensive",
   "casualties", "killed", "dead", "wounded", "injured",
   "damage", "crater", "impact",
-  "siren", "alert", "alarm", "tzeva adom", "red alert",
   "escalation", "retaliation", "retaliate",
   "shahed", "fateh", "fattah", "emad", "ghadr", "sejjil", "tomahawk", "jdam",
   "iron dome", "arrow-3", "thaad", "david's sling",
@@ -542,7 +547,7 @@ const STRIKE_INDICATORS = [
   "حمله", "موشک", "پهپاد", "بمباران", "شلیک", "اصابت", "انفجار",
   "شهید", "کشته", "مجروح",
   // Hebrew
-  "תקיפה", "ירי", "רקטה", "טיל", "פיצוץ", "אזעקה", "צבע אדום",
+  "תקיפה", "ירי", "רקטה", "טיל", "פיצוץ",
   // Arabic
   "ضربة", "صاروخ", "قصف", "هجوم", "استهداف", "انفجار",
 ];
@@ -556,6 +561,16 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   // press conferences, speeches, sanctions, negotiations, etc.
   const hasStrikeIndicator = STRIKE_INDICATORS.some((kw) => lower.includes(kw) || text.includes(kw));
   if (!hasStrikeIndicator) return null;
+
+  // Filter out siren-only posts — these are tracked by sirenDetector, not as strikes
+  const SIREN_ONLY = ["siren", "sirens", "alarm", "alarms", "alert sounded", "red alert", "tzeva adom", "אזעקה", "צבע אדום"];
+  const isSirenPost = SIREN_ONLY.some((kw) => lower.includes(kw));
+  if (isSirenPost) {
+    // Only exclude if there's no actual strike/impact language alongside the siren
+    const STRIKE_CONFIRMATION = ["struck", "hit", "impact", "explod", "explosion", "damage", "crater", "casualties", "killed", "destroyed", "intercepted"];
+    const hasStrikeConfirmation = STRIKE_CONFIRMATION.some((kw) => lower.includes(kw));
+    if (!hasStrikeConfirmation) return null;
+  }
 
   // Find location
   const loc = matchFirst(text, LOCATIONS);
@@ -574,7 +589,7 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   const targetInGaza = loc.location.includes("Gaza");
   const targetInGulf = loc.location.includes("UAE") || loc.location.includes("Bahrain")
     || loc.location.includes("Qatar") || loc.location.includes("Kuwait")
-    || loc.location.includes("Saudi");
+    || loc.location.includes("Saudi") || loc.location.includes("Oman");
 
   if (targetInIran) {
     // Strikes IN Iran are by US or Israel, not by Iran on itself

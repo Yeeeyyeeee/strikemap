@@ -19,7 +19,7 @@ import LiveFeedMobile, { LiveFeedDesktop } from "@/components/LiveFeedPlayer";
 import { MAP_STYLES, getStoredStyle, setStoredStyle } from "@/lib/mapStyles";
 import { UserSettings, loadSettings, saveSettings } from "@/lib/settings";
 import SettingsPanel from "@/components/SettingsPanel";
-import ChatPanel from "@/components/ChatPanel";
+import ChatPanel, { type ChatTab } from "@/components/ChatPanel";
 import AirspaceStatus from "@/components/AirspaceStatus";
 import SpeechPanel from "@/components/SpeechPanel";
 import Timeline from "@/components/Timeline";
@@ -30,7 +30,13 @@ import { useIncidentPolling } from "@/hooks/useIncidentPolling";
 import { useAlertPolling } from "@/hooks/useAlertPolling";
 import { useNotamPolling } from "@/hooks/useNotamPolling";
 import { useSirenPolling } from "@/hooks/useSirenPolling";
+import { useFIRMSPolling } from "@/hooks/useFIRMSPolling";
+import SatellitePanel from "@/components/SatellitePanel";
 import SirenBanner from "@/components/SirenBanner";
+import MobileTabBar, { type MobileTab } from "@/components/MobileTabBar";
+import MobileStatsPanel from "@/components/MobileStatsPanel";
+import MobileFeedPanel from "@/components/MobileFeedPanel";
+import Link from "next/link";
 import { decodeState } from "@/lib/urlState";
 import mapboxgl from "mapbox-gl";
 
@@ -46,18 +52,72 @@ export default function Home() {
   const [selectedAlert, setSelectedAlert] = useState<MissileAlert | null>(null);
   const [showBases, setShowBases] = useState(false);
   const [showProxies, setShowProxies] = useState(false);
+  const [showFirms, setShowFirms] = useState(false);
   const [rangeWeapon, setRangeWeapon] = useState<{ lat: number; lng: number; radiusKm: number } | null>(null);
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [speechConfig, setSpeechConfig] = useState<{ id: string; title: string; enabled: boolean } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState<string | null>(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("strikemap-announcement-dismissed");
+    return null;
+  });
+  const [mobileTab, setMobileTab] = useState<MobileTab>("map");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatTab, setChatTab] = useState<ChatTab>("chat");
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  const chatMsgCountRef = useRef(0);
+  const [activeUsers, setActiveUsers] = useState(0);
 
   // Timeline state
   const [timelineActive, setTimelineActive] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [timelineSpeed, setTimelineSpeed] = useState(1);
+
+  // Unread chat detection
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch("/api/chat");
+        const data = await res.json();
+        const count = data.messages?.length || 0;
+        if (chatMsgCountRef.current > 0 && count > chatMsgCountRef.current && !chatOpen) {
+          setHasUnreadChat(true);
+        }
+        chatMsgCountRef.current = count;
+      } catch {}
+    };
+    check();
+    const iv = setInterval(check, 15_000);
+    return () => clearInterval(iv);
+  }, [chatOpen]);
+
+  // Clear unread when chat is opened
+  useEffect(() => {
+    if (chatOpen) setHasUnreadChat(false);
+  }, [chatOpen]);
+
+  // Active user heartbeat — unique session ID per tab
+  useEffect(() => {
+    const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const heartbeat = async () => {
+      try {
+        const res = await fetch("/api/active-users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        const data = await res.json();
+        if (typeof data.count === "number") setActiveUsers(data.count);
+      } catch {}
+    };
+    heartbeat();
+    const iv = setInterval(heartbeat, 60_000);
+    return () => clearInterval(iv);
+  }, []);
 
   // Notifications
   const { sendNotification } = useNotifications();
@@ -130,6 +190,9 @@ export default function Home() {
     sendNotification: sendNotificationRef.current,
   });
 
+  const firmsEnabled = showFirms || viewMode === "satellite";
+  const { geojson: firmsGeoJSON, counts: firmsCounts } = useFIRMSPolling(firmsEnabled);
+
   const flashActive = incidentFlashActive || alertFlashActive;
   const flashKeyTotal = incidentFlashKey + alertFlashKey;
 
@@ -141,6 +204,22 @@ export default function Home() {
       pendingSelectedId.current = null;
     }
   }, [incidents]);
+
+  // Fetch announcement
+  useEffect(() => {
+    const fetchAnnouncement = () => {
+      fetch("/api/announcement")
+        .then((r) => r.json())
+        .then((d) => {
+          const text = d.announcement?.text || null;
+          setAnnouncement(text);
+        })
+        .catch(() => {});
+    };
+    fetchAnnouncement();
+    const interval = setInterval(fetchAnnouncement, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch YouTube speech config
   useEffect(() => {
@@ -240,6 +319,7 @@ export default function Home() {
   const handleRangeWeaponClear = useCallback(() => setRangeWeapon(null), []);
   const handleToggleBases = useCallback(() => setShowBases((p) => !p), []);
   const handleToggleProxies = useCallback(() => setShowProxies((p) => !p), []);
+  const handleToggleFirms = useCallback(() => setShowFirms((p) => !p), []);
   const handleMapStyleChange = useCallback((id: string) => {
     setStoredStyle(id);
     setMapStyle(id);
@@ -300,15 +380,39 @@ export default function Home() {
         onToggleSound={handleToggleSound}
         notificationsEnabled={settings.notificationsEnabled}
         onToggleNotifications={handleToggleNotifications}
+        chatOpen={chatOpen}
+        onToggleChat={() => { if (chatOpen && chatTab === "chat") { setChatOpen(false); } else { setChatTab("chat"); setChatOpen(true); } }}
+        onToggleSuggestions={() => { if (chatOpen && chatTab === "suggestions") { setChatOpen(false); } else { setChatTab("suggestions"); setChatOpen(true); } }}
+        hasUnreadChat={hasUnreadChat}
+        activeUsers={activeUsers}
       />
 
       {settingsOpen && (
         <SettingsPanel settings={settings} onChange={handleSettingsChange} />
       )}
 
+      {/* Announcement banner */}
+      {announcement && announcementDismissed !== announcement && (
+        <div className="fixed top-[3.75rem] left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-xl pointer-events-auto">
+          <div className="bg-[#1a1a1a] border border-red-500/50 rounded-lg px-4 py-3 flex items-start gap-3 shadow-[0_4px_20px_rgba(239,68,68,0.15)]">
+            <span className="text-red-400 text-base mt-px shrink-0">!</span>
+            <p className="text-sm text-neutral-200 leading-relaxed flex-1">{announcement}</p>
+            <button
+              onClick={() => {
+                setAnnouncementDismissed(announcement);
+                sessionStorage.setItem("strikemap-announcement-dismissed", announcement!);
+              }}
+              className="text-neutral-500 hover:text-neutral-300 text-xs font-medium whitespace-nowrap transition-colors mt-0.5"
+            >
+              dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Info banner */}
       {!disclaimerAccepted && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
+        <div className={`fixed ${announcement && announcementDismissed !== announcement ? "top-[7rem]" : "top-16"} left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl transition-all`}>
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-start gap-3 shadow-lg">
             <p className="text-xs text-neutral-400 leading-relaxed flex-1">
               All data is aggregated from publicly available OSINT sources and presented for informational purposes only. Content does not reflect the views of the site operator. Use at your own discretion.
@@ -351,6 +455,8 @@ export default function Home() {
                 timelineActive={timelineActive}
                 showBases={showBases}
                 showProxies={showProxies}
+                showFirms={firmsEnabled}
+                firmsGeoJSON={firmsGeoJSON}
                 rangeWeapon={rangeWeapon}
                 onRangeWeaponClear={handleRangeWeaponClear}
                 initialCenter={initialCenter}
@@ -373,6 +479,9 @@ export default function Home() {
               onToggleBases={handleToggleBases}
               showProxies={showProxies}
               onToggleProxies={handleToggleProxies}
+              showFirms={showFirms}
+              onToggleFirms={handleToggleFirms}
+              firmsCount={firmsCounts.total}
               mapStyle={mapStyle}
               onMapStyleChange={handleMapStyleChange}
             />
@@ -402,8 +511,15 @@ export default function Home() {
         )}
       </main>
 
-      {/* Left column — Live Feed + gauges on map views */}
-      {isMapView(viewMode) && (
+      {/* Left column — Satellite panel when in satellite mode, gauges otherwise */}
+      {isMapView(viewMode) && viewMode === "satellite" && (
+        <SatellitePanel
+          counts={firmsCounts}
+          loading={firmsGeoJSON === null && firmsEnabled}
+          onClose={() => setViewMode("all")}
+        />
+      )}
+      {isMapView(viewMode) && viewMode !== "satellite" && (
         <div className="fixed top-16 bottom-4 left-4 z-40 hidden md:flex flex-col gap-3 overflow-y-auto overflow-x-hidden scrollbar-hide w-60 isolate">
           {settings.showGauges && (
             <>
@@ -435,10 +551,142 @@ export default function Home() {
         <SpeechPanel videoId={speechConfig.id} title={speechConfig.title} />
       )}
 
-      {/* Mobile Live Feed button — visible on map views */}
-      {isMapView(viewMode) && <LiveFeedMobile />}
+      {/* Mobile panels — controlled by bottom tab bar */}
+      {mobileTab === "feed" && <MobileFeedPanel onClose={() => setMobileTab("map")} />}
+      {mobileTab === "stats" && (
+        <MobileStatsPanel
+          incidents={incidents}
+          notams={notams}
+          lastIranStrikeAt={lastIranStrikeAt}
+          lastUSStrikeAt={lastUSStrikeAt}
+          lastIsraelStrikeAt={lastIsraelStrikeAt}
+          onClose={() => setMobileTab("map")}
+        />
+      )}
+      {mobileTab === "alerts" && (
+        <div className="fixed inset-0 top-14 bottom-14 z-40 md:hidden bg-[#0a0a0a] overflow-y-auto">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <h2
+                className="text-[10px] font-bold uppercase tracking-wider text-neutral-500"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Active Alerts
+              </h2>
+              <button
+                onClick={() => setMobileTab("map")}
+                className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            {alerts.length === 0 && sirenAlerts.length === 0 ? (
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6 text-center">
+                <p className="text-neutral-500 text-sm">No active alerts</p>
+              </div>
+            ) : (
+              <>
+                {alerts.filter((a) => a.status === "active").map((alert) => (
+                  <button
+                    key={alert.id}
+                    onClick={() => {
+                      setMobileTab("map");
+                      handleAlertClick(alert);
+                    }}
+                    className="w-full bg-[#1a1a1a] border border-red-500/30 rounded-lg p-4 text-left active:bg-[#222]"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-sm font-bold text-red-400 uppercase">
+                        {alert.regions?.length > 0 ? alert.regions.join(", ") : alert.cities.slice(0, 3).join(", ")}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold uppercase ml-auto">
+                        {alert.threatType || "missile"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-neutral-500">
+                      <span>TTI: {alert.timeToImpact}s</span>
+                      <span>{alert.timestamp}</span>
+                    </div>
+                  </button>
+                ))}
+                {sirenAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="bg-[#1a1a1a] border border-orange-500/30 rounded-lg p-4"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                      <span className="text-sm font-bold text-orange-400 uppercase">
+                        {alert.country} — Sirens
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-neutral-600 mt-1 block">
+                      via {alert.sourceChannel} &bull; {new Date(alert.activatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {mobileTab === "menu" && (
+        <div className="fixed inset-0 top-14 bottom-14 z-40 md:hidden bg-[#0a0a0a] overflow-y-auto">
+          <div className="p-4 space-y-2">
+            <div className="flex items-center justify-between mb-3">
+              <h2
+                className="text-[10px] font-bold uppercase tracking-wider text-neutral-500"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Navigation
+              </h2>
+              <button
+                onClick={() => setMobileTab("map")}
+                className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            {[
+              { href: "/", label: "Strike Map" },
+              { href: "/leadership", label: "Leadership" },
+              { href: "/stats", label: "Statistics" },
+              { href: "/airspace", label: "Airspace" },
+              { href: "/heatmap", label: "Heatmap" },
+              { href: "/weapons", label: "Weapons" },
+              { href: "/killchain", label: "Kill Chain" },
+              { href: "/intercept", label: "Intercept" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block w-full text-left px-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm font-medium text-white active:bg-[#222] transition-colors"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div className="h-px bg-[#2a2a2a] my-2" />
+            <a
+              href="https://t.me/strikemap"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm font-medium text-white active:bg-[#222] transition-colors"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              <svg className="w-5 h-5 text-[#29B6F6]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              Join Telegram
+            </a>
+          </div>
+        </div>
+      )}
 
-      {/* Feed sidebar — only on map views */}
+      {/* Feed sidebar — desktop only */}
       {isMapView(viewMode) && settings.showFeed && (
         <FeedSidebar
           incidents={incidents}
@@ -496,7 +744,14 @@ export default function Home() {
       )}
 
       {/* Live chat */}
-      <ChatPanel />
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} defaultTab={chatTab} />
+
+      {/* Mobile bottom tab bar */}
+      <MobileTabBar
+        activeTab={mobileTab}
+        onTabChange={setMobileTab}
+        alertCount={activeAlertCount + sirenAlerts.length}
+      />
     </div>
   );
 }

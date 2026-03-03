@@ -77,6 +77,7 @@ const COUNTRIES: CountryEntry[] = [
   { keywords: ["bahrain", "manama"], displayName: "Bahrain" },
   { keywords: ["kuwait", "kuwait city"], displayName: "Kuwait" },
   { keywords: ["qatar", "doha"], displayName: "Qatar" },
+  { keywords: ["oman", "omani", "muscat", "salalah"], displayName: "Oman" },
   { keywords: ["turkey", "turkish", "ankara", "istanbul", "hatay", "gaziantep", "kilis", "sanliurfa"], displayName: "Turkey" },
   { keywords: ["pakistan", "pakistani", "islamabad", "karachi", "lahore"], displayName: "Pakistan" },
   { keywords: ["ukraine", "ukrainian", "kyiv", "kharkiv", "odessa"], displayName: "Ukraine" },
@@ -112,12 +113,49 @@ let lastProcessedAt = 0;
 
 function extractCountry(text: string): string | null {
   const lower = text.toLowerCase();
+
+  // Find ALL matching countries
+  const matches: { name: string; index: number }[] = [];
   for (const entry of COUNTRIES) {
-    if (entry.keywords.some((kw) => lower.includes(kw))) {
-      return entry.displayName;
+    for (const kw of entry.keywords) {
+      const idx = lower.indexOf(kw);
+      if (idx !== -1) {
+        matches.push({ name: entry.displayName, index: idx });
+        break;
+      }
     }
   }
-  return null;
+
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0].name;
+
+  // Multiple countries found — determine the TARGET (not the attacker).
+  // Patterns like "X under attack from Y", "Y attacks X", "Y strikes X"
+  // → the country after "from" or "by" in attack context is the ATTACKER.
+  const attackerPatterns = [
+    /(?:attack|struck|strike|bomb|shell|assault|raid)\w*\s+(?:from|by)\s+/i,
+    /from\s+(?:iran|iranian|israel|israeli|us |american)/i,
+  ];
+
+  for (const pattern of attackerPatterns) {
+    const m = text.match(pattern);
+    if (m) {
+      const afterFrom = text.slice((m.index || 0) + m[0].length).toLowerCase();
+      // Find which matched country appears in the "from/by" clause — that's the attacker
+      const attacker = matches.find((c) =>
+        COUNTRIES.find((e) => e.displayName === c.name)?.keywords.some((kw) => afterFrom.startsWith(kw) || lower.slice(m.index || 0).includes(kw))
+      );
+      if (attacker) {
+        // Return the OTHER country (the target)
+        const target = matches.find((c) => c.name !== attacker.name);
+        if (target) return target.name;
+      }
+    }
+  }
+
+  // Fallback: return the country that appears first in the text (likely the subject/target)
+  matches.sort((a, b) => a.index - b.index);
+  return matches[0].name;
 }
 
 function hasSirenKeywords(text: string): boolean {
@@ -144,11 +182,8 @@ export function hasRecentProcessing(): boolean {
  * Process a batch of Telegram posts and update the active siren state.
  * Called as a side effect from /api/feed.
  */
-/** Load suppression list from Redis (cold start sync). */
-let suppressionLoaded = false;
+/** Load suppression list from Redis — always reload to sync across serverless instances. */
 async function loadSuppressions(): Promise<void> {
-  if (suppressionLoaded) return;
-  suppressionLoaded = true;
   const r = getRedis();
   if (!r) return;
   try {
@@ -160,11 +195,9 @@ async function loadSuppressions(): Promise<void> {
       if (ts > now) {
         suppressedCountries.set(country, ts);
       } else {
+        suppressedCountries.delete(country);
         r.hdel("siren_suppressed", country).catch(() => {});
       }
-    }
-    if (suppressedCountries.size > 0) {
-      console.log(`[siren] Loaded ${suppressedCountries.size} suppressed countries from Redis`);
     }
   } catch { /* ignore */ }
 }
@@ -262,9 +295,17 @@ export async function processSirenPosts(posts: Array<{
  * Merges in-memory (auto-detected) with Redis (manual) sirens.
  */
 export async function getActiveSirenAlerts(): Promise<SirenAlert[]> {
+  // Always reload suppressions from Redis to stay in sync across serverless instances
+  await loadSuppressions();
+
   const now = Date.now();
   for (const [id, siren] of activeSirens) {
     if (now > siren.expiresAt) {
+      activeSirens.delete(id);
+    }
+    // Also remove sirens for suppressed countries (cleared on another instance)
+    const suppressUntil = suppressedCountries.get(siren.country.toLowerCase());
+    if (suppressUntil && now < suppressUntil) {
       activeSirens.delete(id);
     }
   }

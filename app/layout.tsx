@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     description: "Live map tracking US/Israel and Iran military activity in real-time",
     siteName: "StrikeMap",
     type: "website",
-    images: [{ url: "/icon.png", width: 1080, height: 1080 }],
+    images: [{ url: "/og-image.png", width: 1500, height: 500 }],
   },
   twitter: {
     card: "summary_large_image",

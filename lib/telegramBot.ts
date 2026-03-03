@@ -12,6 +12,8 @@
 import { Incident } from "./types";
 import { ChannelPost } from "./telegram";
 import { generateStrikeMapImage } from "./mapImage";
+import { getFIRMSHotspots, hasThermalAnomaly } from "./firms";
+// sentinel is imported dynamically in sendIncident to avoid sharp loading at module level
 
 const API = "https://api.telegram.org/bot";
 
@@ -303,7 +305,7 @@ async function sendMediaGroup(
 // ─── Formatting ─────────────────────────────────────────────────
 
 /** Build a STRIKE message from an enriched incident */
-export function formatIncident(inc: Incident, siteUrl: string): string {
+export function formatIncident(inc: Incident & { _firmsConfirmed?: boolean }, siteUrl: string): string {
   const side =
     inc.side === "iran"
       ? "\u{1F1EE}\u{1F1F7} Iran / Proxy"
@@ -353,6 +355,10 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
     if (inc.casualties_military) parts.push(`${inc.casualties_military} military`);
     if (inc.casualties_civilian) parts.push(`${inc.casualties_civilian} civilian`);
     lines.push(`\u{1F480} *Casualties:* ${esc(parts.join(", "))}`);
+  }
+
+  if (inc._firmsConfirmed) {
+    lines.push(`\u{1F6F0}\u{FE0F} *Satellite:* Thermal anomaly confirmed by NASA FIRMS`);
   }
 
   if (inc.description) {
@@ -458,6 +464,15 @@ export async function sendIncident(
   post: ChannelPost | null,
   siteUrl: string,
 ): Promise<boolean> {
+  // 0. Check FIRMS for thermal anomaly correlation
+  let firmsConfirmed = false;
+  if (inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
+    try {
+      const hotspots = await getFIRMSHotspots();
+      firmsConfirmed = hasThermalAnomaly(hotspots, inc.lat, inc.lng);
+    } catch {}
+  }
+
   // 1. Map image with watermark — only for confirmed hits
   if (isConfirmedHit(inc) && inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
     const mapImg = await generateStrikeMapImage(inc.lat, inc.lng).catch(() => null);
@@ -470,6 +485,21 @@ export async function sendIncident(
     await sleep(300);
   }
 
+  // 1b. Send before/after satellite composite for confirmed hits with thermal signature
+  if (firmsConfirmed && inc.lat && inc.lng && inc.date && process.env.SENTINEL_HUB_CLIENT_ID) {
+    try {
+      const { getSatelliteImagery, generateBeforeAfterComposite } = await import("./sentinel");
+      const imagery = await getSatelliteImagery(inc.id, inc.lat, inc.lng, inc.date);
+      if (imagery) {
+        const composite = await generateBeforeAfterComposite(imagery.lat, imagery.lng, imagery.beforeDate, imagery.afterDate);
+        if (composite) {
+          await sendPhotoBuffer(composite, `\u{1F6F0}\u{FE0F} *Satellite Before/After* \\- ${esc(inc.location || "Strike zone")}`).catch(() => {});
+          await sleep(300);
+        }
+      }
+    } catch {}
+  }
+
   // 2. Forward the original Telegram post (preserves all media perfectly)
   let forwarded = false;
   if (post) {
@@ -480,7 +510,8 @@ export async function sendIncident(
     }
   }
 
-  const caption = formatIncident(inc, siteUrl);
+  const enrichedInc = { ...inc, _firmsConfirmed: firmsConfirmed };
+  const caption = formatIncident(enrichedInc, siteUrl);
 
   // 3. If forwarding failed, download media and re-upload
   if (!forwarded) {

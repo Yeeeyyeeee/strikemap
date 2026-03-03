@@ -133,6 +133,15 @@ export default function AdminPage() {
   // Shared alert error banner
   const [alertError, setAlertError] = useState("");
 
+  // Announcement state
+  const [announcementText, setAnnouncementText] = useState("");
+  const [currentAnnouncement, setCurrentAnnouncement] = useState<string | null>(null);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<{ id: string; title: string; device: string; description: string; status: string; votes: number; nickname: string; createdAt: number }[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
   // Check existing session on mount
   useEffect(() => {
     fetch("/api/admin/auth")
@@ -235,8 +244,84 @@ export default function AdminPage() {
     setSirenLoading(false);
   };
 
-  // Poll missile alerts
-  const loadMissileAlerts = useCallback(async () => {
+  // Poll announcement
+  const loadAnnouncement = useCallback(async () => {
+    try {
+      const res = await fetch("/api/announcement");
+      const data = await res.json();
+      setCurrentAnnouncement(data.announcement?.text || null);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadAnnouncement();
+  }, [authed, loadAnnouncement]);
+
+  const postAnnouncement = async () => {
+    if (!announcementText.trim()) return;
+    setAnnouncementLoading(true);
+    setAlertError("");
+    try {
+      const res = await fetch("/api/announcement", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: announcementText.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAlertError(data.error || `Announcement failed (${res.status})`);
+      } else {
+        setCurrentAnnouncement(announcementText.trim());
+        setAnnouncementText("");
+      }
+    } catch (err) {
+      setAlertError(`Network error: ${err}`);
+    }
+    setAnnouncementLoading(false);
+  };
+
+  const clearAnnouncement = async () => {
+    setAnnouncementLoading(true);
+    try {
+      await fetch("/api/announcement", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "" }),
+      });
+      setCurrentAnnouncement(null);
+      setAnnouncementText("");
+    } catch { /* ignore */ }
+    setAnnouncementLoading(false);
+  };
+
+  // Poll suggestions
+  const loadSuggestions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/suggestions");
+      const data = await res.json();
+      setSuggestions(data.suggestions || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadSuggestions();
+    const iv = setInterval(loadSuggestions, 15_000);
+    return () => clearInterval(iv);
+  }, [authed, loadSuggestions]);
+
+  const toggleSuggestionStatus = async (id: string, currentStatus: string) => {
+    setSuggestionsLoading(true);
+    try {
+      await fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "status", id, status: currentStatus === "wip" ? "completed" : "wip" }),
+      });
+      await loadSuggestions();
+    } catch {}
+    setSuggestionsLoading(false);
     try {
       const res = await fetch("/api/alerts");
       const data = await res.json();
@@ -429,6 +514,64 @@ export default function AdminPage() {
             <button onClick={() => setAlertError("")} className="text-red-400/60 hover:text-red-400 text-xs ml-4">dismiss</button>
           </div>
         )}
+        {/* ── Announcement ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Announcement
+              {currentAnnouncement && (
+                <span className="ml-2 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">
+                  LIVE
+                </span>
+              )}
+            </h2>
+            {currentAnnouncement && (
+              <button
+                onClick={clearAnnouncement}
+                disabled={announcementLoading}
+                className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-30 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {currentAnnouncement && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-4">
+              <p className="text-sm text-red-200">{currentAnnouncement}</p>
+            </div>
+          )}
+
+          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
+            <p
+              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              {currentAnnouncement ? "Update Announcement" : "Post Announcement"}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Announcement text..."
+                value={announcementText}
+                onChange={(e) => setAnnouncementText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && postAnnouncement()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <button
+                onClick={postAnnouncement}
+                disabled={!announcementText.trim() || announcementLoading}
+                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* ── Active Siren Alerts ── */}
         <section>
           <div className="flex items-center justify-between mb-4">

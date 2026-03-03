@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Safe area for iPhones with notch/home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Hide scrollbar but keep scrolling */
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -247,6 +252,63 @@ body {
   }
 }
 
+/* Drone static pulse — persistent purple glow at spotted location */
+.drone-pulse {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+}
+
+.drone-pulse::before,
+.drone-pulse::after {
+  content: "";
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  top: -22px;
+  left: -22px;
+  border-radius: 50%;
+  border: 2px solid #a855f7;
+  animation: drone-pulse-ring 2s ease-out infinite;
+}
+
+.drone-pulse::after {
+  animation-delay: 1s;
+}
+
+@keyframes drone-pulse-ring {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(168, 85, 247, 0);
+  }
+}
+
+.drone-icon {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  transform-origin: center;
+  filter: drop-shadow(0 0 8px #a855f7) drop-shadow(0 0 16px rgba(168, 85, 247, 0.5));
+  z-index: 3;
+  animation: drone-hover 3s ease-in-out infinite;
+}
+
+@keyframes drone-hover {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px #a855f7) drop-shadow(0 0 16px rgba(168, 85, 247, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px #a855f7) drop-shadow(0 0 24px rgba(168, 85, 247, 0.7));
+  }
+}
+
 /* Telegram embed iframe */
 .telegram-embed-container {
   position: relative;
@@ -393,6 +455,20 @@ body {
 [dir="rtl"] .mapboxgl-ctrl-top-right {
   right: auto;
   left: 0;
+}
+
+/* Feed item flash — white flash for newly arrived posts */
+.feed-flash {
+  animation: feed-flash 1.2s ease-out;
+}
+
+@keyframes feed-flash {
+  0% {
+    background: rgba(255, 255, 255, 0.5);
+  }
+  100% {
+    background: transparent;
+  }
 }
 
 /* Settings panel slide-down */

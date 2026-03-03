@@ -1,10 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="77" fill="#0a0a0a"/>
-  <circle cx="256" cy="256" r="153.6" fill="none" stroke="#ef4444" stroke-width="10.24" opacity="0.4"/>
-  <circle cx="256" cy="256" r="76.8" fill="#ef4444" opacity="0.9"/>
-  <circle cx="256" cy="256" r="30.72" fill="#fff" opacity="0.8"/>
-  <line x1="256" y1="51.2" x2="256" y2="179.2" stroke="#ef4444" stroke-width="10.24" stroke-linecap="round"/>
-  <line x1="256" y1="332.8" x2="256" y2="460.8" stroke="#ef4444" stroke-width="10.24" stroke-linecap="round"/>
-  <line x1="51.2" y1="256" x2="179.2" y2="256" stroke="#ef4444" stroke-width="10.24" stroke-linecap="round"/>
-  <line x1="332.8" y1="256" x2="460.8" y2="256" stroke="#ef4444" stroke-width="10.24" stroke-linecap="round"/>
+  <rect width="512" height="512" rx="76" fill="#0a0a0a"/>
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="76" fill="url(#g)"/>
+  <!-- Outer ring -->
+  <circle cx="256" cy="220" r="165" fill="none" stroke="#ef4444" stroke-width="2" opacity="0.35"/>
+  <!-- Tick marks (cardinal, longer) -->
+  <g stroke="#ef4444" stroke-width="2" opacity="0.5">
+    <line x1="256" y1="55" x2="256" y2="80"/>
+    <line x1="256" y1="360" x2="256" y2="385"/>
+    <line x1="91" y1="220" x2="116" y2="220"/>
+    <line x1="396" y1="220" x2="421" y2="220"/>
+  </g>
+  <!-- Diagonal ticks -->
+  <g stroke="#ef4444" stroke-width="1.5" opacity="0.3">
+    <line x1="372.7" y1="103.3" x2="361" y2="115"/>
+    <line x1="372.7" y1="336.7" x2="361" y2="325"/>
+    <line x1="139.3" y1="336.7" x2="151" y2="325"/>
+    <line x1="139.3" y1="103.3" x2="151" y2="115"/>
+  </g>
+  <!-- Middle ring -->
+  <circle cx="256" cy="220" r="110" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.25"/>
+  <!-- Inner ring -->
+  <circle cx="256" cy="220" r="55" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.35"/>
+  <!-- Crosshair lines -->
+  <g stroke="#ef4444" stroke-width="2" opacity="0.5">
+    <line x1="256" y1="80" x2="256" y2="155"/>
+    <line x1="256" y1="285" x2="256" y2="360"/>
+    <line x1="116" y1="220" x2="191" y2="220"/>
+    <line x1="321" y1="220" x2="396" y2="220"/>
+  </g>
+  <!-- Inner crosshair -->
+  <g stroke="#ef4444" stroke-width="2" opacity="0.7">
+    <line x1="256" y1="200" x2="256" y2="210"/>
+    <line x1="256" y1="230" x2="256" y2="240"/>
+    <line x1="236" y1="220" x2="246" y2="220"/>
+    <line x1="266" y1="220" x2="276" y2="220"/>
+  </g>
+  <!-- Center dot -->
+  <circle cx="256" cy="220" r="4" fill="#ef4444" opacity="0.8"/>
+  <!-- Corner accents -->
+  <g stroke="#ef4444" stroke-width="2" opacity="0.4">
+    <path d="M30,55 L30,30 L55,30" fill="none"/>
+    <path d="M457,30 L482,30 L482,55" fill="none"/>
+    <path d="M30,457 L30,482 L55,482" fill="none"/>
+    <path d="M457,482 L482,482 L482,457" fill="none"/>
+  </g>
+  <!-- STRIKEMAP text -->
+  <text x="256" y="455" text-anchor="middle" font-family="monospace" font-weight="700" font-size="48" letter-spacing="4">
+    <tspan fill="#ef4444">STRIKE</tspan><tspan fill="#ffffff">MAP</tspan>
+  </text>
 </svg>

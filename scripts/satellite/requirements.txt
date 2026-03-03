@@ -1,0 +1,13 @@
+# SEN2SR super-resolution dependencies
+torch>=2.0
+torchvision>=0.15
+numpy>=1.24
+Pillow>=10.0
+# opensr-test provides SEN2SR model access
+opensr-test>=1.0
+
+# SAR coherence (optional — requires ESA SNAP installed)
+snapista>=0.5
+
+# Geospatial
+rasterio>=1.3

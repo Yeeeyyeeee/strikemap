@@ -159,37 +159,58 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
       });
       container.appendChild(missile);
 
-      // Create trail SVG
-      const trailColor = isDrone ? "#a855f7" : "#ef4444";
-      const trail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      trail.setAttribute("class", "missile-trail");
-      trail.style.position = "absolute";
-      trail.style.inset = "0";
-      trail.style.width = "100%";
-      trail.style.height = "100%";
-      trail.style.pointerEvents = "none";
-      trail.style.overflow = "visible";
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("fill", "none");
-      path.setAttribute("stroke", trailColor);
-      path.setAttribute("stroke-width", isDrone ? "1.5" : "2");
-      path.setAttribute("stroke-dasharray", isDrone ? "4 6" : "8 4");
-      path.setAttribute("opacity", "0.6");
-      trail.appendChild(path);
-      container.appendChild(trail);
+      // Drones: static pulse ring at target. Missiles: trail SVG + impact ring.
+      let trail: SVGSVGElement;
+      let ring: HTMLDivElement;
 
-      // Create impact ring
-      const ring = document.createElement("div");
-      ring.className = "impact-ring";
-      ring.style.display = "none";
-      ring.style.pointerEvents = "auto";
-      ring.style.cursor = "pointer";
-      ring.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const current = alertsRef.current.find((a) => a.id === alertId);
-        if (current) onAlertClickRef.current?.(current);
-      });
-      container.appendChild(ring);
+      if (isDrone) {
+        // Drone: no trail, just a purple pulse ring
+        trail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        trail.style.display = "none"; // not used for drones
+
+        ring = document.createElement("div");
+        ring.className = "drone-pulse";
+        ring.style.display = "block";
+        ring.style.pointerEvents = "auto";
+        ring.style.cursor = "pointer";
+        ring.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const current = alertsRef.current.find((a) => a.id === alertId);
+          if (current) onAlertClickRef.current?.(current);
+        });
+        container.appendChild(ring);
+      } else {
+        // Missile: animated trail + impact ring
+        const trail_ = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        trail_.setAttribute("class", "missile-trail");
+        trail_.style.position = "absolute";
+        trail_.style.inset = "0";
+        trail_.style.width = "100%";
+        trail_.style.height = "100%";
+        trail_.style.pointerEvents = "none";
+        trail_.style.overflow = "visible";
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "#ef4444");
+        path.setAttribute("stroke-width", "2");
+        path.setAttribute("stroke-dasharray", "8 4");
+        path.setAttribute("opacity", "0.6");
+        trail_.appendChild(path);
+        container.appendChild(trail_);
+        trail = trail_;
+
+        ring = document.createElement("div");
+        ring.className = "impact-ring";
+        ring.style.display = "none";
+        ring.style.pointerEvents = "auto";
+        ring.style.cursor = "pointer";
+        ring.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const current = alertsRef.current.find((a) => a.id === alertId);
+          if (current) onAlertClickRef.current?.(current);
+        });
+        container.appendChild(ring);
+      }
 
       elementsRef.current.set(alert.id, { missile, trail, ring });
     }
@@ -235,45 +256,82 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
         const els = elementsRef.current.get(alert.id);
         if (!els) continue;
 
-        // Project geo coords to screen pixels
-        const origin = currentMap.project([alert.originLng, alert.originLat]);
-        const target = currentMap.project([alert.lng, alert.lat]);
-
-        // Control point for the arc
         const isDrone = alert.threatType === "drone";
-        const midX = (origin.x + target.x) / 2;
-        const dist = Math.sqrt((target.x - origin.x) ** 2 + (target.y - origin.y) ** 2);
-        const arcHeight = isDrone ? Math.min(dist * 0.15, 120) : Math.min(dist * 0.4, 400);
-        const midY = Math.min(origin.y, target.y) - arcHeight;
-        const ctrl = { x: midX, y: midY };
 
-        // Flight progress based on real alert time
-        const elapsed = now - state.startTime;
-        const t = Math.min(elapsed / state.duration, 1);
-
-        // Update trail SVG
-        const pathD = bezierPath(origin, ctrl, target);
-        const pathEl = els.trail.querySelector("path");
-        if (pathEl) {
-          pathEl.setAttribute("d", pathD);
-          const totalLen = (pathEl as SVGPathElement).getTotalLength?.() || dist;
-          pathEl.setAttribute("stroke-dasharray", `${totalLen * t} ${totalLen}`);
-        }
-
-        if (t < 1) {
-          // Missile in flight
+        if (isDrone) {
+          // --- DRONE: static icon at spotted location with pulsing ring ---
           anyInFlight = true;
-          const pos = bezier(t, origin, ctrl, target);
-          const angle = bezierAngle(t, origin, ctrl, target);
-          els.missile.style.transform = `translate(${pos.x - 10}px, ${pos.y - 10}px) rotate(${angle}rad)`;
+          const target = currentMap.project([alert.lng, alert.lat]);
+          els.missile.style.transform = `translate(${target.x - 11}px, ${target.y - 11}px)`;
           els.missile.style.display = "block";
-          els.ring.style.display = "none";
-        } else {
-          // Missile reached target — show impact ring
-          anyInFlight = true;
-          els.missile.style.display = "none";
           els.ring.style.display = "block";
           els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
+        } else {
+          // --- MISSILE: animated Bezier trajectory from origin to target ---
+          const rawOrigin = currentMap.project([alert.originLng, alert.originLat]);
+          const target = currentMap.project([alert.lng, alert.lat]);
+
+          // Clamp origin to viewport edge if off-screen — preserves direction,
+          // prevents broken Bezier curves on mobile when zoomed out
+          const cw = container.clientWidth;
+          const ch = container.clientHeight;
+          const pad = 40; // px padding inside viewport edge
+          let origin = rawOrigin;
+          const isOffScreen = rawOrigin.x < -pad || rawOrigin.x > cw + pad || rawOrigin.y < -pad || rawOrigin.y > ch + pad;
+          if (isOffScreen) {
+            // Direction from target to origin
+            const dx = rawOrigin.x - target.x;
+            const dy = rawOrigin.y - target.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+              const nx = dx / len;
+              const ny = dy / len;
+              // Walk from target toward origin until we hit viewport edge
+              const maxDist = Math.max(cw, ch);
+              const sx = target.x + nx * maxDist;
+              const sy = target.y + ny * maxDist;
+              // Clamp to viewport bounds
+              const clampX = Math.max(-pad, Math.min(cw + pad, sx));
+              const clampY = Math.max(-pad, Math.min(ch + pad, sy));
+              origin = { x: clampX, y: clampY } as mapboxgl.Point;
+            }
+          }
+
+          // Control point for the arc
+          const midX = (origin.x + target.x) / 2;
+          const dist = Math.sqrt((target.x - origin.x) ** 2 + (target.y - origin.y) ** 2);
+          const arcHeight = Math.min(dist * 0.4, 200);
+          const midY = Math.min(origin.y, target.y) - arcHeight;
+          const ctrl = { x: midX, y: midY };
+
+          // Flight progress based on real alert time
+          const elapsed = now - state.startTime;
+          const t = Math.min(elapsed / state.duration, 1);
+
+          // Update trail SVG
+          const pathD = bezierPath(origin, ctrl, target);
+          const pathEl = els.trail.querySelector("path");
+          if (pathEl) {
+            pathEl.setAttribute("d", pathD);
+            const totalLen = (pathEl as SVGPathElement).getTotalLength?.() || dist;
+            pathEl.setAttribute("stroke-dasharray", `${totalLen * t} ${totalLen}`);
+          }
+
+          if (t < 1) {
+            // Missile in flight
+            anyInFlight = true;
+            const pos = bezier(t, origin, ctrl, target);
+            const angle = bezierAngle(t, origin, ctrl, target);
+            els.missile.style.transform = `translate(${pos.x - 10}px, ${pos.y - 10}px) rotate(${angle}rad)`;
+            els.missile.style.display = "block";
+            els.ring.style.display = "none";
+          } else {
+            // Missile reached target — show impact ring
+            anyInFlight = true;
+            els.missile.style.display = "none";
+            els.ring.style.display = "block";
+            els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
+          }
         }
       }
 

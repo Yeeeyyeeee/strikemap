@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
         location: kwResult.location || "",
         lat: kwResult.lat,
         lng: kwResult.lng,
-        description: `[${username}] ${text.slice(0, 200)}`,
+        description: text.slice(0, 200),
         details: text,
         weapon: kwResult.weapon || "",
         target_type: kwResult.target_type || "",
@@ -194,10 +194,9 @@ export async function POST(req: NextRequest) {
       console.log(`[webhook] Forward failed for ${postId}, sending text only`);
       // Can't build a full ChannelPost without scraping, send text summary
       const escapedText = text.slice(0, 600).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
-      const escapedUser = username.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
       const escapedUrl = siteUrl.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
       await sendMessage(
-        `\u{1F4E2} *${escapedUser}*\n\n${escapedText}\n\n[\u{1F5FA}\u{FE0F} View Live Map](${escapedUrl})`
+        `${escapedText}\n\n[\u{1F5FA}\u{FE0F} View Live Map](${escapedUrl})`
       );
       sent = true;
     }

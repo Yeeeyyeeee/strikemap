@@ -1,6 +1,6 @@
 export type StrikeSide = "iran" | "us_israel" | "us" | "israel";
 
-export type ViewMode = "all" | "iran" | "us_israel" | "leadership" | "stats" | "weapons" | "killchain" | "intercept" | "airspace" | "heatmap";
+export type ViewMode = "all" | "iran" | "us_israel" | "leadership" | "stats" | "weapons" | "killchain" | "intercept" | "airspace" | "heatmap" | "satellite";
 
 export interface MediaItem {
   type: "image" | "video";
@@ -82,4 +82,32 @@ export interface RegionAirspace {
   active_notams: number;
   critical_notams: number;
   last_updated: string;
+}
+
+// --- Satellite / FIRMS types ---
+
+export interface FIRMSHotspot {
+  latitude: number;
+  longitude: number;
+  brightness: number;
+  frp: number; // fire radiative power (MW)
+  confidence: number; // 0-100
+  acq_date: string; // "2026-03-03"
+  acq_time: string; // "0130" (HHMM UTC)
+  satellite: string; // "N20" etc.
+  daynight: "D" | "N";
+  correlatedIncidentId?: string; // set if matched to a known incident
+}
+
+export interface SatelliteImagery {
+  incidentId: string;
+  lat: number;
+  lng: number;
+  beforeDate: string;
+  afterDate: string;
+  beforeCloudCover?: number; // actual cloud cover % from catalog
+  afterCloudCover?: number;
+  catalogBeforeId?: string; // Sentinel-2 scene ID
+  catalogAfterId?: string;
+  fetchedAt: string; // ISO timestamp
 }

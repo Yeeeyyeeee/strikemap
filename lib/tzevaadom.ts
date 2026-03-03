@@ -114,7 +114,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
       // Determine threat type from description
       const desc = (item.description || "").toLowerCase();
       let threatType: "missile" | "drone" | "unknown" = "unknown";
-      if (desc.includes("כלי טיס") || desc.includes("uav") || desc.includes("drone") || desc.includes("חדירת")) {
+      if (desc.includes("כלי טיס") || desc.includes("uav") || desc.includes("drone") || desc.includes("חדירת") || desc.includes("hostile aircraft") || desc.includes("כלי טיס עוין")) {
         threatType = "drone";
       } else if (desc.includes("רקט") || desc.includes("טיל") || desc.includes("missile") || desc.includes("rocket") || desc.includes("ירי")) {
         threatType = "missile";

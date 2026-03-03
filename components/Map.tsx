@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
 import { getWeaponColor } from "./Legend";
-import { MILITARY_BASES, BASE_COLORS, getBaseIcon } from "@/lib/militaryBases";
+import { MILITARY_BASES, BASE_COLORS, OPERATOR_LABELS, getBaseIcon } from "@/lib/militaryBases";
 import { PROXY_GROUPS, PROXY_CONNECTIONS, createProxyCircle } from "@/lib/proxyGroups";
 import { createCircleGeoJSON } from "@/lib/weaponsData";
 
@@ -52,6 +52,8 @@ interface MapProps {
   timelineActive?: boolean;
   showBases?: boolean;
   showProxies?: boolean;
+  showFirms?: boolean;
+  firmsGeoJSON?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
   rangeWeapon?: { lat: number; lng: number; radiusKm: number } | null;
   onRangeWeaponClear?: () => void;
   initialCenter?: [number, number];
@@ -126,6 +128,8 @@ export default function MapView({
   timelineActive = false,
   showBases = false,
   showProxies = false,
+  showFirms = false,
+  firmsGeoJSON = null,
   rangeWeapon = null,
   onRangeWeaponClear,
   initialCenter,
@@ -561,7 +565,7 @@ export default function MapView({
           `<div>
             <div style="font-weight:600;color:${color};margin-bottom:4px;">${escapeHtml(base.name)}</div>
             <div style="color:#999;font-size:11px;">
-              ${base.operator === "iran" ? "Iranian" : base.operator === "israel" ? "Israeli" : "US/Coalition"}
+              ${OPERATOR_LABELS[base.operator]}
               · ${escapeHtml(base.type.charAt(0).toUpperCase() + base.type.slice(1))} Base
             </div>
           </div>`
@@ -779,6 +783,105 @@ export default function MapView({
 
     return cleanup;
   }, [rangeWeapon, onRangeWeaponClear]);
+
+  // FIRMS thermal hotspot overlay
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const firmsSourceId = "firms-hotspots";
+    const firmsLayerId = "firms-points";
+    const firmsGlowId = "firms-glow";
+
+    const cleanup = () => {
+      try {
+        if (m.getLayer(firmsGlowId)) m.removeLayer(firmsGlowId);
+        if (m.getLayer(firmsLayerId)) m.removeLayer(firmsLayerId);
+        if (m.getSource(firmsSourceId)) m.removeSource(firmsSourceId);
+      } catch { /* ignore */ }
+    };
+
+    if (!showFirms || !firmsGeoJSON) {
+      cleanup();
+      return;
+    }
+
+    const addFirms = () => {
+      cleanup();
+
+      m.addSource(firmsSourceId, {
+        type: "geojson",
+        data: firmsGeoJSON,
+      });
+
+      // Glow effect layer (behind) — large soft halo
+      m.addLayer({
+        id: firmsGlowId,
+        type: "circle",
+        source: firmsSourceId,
+        paint: {
+          "circle-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#ef4444",
+            "#f97316",
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3, 12,
+            6, 20,
+            10, 30,
+            14, 45,
+          ],
+          "circle-opacity": 0.25,
+          "circle-blur": 1,
+        },
+      });
+
+      // Main hotspot points — bold and visible
+      m.addLayer({
+        id: firmsLayerId,
+        type: "circle",
+        source: firmsSourceId,
+        paint: {
+          "circle-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#ef4444",
+            "#f97316",
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3, 5,
+            6, 8,
+            10, 12,
+            14, 18,
+          ],
+          "circle-opacity": 0.9,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#fca5a5",
+            "#fdba74",
+          ],
+          "circle-stroke-opacity": 0.7,
+        },
+      });
+    };
+
+    if (m.loaded() && layersReady.current) {
+      addFirms();
+    } else {
+      m.on("load", addFirms);
+    }
+
+    return cleanup;
+  }, [showFirms, firmsGeoJSON]);
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }

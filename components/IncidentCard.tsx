@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
 import { getYouTubeEmbedUrl, isDirectVideoUrl } from "@/lib/videoUtils";
+import SatelliteViewer from "./SatelliteViewer";
 
 interface IncidentCardProps {
   incident: Incident;
@@ -134,7 +135,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     <>
       {/* === SINGLE MEDIA ITEM ON TOP === */}
       {currentMedia && (
-        <div className="border-b border-[#2a2a2a] bg-black relative">
+        <div className="border-b border-[#2a2a2a] bg-black relative overflow-hidden">
           {currentMedia.type === "video" ? (
             (() => {
               const ytUrl = getYouTubeEmbedUrl(currentMedia.url);
@@ -216,7 +217,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
       )}
 
       {/* === DETAILS === */}
-      <div className="overflow-y-auto px-4 py-3 space-y-3 flex-1">
+      <div className="overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3 flex-1">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">
@@ -319,6 +320,15 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
           </div>
         )}
 
+        {(incident.lat !== 0 || incident.lng !== 0) && incident.date && (
+          <SatelliteViewer
+            incidentId={incident.id}
+            lat={incident.lat}
+            lng={incident.lng}
+            date={incident.date}
+          />
+        )}
+
         {incident.source_url && (
           <div className="pt-2 border-t border-[#2a2a2a]">
             <a
@@ -340,10 +350,10 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
   // --- Mobile or no coordinates: bottom sheet / centered panel ---
   if (isMobile || !hasCoords) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter">
+      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter w-full max-w-full overflow-hidden">
         <div
           ref={cardRef}
-          className="bg-[#1a1a1a] border-t border-[#2a2a2a] rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.7)] overflow-hidden max-h-[60vh] flex flex-col"
+          className="bg-[#1a1a1a] border-t border-[#2a2a2a] rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.7)] overflow-hidden max-h-[75vh] md:max-h-[85vh] flex flex-col w-full"
         >
           {/* Drag handle + close */}
           <div className="sticky top-0 bg-[#1a1a1a] pt-3 pb-2 px-4 flex items-center justify-between z-10 rounded-t-2xl border-b border-[#2a2a2a]/50">
@@ -351,7 +361,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             <div />
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-sm"
+              className="w-9 h-9 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-base"
             >
               ✕
             </button>
