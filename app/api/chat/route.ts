@@ -9,6 +9,11 @@ interface ChatMessage {
   nickname: string;
   timestamp: number;
   role?: "dev";
+  replyTo?: {
+    id: string;
+    nickname: string;
+    text: string; // truncated preview of original message
+  };
 }
 
 // In-memory fallback when Redis is not configured
@@ -89,12 +94,23 @@ export async function POST(req: NextRequest) {
 
     const isDev = isAdminRequest(req);
 
+    // Build reply reference if provided
+    let replyTo: ChatMessage["replyTo"] | undefined;
+    if (body.replyTo && typeof body.replyTo === "object") {
+      replyTo = {
+        id: String(body.replyTo.id || "").slice(0, 50),
+        nickname: String(body.replyTo.nickname || "").slice(0, 20),
+        text: String(body.replyTo.text || "").slice(0, 100), // truncated preview
+      };
+    }
+
     const msg: ChatMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text,
       nickname,
       timestamp: Date.now(),
       ...(isDev ? { role: "dev" as const } : {}),
+      ...(replyTo ? { replyTo } : {}),
     };
 
     await addMessage(msg);
