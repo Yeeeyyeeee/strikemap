@@ -11,6 +11,7 @@
 
 import { Incident } from "./types";
 import { ChannelPost } from "./telegram";
+import { generateStrikeMapImage } from "./mapImage";
 
 const API = "https://api.telegram.org/bot";
 
@@ -121,7 +122,7 @@ async function downloadAndSendVideo(url: string, caption?: string): Promise<bool
   }
 }
 
-/** Download media from URLs and re-upload them as a media group */
+/** Download media from URLs and re-upload them as a single grouped message */
 async function downloadAndSendMediaGroup(
   media: { type: "photo" | "video"; url: string }[],
   caption?: string,
@@ -133,18 +134,65 @@ async function downloadAndSendMediaGroup(
       ? downloadAndSendVideo(media[0].url, caption)
       : downloadAndSendPhoto(media[0].url, caption);
   }
-  // For multiple items, send the first with caption, rest without
-  let firstSent = false;
-  for (let i = 0; i < Math.min(media.length, 5); i++) {
-    const m = media[i];
-    const cap = i === 0 ? caption : undefined;
-    const ok = m.type === "video"
-      ? await downloadAndSendVideo(m.url, cap)
-      : await downloadAndSendPhoto(m.url, cap);
-    if (ok) firstSent = true;
-    await sleep(300);
+
+  // Download all files in parallel, cap at 10 (Telegram limit)
+  const items = media.slice(0, 10);
+  const downloads = await Promise.all(
+    items.map(async (m, i) => {
+      try {
+        const timeout = m.type === "video" ? 30000 : 10000;
+        const resp = await fetch(m.url, { signal: AbortSignal.timeout(timeout) });
+        if (!resp.ok) return null;
+        const blob = await resp.blob();
+        // Skip oversized videos
+        if (m.type === "video" && blob.size > 20 * 1024 * 1024) return null;
+        const ext = m.type === "video" ? "mp4" : "jpg";
+        return { index: i, type: m.type, blob, name: `file${i}.${ext}` };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const valid = downloads.filter(Boolean) as { index: number; type: string; blob: Blob; name: string }[];
+  if (valid.length === 0) return false;
+
+  // If only one survived, send as single
+  if (valid.length === 1) {
+    const v = valid[0];
+    return v.type === "video"
+      ? downloadAndSendVideo(media[v.index].url, caption)
+      : downloadAndSendPhoto(media[v.index].url, caption);
   }
-  return firstSent;
+
+  // Build multipart form with all files as attachments
+  try {
+    const form = new FormData();
+    form.append("chat_id", getChannelId());
+
+    const mediaArr = valid.map((v, idx) => {
+      const attachKey = `file${idx}`;
+      form.append(attachKey, v.blob, v.name);
+      return {
+        type: v.type,
+        media: `attach://${attachKey}`,
+        ...(idx === 0 && caption ? { caption, parse_mode: "MarkdownV2" } : {}),
+      };
+    });
+
+    form.append("media", JSON.stringify(mediaArr));
+
+    const token = getToken();
+    const res = await fetch(`${API}${token}/sendMediaGroup`, { method: "POST", body: form });
+    if (!res.ok) {
+      console.error(`[bot] downloadAndSendMediaGroup failed (${res.status}):`, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[bot] downloadAndSendMediaGroup error:", err);
+    return false;
+  }
 }
 
 /** Send a MarkdownV2 text message */
@@ -170,6 +218,30 @@ async function forwardOriginal(channelUsername: string, messageId: string): Prom
     from_chat_id: `@${channelUsername}`,
     message_id: Number(numericId),
   });
+}
+
+/** Send a photo from a Buffer (e.g. watermarked map image) */
+async function sendPhotoBuffer(buffer: Buffer, caption?: string): Promise<boolean> {
+  try {
+    const form = new FormData();
+    form.append("chat_id", getChannelId());
+    form.append("photo", new Blob([new Uint8Array(buffer)], { type: "image/jpeg" }), "map.jpg");
+    form.append("disable_notification", "true");
+    if (caption) {
+      form.append("caption", caption);
+      form.append("parse_mode", "MarkdownV2");
+    }
+    const token = getToken();
+    const res = await fetch(`${API}${token}/sendPhoto`, { method: "POST", body: form });
+    if (!res.ok) {
+      console.error(`[bot] sendPhotoBuffer failed (${res.status}):`, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[bot] sendPhotoBuffer error:", err);
+    return false;
+  }
 }
 
 /** Send a location pin (silent) */
@@ -243,7 +315,7 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
 
   const lines: string[] = [];
 
-  lines.push(`\u{1F534}\u{1F534}\u{1F534} *STRIKE ALERT* \u{1F534}\u{1F534}\u{1F534}`);
+  lines.push(`\u{203C}\u{FE0F}\u{26A0}\u{FE0F} *STRIKE ALERT* \u{26A0}\u{FE0F}\u{203C}\u{FE0F}`);
   lines.push("");
   lines.push(`\u{1F4CD} *Location:* ${esc(inc.location || "Unknown")}`);
   lines.push(`\u{2694}\u{FE0F} *By:* ${side}`);
@@ -303,7 +375,7 @@ export function formatIncident(inc: Incident, siteUrl: string): string {
 export function formatFeedPost(post: ChannelPost, siteUrl: string): string {
   const lines: string[] = [];
 
-  lines.push(`\u{1F4E2} *${esc(post.channelUsername)}*`);
+  lines.push(`\u{1F4F0}\u{203C}\u{FE0F} *LIVE NEWS* \u{203C}\u{FE0F}\u{1F4F0}`);
   lines.push("");
 
   const text = post.text.slice(0, 600);
@@ -386,9 +458,15 @@ export async function sendIncident(
   post: ChannelPost | null,
   siteUrl: string,
 ): Promise<boolean> {
-  // 1. Location pin — only for confirmed hits
+  // 1. Map image with watermark — only for confirmed hits
   if (isConfirmedHit(inc) && inc.lat && inc.lng && (inc.lat !== 0 || inc.lng !== 0)) {
-    await sendLocation(inc.lat, inc.lng).catch(() => {});
+    const mapImg = await generateStrikeMapImage(inc.lat, inc.lng).catch(() => null);
+    if (mapImg) {
+      await sendPhotoBuffer(mapImg).catch(() => {});
+    } else {
+      // Fallback to location pin if image generation fails
+      await sendLocation(inc.lat, inc.lng).catch(() => {});
+    }
     await sleep(300);
   }
 
