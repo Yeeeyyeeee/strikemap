@@ -150,14 +150,84 @@ export async function fetchProcessedImage(
   return Buffer.from(arrayBuffer);
 }
 
+// ─── WMS Fallback ───────────────────────────────────────────────
+
+const WMS_BASE = "https://sh.dataspace.copernicus.eu/ogc/wms";
+
+/**
+ * Build a WMS 1.3.0 URL for Sentinel Hub. Used as fallback when Process API fails.
+ */
+function buildWmsUrl(
+  instanceId: string,
+  lat: number,
+  lng: number,
+  dateRange: string,
+  maxCC: number,
+  width: number,
+  height: number,
+): string {
+  const minLat = lat - BBOX_SIZE_DEG;
+  const maxLat = lat + BBOX_SIZE_DEG;
+  const minLng = lng - BBOX_SIZE_DEG;
+  const maxLng = lng + BBOX_SIZE_DEG;
+  // WMS 1.3.0 + EPSG:4326 uses lat,lng axis order (Y,X)
+  const bbox = `${minLat},${minLng},${maxLat},${maxLng}`;
+
+  const params = new URLSearchParams({
+    SERVICE: "WMS",
+    REQUEST: "GetMap",
+    VERSION: "1.3.0",
+    FORMAT: "image/png",
+    TRANSPARENT: "false",
+    LAYERS: "TRUE-COLOR",
+    CRS: "EPSG:4326",
+    BBOX: bbox,
+    WIDTH: String(width),
+    HEIGHT: String(height),
+    TIME: dateRange,
+    MAXCC: String(maxCC),
+  });
+
+  return `${WMS_BASE}/${instanceId}?${params.toString()}`;
+}
+
+/**
+ * Download an image via WMS (fallback method).
+ */
+async function fetchWmsImage(
+  token: string,
+  instanceId: string,
+  lat: number,
+  lng: number,
+  dateFrom: string,
+  dateTo: string,
+  maxCC: number,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  const dateRange = `${dateFrom}/${dateTo}`;
+  const url = buildWmsUrl(instanceId, lat, lng, dateRange, maxCC, width, height);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(20000),
+  });
+
+  if (!res.ok) {
+    console.error(`[sentinelProcess] WMS fallback failed (${res.status})`);
+    return null;
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
 // ─── L2A RGB ────────────────────────────────────────────────────
 
 /**
- * Fetch L2A true-color RGB with SCL cloud masking for a date range.
- * Uses the 10m bands (B02, B03, B04) with Scene Classification Layer
- * to mask clouds, cloud shadows, and cirrus.
- * mosaickingOrder: "leastCC" ensures the clearest image is selected
- * when multiple acquisitions exist in the range.
+ * Fetch L2A true-color RGB for a date range.
+ * Tries Process API first (SCL cloud masking, band-level control).
+ * Falls back to WMS TRUE-COLOR if Process API fails.
  */
 export async function fetchL2ARGB(
   token: string,
@@ -175,7 +245,8 @@ export async function fetchL2ARGB(
     lat + BBOX_SIZE_DEG,
   ];
 
-  return fetchProcessedImage(
+  // Try Process API first (L2A with SCL cloud masking)
+  const processResult = await fetchProcessedImage(
     token,
     bbox,
     dateFrom,
@@ -186,6 +257,18 @@ export async function fetchL2ARGB(
     height,
     15,
   );
+
+  if (processResult) return processResult;
+
+  // Fallback: WMS TRUE-COLOR (proven to work, uses instance configuration)
+  console.warn("[sentinelProcess] Process API failed, falling back to WMS");
+  const instanceId = process.env.SENTINEL_HUB_INSTANCE_ID;
+  if (!instanceId) {
+    console.error("[sentinelProcess] No SENTINEL_HUB_INSTANCE_ID for WMS fallback");
+    return null;
+  }
+
+  return fetchWmsImage(token, instanceId, lat, lng, dateFrom, dateTo, 15, width, height);
 }
 
 // ─── Sentinel-1 SAR ────────────────────────────────────────────

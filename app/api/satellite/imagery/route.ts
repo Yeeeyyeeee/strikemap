@@ -21,7 +21,8 @@ export async function GET(request: Request) {
   // Check credentials before doing anything
   if (
     !process.env.SENTINEL_HUB_CLIENT_ID ||
-    !process.env.SENTINEL_HUB_CLIENT_SECRET
+    !process.env.SENTINEL_HUB_CLIENT_SECRET ||
+    !process.env.SENTINEL_HUB_INSTANCE_ID
   ) {
     return NextResponse.json(
       { error: "Sentinel Hub not configured" },
