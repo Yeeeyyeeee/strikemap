@@ -956,7 +956,6 @@ export default function Home() {
         default:
           return null;
       }
-       
     },
     [incidents, notams, lastIranStrikeAt, lastUSStrikeAt, lastIsraelStrikeAt]
   );
