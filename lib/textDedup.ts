@@ -15,7 +15,7 @@ function normalize(text: string): string {
       // Strip URLs
       .replace(/https?:\/\/\S+/g, "")
       // Strip emoji and symbols
-       
+
       .replace(
         /[^\x00-\x7F\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\u0400-\u04FF\u4E00-\u9FFF\uAC00-\uD7AF]/g,
         ""
