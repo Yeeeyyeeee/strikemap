@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 const compat = new FlatCompat({ baseDirectory: __dirname });
 
 export default [
+  { ignores: ["video/", "scripts/"] },
   ...compat.extends("next/core-web-vitals", "prettier"),
   {
     plugins: {

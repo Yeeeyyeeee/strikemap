@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { useCurrentFrame, useVideoConfig, spring, interpolate, AbsoluteFill } from "remotion";
 import {
   COLOR_BG,
   COLOR_ACCENT,

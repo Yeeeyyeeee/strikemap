@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
 import { COLOR_TEXT, FONT_BOLD } from "../brand";
 
 type Animation = "pop" | "slideLeft" | "slideRight" | "slideUp" | "fadeIn" | "typewriter";
