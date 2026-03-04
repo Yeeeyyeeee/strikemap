@@ -127,7 +127,7 @@ async function downloadAndSendVideo(url: string, caption?: string): Promise<bool
 /** Download media from URLs and re-upload them as a single grouped message */
 async function downloadAndSendMediaGroup(
   media: { type: "photo" | "video"; url: string }[],
-  caption?: string,
+  caption?: string
 ): Promise<boolean> {
   if (media.length === 0) return true;
   // For single items, use direct upload
@@ -156,7 +156,12 @@ async function downloadAndSendMediaGroup(
     })
   );
 
-  const valid = downloads.filter(Boolean) as { index: number; type: string; blob: Blob; name: string }[];
+  const valid = downloads.filter(Boolean) as {
+    index: number;
+    type: string;
+    blob: Blob;
+    name: string;
+  }[];
   if (valid.length === 0) return false;
 
   // If only one survived, send as single
@@ -280,7 +285,7 @@ async function sendVideo(videoUrl: string, caption?: string): Promise<boolean> {
  */
 async function sendMediaGroup(
   media: { type: "photo" | "video"; url: string }[],
-  caption?: string,
+  caption?: string
 ): Promise<boolean> {
   if (media.length === 0) return true;
   if (media.length === 1) {
@@ -305,7 +310,10 @@ async function sendMediaGroup(
 // ─── Formatting ─────────────────────────────────────────────────
 
 /** Build a STRIKE message from an enriched incident */
-export function formatIncident(inc: Incident & { _firmsConfirmed?: boolean }, siteUrl: string): string {
+export function formatIncident(
+  inc: Incident & { _firmsConfirmed?: boolean },
+  siteUrl: string
+): string {
   const side =
     inc.side === "iran"
       ? "\u{1F1EE}\u{1F1F7} Iran / Proxy"
@@ -344,9 +352,12 @@ export function formatIncident(inc: Incident & { _firmsConfirmed?: boolean }, si
   }
   if (inc.damage_severity) {
     const sevIcon =
-      inc.damage_severity === "catastrophic" ? "\u{1F4A5}"
-        : inc.damage_severity === "severe" ? "\u{1F525}"
-          : inc.damage_severity === "moderate" ? "\u{26A0}\u{FE0F}"
+      inc.damage_severity === "catastrophic"
+        ? "\u{1F4A5}"
+        : inc.damage_severity === "severe"
+          ? "\u{1F525}"
+          : inc.damage_severity === "moderate"
+            ? "\u{26A0}\u{FE0F}"
             : "\u{2022}";
     lines.push(`${sevIcon} *Damage:* ${esc(inc.damage_severity)}`);
   }
@@ -448,9 +459,20 @@ function isConfirmedHit(inc: Incident): boolean {
   // Check text for confirmation keywords
   const text = `${inc.description} ${inc.details || ""}`.toLowerCase();
   const hitKeywords = [
-    "hit", "struck", "destroyed", "impact", "damage", "explosion",
-    "casualties", "killed", "wounded", "injured", "collapsed",
-    "direct hit", "confirmed strike", "successful strike",
+    "hit",
+    "struck",
+    "destroyed",
+    "impact",
+    "damage",
+    "explosion",
+    "casualties",
+    "killed",
+    "wounded",
+    "injured",
+    "collapsed",
+    "direct hit",
+    "confirmed strike",
+    "successful strike",
   ];
   return hitKeywords.some((kw) => text.includes(kw));
 }
@@ -462,7 +484,7 @@ function isConfirmedHit(inc: Incident): boolean {
 export async function sendIncident(
   inc: Incident,
   post: ChannelPost | null,
-  siteUrl: string,
+  siteUrl: string
 ): Promise<boolean> {
   // 0. Check FIRMS for thermal anomaly correlation
   let firmsConfirmed = false;
@@ -491,9 +513,19 @@ export async function sendIncident(
       const { getSatelliteImagery, generateBeforeAfterComposite } = await import("./sentinel");
       const imagery = await getSatelliteImagery(inc.id, inc.lat, inc.lng, inc.date);
       if (imagery) {
-        const composite = await generateBeforeAfterComposite(imagery.lat, imagery.lng, imagery.beforeDateFrom, imagery.beforeDateTo, imagery.afterDateFrom, imagery.afterDateTo);
+        const composite = await generateBeforeAfterComposite(
+          imagery.lat,
+          imagery.lng,
+          imagery.beforeDateFrom,
+          imagery.beforeDateTo,
+          imagery.afterDateFrom,
+          imagery.afterDateTo
+        );
         if (composite) {
-          await sendPhotoBuffer(composite, `\u{1F6F0}\u{FE0F} *Satellite Before/After* \\- ${esc(inc.location || "Strike zone")}`).catch(() => {});
+          await sendPhotoBuffer(
+            composite,
+            `\u{1F6F0}\u{FE0F} *Satellite Before/After* \\- ${esc(inc.location || "Strike zone")}`
+          ).catch(() => {});
           await sleep(300);
         }
       }
@@ -568,10 +600,10 @@ export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<
 export async function broadcastIncidents(
   incidents: Incident[],
   siteUrl: string,
-  limit = 5,
+  limit = 5
 ): Promise<number> {
-  const sorted = [...incidents].sort(
-    (a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""),
+  const sorted = [...incidents].sort((a, b) =>
+    (b.timestamp || "").localeCompare(a.timestamp || "")
   );
   const batch = sorted.slice(0, limit);
   let sent = 0;

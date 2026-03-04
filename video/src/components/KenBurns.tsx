@@ -9,11 +9,7 @@ interface Props {
   style?: React.CSSProperties;
 }
 
-export const KenBurns: React.FC<Props> = ({
-  src,
-  direction = "zoom_in",
-  style,
-}) => {
+export const KenBurns: React.FC<Props> = ({ src, direction = "zoom_in", style }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
@@ -23,7 +19,7 @@ export const KenBurns: React.FC<Props> = ({
 
   let scale: number;
   let translateX = 0;
-  let translateY = 0;
+  const translateY = 0;
 
   switch (direction) {
     case "zoom_in":

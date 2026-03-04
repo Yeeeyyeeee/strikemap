@@ -18,16 +18,9 @@ export const FadeTransition: React.FC<Props> = ({
   const fadeIn = interpolate(frame, [0, fadeInFrames], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const fadeOut = interpolate(
-    frame,
-    [durationInFrames - fadeOutFrames, durationInFrames],
-    [1, 0],
-    { extrapolateLeft: "clamp" }
-  );
+  const fadeOut = interpolate(frame, [durationInFrames - fadeOutFrames, durationInFrames], [1, 0], {
+    extrapolateLeft: "clamp",
+  });
 
-  return (
-    <AbsoluteFill style={{ opacity: Math.min(fadeIn, fadeOut) }}>
-      {children}
-    </AbsoluteFill>
-  );
+  return <AbsoluteFill style={{ opacity: Math.min(fadeIn, fadeOut) }}>{children}</AbsoluteFill>;
 };

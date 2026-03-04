@@ -29,7 +29,7 @@ const DEFAULTS: EnhanceOptions = {
  */
 export async function enhanceSatelliteImage(
   input: Buffer,
-  opts?: Partial<EnhanceOptions>,
+  opts?: Partial<EnhanceOptions>
 ): Promise<Buffer> {
   const o = { ...DEFAULTS, ...opts };
 
@@ -44,15 +44,10 @@ export async function enhanceSatelliteImage(
  * Check if an image is effectively blank/black (WMS/Process API no-data response).
  * Returns true if mean brightness across channels < threshold.
  */
-export async function isBlankImage(
-  input: Buffer,
-  threshold = 8,
-): Promise<boolean> {
+export async function isBlankImage(input: Buffer, threshold = 8): Promise<boolean> {
   try {
     const stats = await sharp(input).stats();
-    const mean =
-      stats.channels.reduce((sum, c) => sum + c.mean, 0) /
-      stats.channels.length;
+    const mean = stats.channels.reduce((sum, c) => sum + c.mean, 0) / stats.channels.length;
     return mean < threshold;
   } catch {
     return true; // treat unreadable images as blank

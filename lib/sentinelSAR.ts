@@ -30,7 +30,7 @@ export async function detectSARChange(
   lat: number,
   lng: number,
   beforeDate: string,
-  afterDate: string,
+  afterDate: string
 ): Promise<SARChangeResult | null> {
   // Widen date ranges for Sentinel-1 (6-12 day revisit)
   const beforeFrom = shiftDate(beforeDate, -30);
@@ -72,20 +72,32 @@ export async function detectSARChange(
       const ratio = Math.abs(Math.log10(aVal / bVal));
 
       // Colorize by change intensity
-      let r = 0, g = 0, b = 0, a = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        a = 0;
 
       if (ratio > 0.15) {
         changedCount++;
 
         if (ratio > 0.7) {
           // Severe change: red
-          r = 239; g = 68; b = 68; a = 220;
+          r = 239;
+          g = 68;
+          b = 68;
+          a = 220;
         } else if (ratio > 0.4) {
           // Moderate change: orange
-          r = 249; g = 115; b = 22; a = 180;
+          r = 249;
+          g = 115;
+          b = 22;
+          a = 180;
         } else {
           // Mild change: yellow
-          r = 234; g = 179; b = 8; a = 140;
+          r = 234;
+          g = 179;
+          b = 8;
+          a = 140;
         }
       }
       // else: transparent (no significant change)

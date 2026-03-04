@@ -20,23 +20,49 @@ export interface SirenAlert {
 
 const SIREN_ACTIVATE_KEYWORDS = [
   // Direct siren references
-  "siren", "sirens", "air raid", "air-raid",
-  "air raid siren", "air defense siren", "civil defense siren",
-  "warning siren", "alarm sounding", "alarms sounding",
-  "sirens sounding", "sirens activated", "sirens heard",
-  "sirens blaring", "sirens wailing",
+  "siren",
+  "sirens",
+  "air raid",
+  "air-raid",
+  "air raid siren",
+  "air defense siren",
+  "civil defense siren",
+  "warning siren",
+  "alarm sounding",
+  "alarms sounding",
+  "sirens sounding",
+  "sirens activated",
+  "sirens heard",
+  "sirens blaring",
+  "sirens wailing",
   // Shelter directives
-  "take shelter", "seek shelter", "go to shelter", "bomb shelter",
-  "shelter now", "shelter in place",
+  "take shelter",
+  "seek shelter",
+  "go to shelter",
+  "bomb shelter",
+  "shelter now",
+  "shelter in place",
   // Alert terms
-  "air alert", "air alarm",
-  "under attack", "incoming missiles", "incoming rockets",
-  "air defense activated", "warning systems activated",
+  "air alert",
+  "air alarm",
+  "under attack",
+  "incoming missiles",
+  "incoming rockets",
+  "air defense activated",
+  "warning systems activated",
   // Arabic
-  "صافرات الإنذار", "إنذار", "صافرة", "صفارات", "احتموا",
-  "تحت الهجوم", "صواريخ قادمة", "دفاع جوي",
+  "صافرات الإنذار",
+  "إنذار",
+  "صافرة",
+  "صفارات",
+  "احتموا",
+  "تحت الهجوم",
+  "صواريخ قادمة",
+  "دفاع جوي",
   // Persian
-  "آژیر", "آژیر خطر", "پناهگاه",
+  "آژیر",
+  "آژیر خطر",
+  "پناهگاه",
   // Turkish
   "siren sesleri",
 ];
@@ -44,17 +70,32 @@ const SIREN_ACTIVATE_KEYWORDS = [
 // --- Siren clear keywords ---
 
 const SIREN_CLEAR_KEYWORDS = [
-  "sirens stopped", "sirens ended", "sirens cleared",
-  "sirens have stopped", "all clear", "siren all-clear",
-  "sirens no longer", "sirens silent", "sirens off",
-  "alarm ended", "alarm cleared", "alarm over",
-  "false alarm", "test siren", "siren test",
-  "returned to normal", "alert lifted",
-  "alert canceled", "alert cancelled",
+  "sirens stopped",
+  "sirens ended",
+  "sirens cleared",
+  "sirens have stopped",
+  "all clear",
+  "siren all-clear",
+  "sirens no longer",
+  "sirens silent",
+  "sirens off",
+  "alarm ended",
+  "alarm cleared",
+  "alarm over",
+  "false alarm",
+  "test siren",
+  "siren test",
+  "returned to normal",
+  "alert lifted",
+  "alert canceled",
+  "alert cancelled",
   // Arabic
-  "انتهاء الإنذار", "إنذار كاذب", "رفع الإنذار",
+  "انتهاء الإنذار",
+  "إنذار كاذب",
+  "رفع الإنذار",
   // Persian
-  "پایان آژیر", "آژیر خاموش",
+  "پایان آژیر",
+  "آژیر خاموش",
 ];
 
 // --- Country dictionary (keyword → display name) ---
@@ -65,35 +106,158 @@ interface CountryEntry {
 }
 
 const COUNTRIES: CountryEntry[] = [
-  { keywords: ["iran", "iranian", "tehran", "isfahan", "esfahan", "tabriz", "shiraz", "ahvaz", "mashhad", "bushehr", "bandar abbas", "qom", "karaj", "kerman"], displayName: "Iran" },
-  { keywords: ["lebanon", "lebanese", "beirut", "dahieh", "dahiyeh", "tyre", "sidon", "saida", "nabatieh", "bekaa", "beqaa", "baalbek", "south lebanon"], displayName: "Lebanon" },
-  { keywords: ["syria", "syrian", "damascus", "aleppo", "homs", "latakia", "deir ez-zor", "deir ezzor", "idlib"], displayName: "Syria" },
-  { keywords: ["iraq", "iraqi", "baghdad", "erbil", "basra", "mosul", "kirkuk", "najaf", "karbala"], displayName: "Iraq" },
-  { keywords: ["yemen", "yemeni", "sanaa", "sana'a", "hodeidah", "hudaydah", "aden", "marib"], displayName: "Yemen" },
-  { keywords: ["gaza", "gaza strip", "rafah", "khan younis", "khan yunis", "jabalia", "jabaliya", "nuseirat", "deir al-balah"], displayName: "Gaza" },
+  {
+    keywords: [
+      "iran",
+      "iranian",
+      "tehran",
+      "isfahan",
+      "esfahan",
+      "tabriz",
+      "shiraz",
+      "ahvaz",
+      "mashhad",
+      "bushehr",
+      "bandar abbas",
+      "qom",
+      "karaj",
+      "kerman",
+    ],
+    displayName: "Iran",
+  },
+  {
+    keywords: [
+      "lebanon",
+      "lebanese",
+      "beirut",
+      "dahieh",
+      "dahiyeh",
+      "tyre",
+      "sidon",
+      "saida",
+      "nabatieh",
+      "bekaa",
+      "beqaa",
+      "baalbek",
+      "south lebanon",
+    ],
+    displayName: "Lebanon",
+  },
+  {
+    keywords: [
+      "syria",
+      "syrian",
+      "damascus",
+      "aleppo",
+      "homs",
+      "latakia",
+      "deir ez-zor",
+      "deir ezzor",
+      "idlib",
+    ],
+    displayName: "Syria",
+  },
+  {
+    keywords: ["iraq", "iraqi", "baghdad", "erbil", "basra", "mosul", "kirkuk", "najaf", "karbala"],
+    displayName: "Iraq",
+  },
+  {
+    keywords: ["yemen", "yemeni", "sanaa", "sana'a", "hodeidah", "hudaydah", "aden", "marib"],
+    displayName: "Yemen",
+  },
+  {
+    keywords: [
+      "gaza",
+      "gaza strip",
+      "rafah",
+      "khan younis",
+      "khan yunis",
+      "jabalia",
+      "jabaliya",
+      "nuseirat",
+      "deir al-balah",
+    ],
+    displayName: "Gaza",
+  },
   { keywords: ["jordan", "jordanian", "amman"], displayName: "Jordan" },
-  { keywords: ["saudi", "saudi arabia", "riyadh", "jeddah", "dammam", "dhahran", "abqaiq"], displayName: "Saudi Arabia" },
-  { keywords: ["uae", "emirates", "dubai", "abu dhabi", "fujairah", "sharjah"], displayName: "UAE" },
+  {
+    keywords: ["saudi", "saudi arabia", "riyadh", "jeddah", "dammam", "dhahran", "abqaiq"],
+    displayName: "Saudi Arabia",
+  },
+  {
+    keywords: ["uae", "emirates", "dubai", "abu dhabi", "fujairah", "sharjah"],
+    displayName: "UAE",
+  },
   { keywords: ["bahrain", "manama"], displayName: "Bahrain" },
   { keywords: ["kuwait", "kuwait city"], displayName: "Kuwait" },
   { keywords: ["qatar", "doha"], displayName: "Qatar" },
   { keywords: ["oman", "omani", "muscat", "salalah"], displayName: "Oman" },
-  { keywords: ["turkey", "turkish", "ankara", "istanbul", "hatay", "gaziantep", "kilis", "sanliurfa"], displayName: "Turkey" },
-  { keywords: ["pakistan", "pakistani", "islamabad", "karachi", "lahore"], displayName: "Pakistan" },
-  { keywords: ["cyprus", "cypriot", "nicosia", "larnaca", "limassol", "paphos", "famagusta"], displayName: "Cyprus" },
+  {
+    keywords: [
+      "turkey",
+      "turkish",
+      "ankara",
+      "istanbul",
+      "hatay",
+      "gaziantep",
+      "kilis",
+      "sanliurfa",
+    ],
+    displayName: "Turkey",
+  },
+  {
+    keywords: ["pakistan", "pakistani", "islamabad", "karachi", "lahore"],
+    displayName: "Pakistan",
+  },
+  {
+    keywords: ["cyprus", "cypriot", "nicosia", "larnaca", "limassol", "paphos", "famagusta"],
+    displayName: "Cyprus",
+  },
 ];
 
 // Israel exclusion — skip these entirely (Tzeva Adom handles Israel)
 const ISRAEL_KEYWORDS = [
-  "israel", "israeli", "tel aviv", "jerusalem", "haifa", "beer sheva",
-  "be'er sheva", "ashkelon", "ashdod", "netanya", "eilat", "sderot",
-  "kiryat shmona", "nahariya", "tiberias", "herzliya", "petah tikva",
-  "rishon lezion", "nazareth", "golan", "nevatim", "ramat david",
-  "hatzerim", "palmachim", "ramon", "dimona", "tel nof",
-  "tzeva adom", "red alert", "צבע אדום", "pikud haoref",
-  "home front command", "galilee", "negev", "west bank",
-  "northern israel", "southern israel", "central israel",
-  "iron dome", "david's sling", "arrow",
+  "israel",
+  "israeli",
+  "tel aviv",
+  "jerusalem",
+  "haifa",
+  "beer sheva",
+  "be'er sheva",
+  "ashkelon",
+  "ashdod",
+  "netanya",
+  "eilat",
+  "sderot",
+  "kiryat shmona",
+  "nahariya",
+  "tiberias",
+  "herzliya",
+  "petah tikva",
+  "rishon lezion",
+  "nazareth",
+  "golan",
+  "nevatim",
+  "ramat david",
+  "hatzerim",
+  "palmachim",
+  "ramon",
+  "dimona",
+  "tel nof",
+  "tzeva adom",
+  "red alert",
+  "צבע אדום",
+  "pikud haoref",
+  "home front command",
+  "galilee",
+  "negev",
+  "west bank",
+  "northern israel",
+  "southern israel",
+  "central israel",
+  "iron dome",
+  "david's sling",
+  "arrow",
 ];
 
 // --- Server-side active siren state ---
@@ -143,7 +307,9 @@ function extractCountry(text: string): string | null {
       const afterFrom = text.slice((m.index || 0) + m[0].length).toLowerCase();
       // Find which matched country appears in the "from/by" clause — that's the attacker
       const attacker = matches.find((c) =>
-        COUNTRIES.find((e) => e.displayName === c.name)?.keywords.some((kw) => afterFrom.startsWith(kw) || lower.slice(m.index || 0).includes(kw))
+        COUNTRIES.find((e) => e.displayName === c.name)?.keywords.some(
+          (kw) => afterFrom.startsWith(kw) || lower.slice(m.index || 0).includes(kw)
+        )
       );
       if (attacker) {
         // Return the OTHER country (the target)
@@ -199,15 +365,19 @@ async function loadSuppressions(): Promise<void> {
         r.hdel("siren_suppressed", country).catch(() => {});
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
-export async function processSirenPosts(posts: Array<{
-  id: string;
-  channelUsername: string;
-  text: string;
-  timestamp: string;
-}>): Promise<SirenAlert[]> {
+export async function processSirenPosts(
+  posts: Array<{
+    id: string;
+    channelUsername: string;
+    text: string;
+    timestamp: string;
+  }>
+): Promise<SirenAlert[]> {
   // Must await suppression load before checking
   await loadSuppressions();
 
@@ -267,14 +437,23 @@ export async function processSirenPosts(posts: Array<{
             if (raw && typeof raw === "object") {
               for (const value of Object.values(raw)) {
                 const s: SirenAlert & { expiresAt?: number } =
-                  typeof value === "string" ? JSON.parse(value) : value as SirenAlert & { expiresAt?: number };
-                if (s.country === country && s.status === "active" && s.expiresAt && now < s.expiresAt) {
+                  typeof value === "string"
+                    ? JSON.parse(value)
+                    : (value as SirenAlert & { expiresAt?: number });
+                if (
+                  s.country === country &&
+                  s.status === "active" &&
+                  s.expiresAt &&
+                  now < s.expiresAt
+                ) {
                   existing = true;
                   break;
                 }
               }
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
 
@@ -293,7 +472,8 @@ export async function processSirenPosts(posts: Array<{
         activeSirens.set(alertId, alert);
         // Persist to Redis so other serverless instances see it
         const r = getRedis();
-        if (r) r.hset(REDIS_MANUAL_SIRENS_KEY, { [alertId]: JSON.stringify(alert) }).catch(() => {});
+        if (r)
+          r.hset(REDIS_MANUAL_SIRENS_KEY, { [alertId]: JSON.stringify(alert) }).catch(() => {});
         const { expiresAt: _, ...rest } = alert;
         newAlerts.push(rest);
         activated++;
@@ -314,7 +494,9 @@ export async function processSirenPosts(posts: Array<{
   }
 
   if (activated > 0 || cleared > 0 || activeSirens.size > 0) {
-    console.log(`[siren] Result: ${activated} new, ${cleared} cleared, ${activeSirens.size} active`);
+    console.log(
+      `[siren] Result: ${activated} new, ${cleared} cleared, ${activeSirens.size} active`
+    );
   }
 
   return newAlerts;
@@ -354,7 +536,9 @@ export async function getActiveSirenAlerts(): Promise<SirenAlert[]> {
     const ids = new Set(inMemory.map((a) => a.id));
     for (const [id, value] of Object.entries(raw)) {
       const siren: SirenAlert & { expiresAt?: number } =
-        typeof value === "string" ? JSON.parse(value) : value as SirenAlert & { expiresAt?: number };
+        typeof value === "string"
+          ? JSON.parse(value)
+          : (value as SirenAlert & { expiresAt?: number });
       if (siren.expiresAt && now > siren.expiresAt) {
         r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
         continue;
@@ -426,21 +610,26 @@ export async function clearSirenByCountry(country: string): Promise<number> {
       const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
       if (raw && typeof raw === "object") {
         for (const [id, value] of Object.entries(raw)) {
-          const siren: SirenAlert = typeof value === "string" ? JSON.parse(value) : value as SirenAlert;
+          const siren: SirenAlert =
+            typeof value === "string" ? JSON.parse(value) : (value as SirenAlert);
           if (siren.country.toLowerCase() === country.toLowerCase()) {
             await r.hdel(REDIS_MANUAL_SIRENS_KEY, id);
             cleared++;
           }
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   // Suppress this country from being auto-recreated by Telegram scraper
   const now = Date.now();
   suppressedCountries.set(country.toLowerCase(), now + SUPPRESS_DURATION_MS);
   const r2 = getRedis();
   if (r2) {
-    await r2.hset("siren_suppressed", { [country.toLowerCase()]: String(now + SUPPRESS_DURATION_MS) });
+    await r2.hset("siren_suppressed", {
+      [country.toLowerCase()]: String(now + SUPPRESS_DURATION_MS),
+    });
   }
 
   if (cleared > 0) {
@@ -470,12 +659,15 @@ export async function clearAllSirens(): Promise<number> {
       const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
       if (raw && typeof raw === "object") {
         for (const value of Object.values(raw)) {
-          const siren: SirenAlert = typeof value === "string" ? JSON.parse(value) : value as SirenAlert;
+          const siren: SirenAlert =
+            typeof value === "string" ? JSON.parse(value) : (value as SirenAlert);
           suppressedCountries.set(siren.country.toLowerCase(), now + SUPPRESS_DURATION_MS);
           count++;
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     await r.del(REDIS_MANUAL_SIRENS_KEY);
 

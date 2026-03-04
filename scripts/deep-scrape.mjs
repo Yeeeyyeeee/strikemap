@@ -5,8 +5,15 @@
  */
 
 const CHANNELS = [
-  "IDFofficial", "IsraelWarRoom", "CIG_telegram", "QudsNen",
-  "SouthFirstResponders", "tabzlive", "AMK_Mapping", "rnintel", "intelslava",
+  "IDFofficial",
+  "IsraelWarRoom",
+  "CIG_telegram",
+  "QudsNen",
+  "SouthFirstResponders",
+  "tabzlive",
+  "AMK_Mapping",
+  "rnintel",
+  "intelslava",
 ];
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
@@ -15,18 +22,52 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const MAX_PAGES = 30;
 
 const DEATH_KEYWORDS = [
-  "killed", "dead", "eliminated", "assassinated", "assassination",
-  "martyred", "martyr", "dies", "died", "death", "struck down",
-  "taken out", "neutralized", "confirmed dead", "targeted killing",
-  "liquidated", "senior commander", "commander killed", "general killed",
-  "official killed", "leader killed", "terror target", "high-value target",
-  "hvt", "senior operative", "senior figure", "top commander",
+  "killed",
+  "dead",
+  "eliminated",
+  "assassinated",
+  "assassination",
+  "martyred",
+  "martyr",
+  "dies",
+  "died",
+  "death",
+  "struck down",
+  "taken out",
+  "neutralized",
+  "confirmed dead",
+  "targeted killing",
+  "liquidated",
+  "senior commander",
+  "commander killed",
+  "general killed",
+  "official killed",
+  "leader killed",
+  "terror target",
+  "high-value target",
+  "hvt",
+  "senior operative",
+  "senior figure",
+  "top commander",
 ];
 
 const IRAN_KEYWORDS = [
-  "iran", "irgc", "iranian", "quds", "hezbollah", "hamas", "houthi",
-  "tehran", "revolutionary guard", "islamic jihad", "axis of resistance",
-  "proxy", "militia", "nasrallah", "soleimani", "haniyeh",
+  "iran",
+  "irgc",
+  "iranian",
+  "quds",
+  "hezbollah",
+  "hamas",
+  "houthi",
+  "tehran",
+  "revolutionary guard",
+  "islamic jihad",
+  "axis of resistance",
+  "proxy",
+  "militia",
+  "nasrallah",
+  "soleimani",
+  "haniyeh",
 ];
 
 function cleanText(rawHtml) {
@@ -54,9 +95,7 @@ function parseChannelHtml(html, username) {
     if (!postMatch) continue;
     const postId = postMatch[1];
 
-    const textMatch = block.match(
-      /tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/
-    );
+    const textMatch = block.match(/tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
     const text = textMatch ? cleanText(textMatch[1]) : "";
 
     const dateMatch = block.match(/<time[^>]+datetime="([^"]+)"/);
@@ -163,9 +202,7 @@ Posts:
 
   for (let i = 0; i < posts.length; i += CHUNK_SIZE) {
     const chunk = posts.slice(i, i + CHUNK_SIZE);
-    const postTexts = chunk
-      .map((p, idx) => `[${p.date}] ${p.text.slice(0, 500)}`)
-      .join("\n---\n");
+    const postTexts = chunk.map((p, idx) => `[${p.date}] ${p.text.slice(0, 500)}`).join("\n---\n");
 
     try {
       const res = await fetch(
@@ -187,7 +224,9 @@ Posts:
       const parsed = JSON.parse(text);
       if (parsed.eliminations) {
         allResults.push(...parsed.eliminations);
-        console.log(`  Batch ${Math.floor(i / CHUNK_SIZE) + 1}: found ${parsed.eliminations.length} eliminations`);
+        console.log(
+          `  Batch ${Math.floor(i / CHUNK_SIZE) + 1}: found ${parsed.eliminations.length} eliminations`
+        );
       }
     } catch (err) {
       console.error(`  Gemini batch error:`, err.message);
@@ -203,7 +242,10 @@ Posts:
 function deduplicateResults(results) {
   const seen = new Map();
   for (const r of results) {
-    const key = r.name.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+    const key = r.name
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, "")
+      .trim();
     // Keep the one with more detail
     if (!seen.has(key) || (r.deathCause?.length || 0) > (seen.get(key).deathCause?.length || 0)) {
       seen.set(key, r);

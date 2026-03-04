@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  spring,
-  interpolate,
-  AbsoluteFill,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
 import {
   COLOR_BG,
   COLOR_ACCENT,
@@ -23,12 +17,7 @@ interface Props {
   startFrame?: number;
 }
 
-export const LowerThird: React.FC<Props> = ({
-  location,
-  weapon,
-  timestamp,
-  startFrame = 9,
-}) => {
+export const LowerThird: React.FC<Props> = ({ location, weapon, timestamp, startFrame = 9 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const localFrame = frame - startFrame;

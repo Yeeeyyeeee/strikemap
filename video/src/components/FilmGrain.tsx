@@ -40,12 +40,7 @@ export const FilmGrain: React.FC<Props> = ({ opacity = 0.06 }) => {
 
   return (
     <AbsoluteFill style={{ pointerEvents: "none", zIndex: 51, opacity }}>
-      <canvas
-        ref={canvasRef}
-        width={270}
-        height={480}
-        style={{ width: "100%", height: "100%" }}
-      />
+      <canvas ref={canvasRef} width={270} height={480} style={{ width: "100%", height: "100%" }} />
     </AbsoluteFill>
   );
 };

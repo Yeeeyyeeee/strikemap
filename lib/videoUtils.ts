@@ -5,9 +5,7 @@
 /** Extract YouTube video ID from various URL formats (watch, embed, live, short) */
 export function extractYouTubeId(url: string): string | null {
   if (!url) return null;
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|live\/)|youtu\.be\/)([\w-]+)/
-  );
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|live\/)|youtu\.be\/)([\w-]+)/);
   return match ? match[1] : null;
 }
 

@@ -14,8 +14,7 @@ import { randomBytes } from "crypto";
 
 const execFileAsync = promisify(execFile);
 
-const PROCESS_URL =
-  "https://sh.dataspace.copernicus.eu/api/v1/process";
+const PROCESS_URL = "https://sh.dataspace.copernicus.eu/api/v1/process";
 
 // Bounding box half-size in degrees (~900m at equator)
 const BBOX_SIZE_DEG = 0.008;
@@ -83,7 +82,7 @@ export async function fetchProcessedImage(
   dataType: string,
   width = IMG_WIDTH,
   height = IMG_HEIGHT,
-  maxCloudCoverage?: number,
+  maxCloudCoverage?: number
 ): Promise<Buffer | null> {
   const dataFilter: Record<string, unknown> = {
     timeRange: {
@@ -115,9 +114,7 @@ export async function fetchProcessedImage(
     output: {
       width,
       height,
-      responses: [
-        { identifier: "default", format: { type: "image/png" } },
-      ],
+      responses: [{ identifier: "default", format: { type: "image/png" } }],
     },
     evalscript,
   };
@@ -136,7 +133,7 @@ export async function fetchProcessedImage(
   if (!res.ok) {
     console.error(
       `[sentinelProcess] Process API failed (${res.status}):`,
-      await res.text().catch(() => ""),
+      await res.text().catch(() => "")
     );
     return null;
   }
@@ -159,7 +156,7 @@ function buildWmsUrl(
   dateRange: string,
   maxCC: number,
   width: number,
-  height: number,
+  height: number
 ): string {
   const minLat = lat - BBOX_SIZE_DEG;
   const maxLat = lat + BBOX_SIZE_DEG;
@@ -198,7 +195,7 @@ async function fetchWmsImage(
   dateTo: string,
   maxCC: number,
   width: number,
-  height: number,
+  height: number
 ): Promise<Buffer | null> {
   const dateRange = `${dateFrom}/${dateTo}`;
   const url = buildWmsUrl(instanceId, lat, lng, dateRange, maxCC, width, height);
@@ -231,7 +228,7 @@ export async function fetchL2ARGB(
   dateFrom: string,
   dateTo: string,
   width = IMG_WIDTH,
-  height = IMG_HEIGHT,
+  height = IMG_HEIGHT
 ): Promise<Buffer | null> {
   const bbox: [number, number, number, number] = [
     lng - BBOX_SIZE_DEG,
@@ -250,13 +247,15 @@ export async function fetchL2ARGB(
     "sentinel-2-l2a",
     width,
     height,
-    50,
+    50
   );
 
   if (processResult) return processResult;
 
   // Retry without any cloud cover filter — better a cloudy image than none
-  console.warn("[sentinelProcess] Process API (50% CC) returned nothing, retrying without CC filter");
+  console.warn(
+    "[sentinelProcess] Process API (50% CC) returned nothing, retrying without CC filter"
+  );
   const retryResult = await fetchProcessedImage(
     token,
     bbox,
@@ -265,7 +264,7 @@ export async function fetchL2ARGB(
     L2A_RGB_EVALSCRIPT,
     "sentinel-2-l2a",
     width,
-    height,
+    height
   );
 
   if (retryResult) return retryResult;
@@ -294,7 +293,7 @@ export async function fetchS1SAR(
   dateFrom: string,
   dateTo: string,
   width = IMG_WIDTH,
-  height = IMG_HEIGHT,
+  height = IMG_HEIGHT
 ): Promise<Buffer | null> {
   const bbox: [number, number, number, number] = [
     lng - BBOX_SIZE_DEG,
@@ -311,7 +310,7 @@ export async function fetchS1SAR(
     S1_SAR_EVALSCRIPT,
     "sentinel-1-grd",
     width,
-    height,
+    height
   );
 }
 
@@ -322,7 +321,7 @@ export async function fetchS1SAR(
  * Falls back to Sharp lanczos3 upscale if Python/model unavailable.
  */
 export async function superResolve(
-  input: Buffer,
+  input: Buffer
 ): Promise<{ buffer: Buffer; method: "sen2sr" | "lanczos3" }> {
   // Skip Python on Vercel — only Sharp fallback available
   if (process.env.VERCEL === "1") {
@@ -356,9 +355,7 @@ export async function superResolve(
 }
 
 /** Sharp lanczos3 4x upscale fallback. */
-async function sharpUpscale(
-  input: Buffer,
-): Promise<{ buffer: Buffer; method: "lanczos3" }> {
+async function sharpUpscale(input: Buffer): Promise<{ buffer: Buffer; method: "lanczos3" }> {
   const meta = await sharp(input).metadata();
   const w = (meta.width || IMG_WIDTH) * 4;
   const h = (meta.height || IMG_HEIGHT) * 4;

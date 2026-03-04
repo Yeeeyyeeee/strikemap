@@ -68,20 +68,64 @@ export interface ChannelPost {
 
 // Blocklist: reject messages about Russia/Ukraine conflict even if they match generic keywords
 const RUSSIA_UKRAINE_BLOCKLIST = [
-  "ukraine", "ukrainian", "україн", "украин",
-  "kyiv", "kiev", "kharkiv", "odesa", "odessa", "mykolaiv", "mykolayiv",
-  "zaporizhzhia", "dnipro", "lviv", "kherson", "donetsk", "luhansk",
-  "mariupol", "crimea", "sevastopol", "sumy", "poltava", "chernihiv",
-  "zhytomyr", "vinnytsia", "rivne", "ternopil", "ivano-frankivsk",
-  "cherkasy", "kirovohrad", "kropyvnytskyi", "voznesensk",
-  "russia", "russian", "россия", "русск", "москва", "moscow",
-  "kursk", "belgorod", "bryansk", "rostov",
-  "zelensky", "зеленськ", "зеленск",
-  "putin", "путин",
-  "iskander", "kalibr", "kinzhal",
-  "залужн", "сирський", "будан",
-  "повітряна тривога", "воздушная тревога",
-  "зсу", "всу", "збройні сили",
+  "ukraine",
+  "ukrainian",
+  "україн",
+  "украин",
+  "kyiv",
+  "kiev",
+  "kharkiv",
+  "odesa",
+  "odessa",
+  "mykolaiv",
+  "mykolayiv",
+  "zaporizhzhia",
+  "dnipro",
+  "lviv",
+  "kherson",
+  "donetsk",
+  "luhansk",
+  "mariupol",
+  "crimea",
+  "sevastopol",
+  "sumy",
+  "poltava",
+  "chernihiv",
+  "zhytomyr",
+  "vinnytsia",
+  "rivne",
+  "ternopil",
+  "ivano-frankivsk",
+  "cherkasy",
+  "kirovohrad",
+  "kropyvnytskyi",
+  "voznesensk",
+  "russia",
+  "russian",
+  "россия",
+  "русск",
+  "москва",
+  "moscow",
+  "kursk",
+  "belgorod",
+  "bryansk",
+  "rostov",
+  "zelensky",
+  "зеленськ",
+  "зеленск",
+  "putin",
+  "путин",
+  "iskander",
+  "kalibr",
+  "kinzhal",
+  "залужн",
+  "сирський",
+  "будан",
+  "повітряна тривога",
+  "воздушная тревога",
+  "зсу",
+  "всу",
+  "збройні сили",
 ];
 
 export function isIranRelated(text: string): boolean {
@@ -191,23 +235,25 @@ export async function scrapeChannelDeep(username: string, maxPages = 15): Promis
 }
 
 function cleanText(rawHtml: string): string {
-  return rawHtml
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    // Strip reaction counts like "😢66🤬61🔥27❤13"
-    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]\d+/gu, "")
-    // Strip view counts like "6.77K views"
-    .replace(/[\d.]+K?\s*views?/gi, "")
-    // Strip author attribution like "Hyperborea, 08:40"
-    .replace(/,\s*\d{2}:\d{2}\s*$/m, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return (
+    rawHtml
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      // Strip reaction counts like "😢66🤬61🔥27❤13"
+      .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]\d+/gu, "")
+      // Strip view counts like "6.77K views"
+      .replace(/[\d.]+K?\s*views?/gi, "")
+      // Strip author attribution like "Hyperborea, 08:40"
+      .replace(/,\s*\d{2}:\d{2}\s*$/m, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 function parseChannelHtml(html: string, username: string): ChannelPost[] {
@@ -223,9 +269,7 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
     const postId = postMatch[1];
 
     // Extract text
-    const textMatch = block.match(
-      /tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/
-    );
+    const textMatch = block.match(/tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
     const text = textMatch ? cleanText(textMatch[1]) : "";
 
     // Extract date and full timestamp
@@ -236,9 +280,7 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
     // Extract video — check both <video src=""> and <video><source src="">
     let videoUrl = "";
     const videoSrcMatch = block.match(/<video[^>]+src="([^"]+)"/);
-    const sourceSrcMatch = block.match(
-      /<video[\s\S]*?<source[^>]+src="([^"]+)"/
-    );
+    const sourceSrcMatch = block.match(/<video[\s\S]*?<source[^>]+src="([^"]+)"/);
     videoUrl = videoSrcMatch?.[1] || sourceSrcMatch?.[1] || "";
 
     // Extract images — look for photo backgrounds and img tags
@@ -257,7 +299,9 @@ function parseChannelHtml(html: string, username: string): ChannelPost[] {
       /\/[a-z]\/\d+\/\d+\/[a-f0-9]+\.jpg/i.test(url);
 
     // Only extract images from the photo section of the message, not the header/footer
-    const photoSection = block.match(/tgme_widget_message_photo_wrap[\s\S]*?(?=tgme_widget_message_text|tgme_widget_message_footer|$)/);
+    const photoSection = block.match(
+      /tgme_widget_message_photo_wrap[\s\S]*?(?=tgme_widget_message_text|tgme_widget_message_footer|$)/
+    );
     const imageBlock = photoSection ? photoSection[0] : block;
 
     // Telegram uses background-image for photos in the message
@@ -367,18 +411,24 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
         if (kwResult) {
           if (kwResult.weapon) inc.weapon = kwResult.weapon;
           if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
-          if (kwResult.casualties_description) inc.casualties_description = kwResult.casualties_description;
+          if (kwResult.casualties_description)
+            inc.casualties_description = kwResult.casualties_description;
           if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
-          if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
+          if (kwResult.intercept_success != null)
+            inc.intercept_success = kwResult.intercept_success;
           if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
-          if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
-          if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+          if (kwResult.missiles_intercepted)
+            inc.missiles_intercepted = kwResult.missiles_intercepted;
+          if (kwResult.damage_severity)
+            inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
         }
         needsAI.push(post);
       }
     }
 
-    console.log(`[telegram] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`);
+    console.log(
+      `[telegram] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`
+    );
 
     // Second pass: AI fallback only for posts keywords couldn't geolocate
     if (needsAI.length > 0 && process.env.GEMINI_API_KEY) {
@@ -399,15 +449,19 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
           inc.side = enrichment.side;
           inc.target_military = enrichment.target_military;
           // Don't overwrite keyword-extracted casualties with AI's zeros
-          if (enrichment.casualties_military && !inc.casualties_military) inc.casualties_military = enrichment.casualties_military;
-          if (enrichment.casualties_description && !inc.casualties_description) inc.casualties_description = enrichment.casualties_description;
+          if (enrichment.casualties_military && !inc.casualties_military)
+            inc.casualties_military = enrichment.casualties_military;
+          if (enrichment.casualties_description && !inc.casualties_description)
+            inc.casualties_description = enrichment.casualties_description;
         }
       }
     }
   }
 
   const withCoords = allIncidents.filter((i) => i.lat !== 0 && i.lng !== 0);
-  console.log(`[telegram] Returning ${allIncidents.length} total (${withCoords.length} with map coordinates)`);
+  console.log(
+    `[telegram] Returning ${allIncidents.length} total (${withCoords.length} with map coordinates)`
+  );
 
   return allIncidents;
 }
@@ -420,7 +474,9 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
   const channels = getConfiguredChannels();
   if (channels.length === 0) return [];
 
-  console.log(`[telegram-deep] Deep-scraping ${channels.length} channels (${pagesPerChannel} pages each)`);
+  console.log(
+    `[telegram-deep] Deep-scraping ${channels.length} channels (${pagesPerChannel} pages each)`
+  );
 
   // Scrape channels sequentially to avoid rate limiting
   const allPosts: ChannelPost[] = [];
@@ -455,18 +511,24 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
         if (kwResult) {
           if (kwResult.weapon) inc.weapon = kwResult.weapon;
           if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
-          if (kwResult.casualties_description) inc.casualties_description = kwResult.casualties_description;
+          if (kwResult.casualties_description)
+            inc.casualties_description = kwResult.casualties_description;
           if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
-          if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
+          if (kwResult.intercept_success != null)
+            inc.intercept_success = kwResult.intercept_success;
           if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
-          if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
-          if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+          if (kwResult.missiles_intercepted)
+            inc.missiles_intercepted = kwResult.missiles_intercepted;
+          if (kwResult.damage_severity)
+            inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
         }
         needsAI.push(post);
       }
     }
 
-    console.log(`[telegram-deep] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`);
+    console.log(
+      `[telegram-deep] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`
+    );
 
     // Second pass: AI fallback only for posts keywords couldn't geolocate
     if (needsAI.length > 0 && process.env.GEMINI_API_KEY) {
@@ -485,15 +547,19 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
           inc.target_type = enrichment.target_type;
           inc.side = enrichment.side;
           inc.target_military = enrichment.target_military;
-          if (enrichment.casualties_military && !inc.casualties_military) inc.casualties_military = enrichment.casualties_military;
-          if (enrichment.casualties_description && !inc.casualties_description) inc.casualties_description = enrichment.casualties_description;
+          if (enrichment.casualties_military && !inc.casualties_military)
+            inc.casualties_military = enrichment.casualties_military;
+          if (enrichment.casualties_description && !inc.casualties_description)
+            inc.casualties_description = enrichment.casualties_description;
         }
       }
     }
   }
 
   const withCoords = allIncidents.filter((i) => i.lat !== 0 && i.lng !== 0);
-  console.log(`[telegram-deep] Returning ${allIncidents.length} total (${withCoords.length} with coords)`);
+  console.log(
+    `[telegram-deep] Returning ${allIncidents.length} total (${withCoords.length} with coords)`
+  );
 
   return allIncidents;
 }

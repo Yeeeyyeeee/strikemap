@@ -1,167 +1,202 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap");
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  body {
-    width: 1024px;
-    height: 1024px;
-    background: #0a0a0a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    position: relative;
-  }
+      body {
+        width: 1024px;
+        height: 1024px;
+        background: #0a0a0a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
 
-  /* Radial glow behind crosshair — stronger */
-  .glow {
-    position: absolute;
-    top: 46%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 750px;
-    height: 750px;
-    background: radial-gradient(circle, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.06) 40%, transparent 70%);
-    pointer-events: none;
-  }
+      /* Radial glow behind crosshair — stronger */
+      .glow {
+        position: absolute;
+        top: 46%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 750px;
+        height: 750px;
+        background: radial-gradient(
+          circle,
+          rgba(239, 68, 68, 0.18) 0%,
+          rgba(239, 68, 68, 0.06) 40%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
 
-  /* Outer ring with tick marks */
-  .scope {
-    position: absolute;
-    top: 46%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 680px;
-    height: 680px;
-    pointer-events: none;
-  }
+      /* Outer ring with tick marks */
+      .scope {
+        position: absolute;
+        top: 46%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 680px;
+        height: 680px;
+        pointer-events: none;
+      }
 
-  .scope svg {
-    width: 100%;
-    height: 100%;
-  }
+      .scope svg {
+        width: 100%;
+        height: 100%;
+      }
 
-  /* Text */
-  .logo {
-    position: absolute;
-    bottom: 115px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 72px;
-    letter-spacing: 8px;
-    z-index: 10;
-    white-space: nowrap;
-  }
+      /* Text */
+      .logo {
+        position: absolute;
+        bottom: 115px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        font-size: 72px;
+        letter-spacing: 8px;
+        z-index: 10;
+        white-space: nowrap;
+      }
 
-  .strike { color: #ef4444; }
-  .map { color: #ffffff; }
+      .strike {
+        color: #ef4444;
+      }
+      .map {
+        color: #ffffff;
+      }
 
-  /* Corner accents — bigger, brighter */
-  .corner {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    pointer-events: none;
-  }
-  .corner-tl { top: 30px; left: 30px; border-top: 3px solid #ef4444; border-left: 3px solid #ef4444; opacity: 0.5; }
-  .corner-tr { top: 30px; right: 30px; border-top: 3px solid #ef4444; border-right: 3px solid #ef4444; opacity: 0.5; }
-  .corner-bl { bottom: 30px; left: 30px; border-bottom: 3px solid #ef4444; border-left: 3px solid #ef4444; opacity: 0.5; }
-  .corner-br { bottom: 30px; right: 30px; border-bottom: 3px solid #ef4444; border-right: 3px solid #ef4444; opacity: 0.5; }
+      /* Corner accents — bigger, brighter */
+      .corner {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        pointer-events: none;
+      }
+      .corner-tl {
+        top: 30px;
+        left: 30px;
+        border-top: 3px solid #ef4444;
+        border-left: 3px solid #ef4444;
+        opacity: 0.5;
+      }
+      .corner-tr {
+        top: 30px;
+        right: 30px;
+        border-top: 3px solid #ef4444;
+        border-right: 3px solid #ef4444;
+        opacity: 0.5;
+      }
+      .corner-bl {
+        bottom: 30px;
+        left: 30px;
+        border-bottom: 3px solid #ef4444;
+        border-left: 3px solid #ef4444;
+        opacity: 0.5;
+      }
+      .corner-br {
+        bottom: 30px;
+        right: 30px;
+        border-bottom: 3px solid #ef4444;
+        border-right: 3px solid #ef4444;
+        opacity: 0.5;
+      }
 
-  /* Border glow */
-  .border-glow {
-    position: absolute;
-    inset: 0;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    pointer-events: none;
-  }
-</style>
-</head>
-<body>
-  <div class="border-glow"></div>
-  <div class="glow"></div>
+      /* Border glow */
+      .border-glow {
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="border-glow"></div>
+    <div class="glow"></div>
 
-  <div class="corner corner-tl"></div>
-  <div class="corner corner-tr"></div>
-  <div class="corner corner-bl"></div>
-  <div class="corner corner-br"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
 
-  <div class="scope">
-    <svg viewBox="0 0 520 520" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Outer ring -->
-      <circle cx="260" cy="260" r="240" stroke="#ef4444" stroke-width="2.5" opacity="0.5"/>
+    <div class="scope">
+      <svg viewBox="0 0 520 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer ring -->
+        <circle cx="260" cy="260" r="240" stroke="#ef4444" stroke-width="2.5" opacity="0.5" />
 
-      <!-- Outer tick marks -->
-      <g stroke="#ef4444" stroke-width="2.5" opacity="0.65">
-        <!-- Cardinal ticks (longer) -->
-        <line x1="260" y1="20" x2="260" y2="60"/>
-        <line x1="260" y1="460" x2="260" y2="500"/>
-        <line x1="20" y1="260" x2="60" y2="260"/>
-        <line x1="460" y1="260" x2="500" y2="260"/>
-      </g>
-      <g stroke="#ef4444" stroke-width="2" opacity="0.45">
-        <!-- 30° ticks -->
-        <line x1="380" y1="32.15" x2="371" y2="48.74"/>
-        <line x1="487.85" y1="140" x2="471.26" y2="149"/>
-        <line x1="487.85" y1="380" x2="471.26" y2="371"/>
-        <line x1="380" y1="487.85" x2="371" y2="471.26"/>
-        <line x1="140" y1="487.85" x2="149" y2="471.26"/>
-        <line x1="32.15" y1="380" x2="48.74" y2="371"/>
-        <line x1="32.15" y1="140" x2="48.74" y2="149"/>
-        <line x1="140" y1="32.15" x2="149" y2="48.74"/>
-      </g>
-      <g stroke="#ef4444" stroke-width="1.5" opacity="0.3">
-        <!-- 15° ticks -->
-        <line x1="322" y1="23.5" x2="317.5" y2="38"/>
-        <line x1="430" y1="78" x2="420" y2="90"/>
-        <line x1="496.5" y1="198" x2="482" y2="202.5"/>
-        <line x1="496.5" y1="322" x2="482" y2="317.5"/>
-        <line x1="430" y1="442" x2="420" y2="430"/>
-        <line x1="322" y1="496.5" x2="317.5" y2="482"/>
-        <line x1="198" y1="496.5" x2="202.5" y2="482"/>
-        <line x1="90" y1="442" x2="100" y2="430"/>
-        <line x1="23.5" y1="322" x2="38" y2="317.5"/>
-        <line x1="23.5" y1="198" x2="38" y2="202.5"/>
-        <line x1="90" y1="78" x2="100" y2="90"/>
-        <line x1="198" y1="23.5" x2="202.5" y2="38"/>
-      </g>
+        <!-- Outer tick marks -->
+        <g stroke="#ef4444" stroke-width="2.5" opacity="0.65">
+          <!-- Cardinal ticks (longer) -->
+          <line x1="260" y1="20" x2="260" y2="60" />
+          <line x1="260" y1="460" x2="260" y2="500" />
+          <line x1="20" y1="260" x2="60" y2="260" />
+          <line x1="460" y1="260" x2="500" y2="260" />
+        </g>
+        <g stroke="#ef4444" stroke-width="2" opacity="0.45">
+          <!-- 30° ticks -->
+          <line x1="380" y1="32.15" x2="371" y2="48.74" />
+          <line x1="487.85" y1="140" x2="471.26" y2="149" />
+          <line x1="487.85" y1="380" x2="471.26" y2="371" />
+          <line x1="380" y1="487.85" x2="371" y2="471.26" />
+          <line x1="140" y1="487.85" x2="149" y2="471.26" />
+          <line x1="32.15" y1="380" x2="48.74" y2="371" />
+          <line x1="32.15" y1="140" x2="48.74" y2="149" />
+          <line x1="140" y1="32.15" x2="149" y2="48.74" />
+        </g>
+        <g stroke="#ef4444" stroke-width="1.5" opacity="0.3">
+          <!-- 15° ticks -->
+          <line x1="322" y1="23.5" x2="317.5" y2="38" />
+          <line x1="430" y1="78" x2="420" y2="90" />
+          <line x1="496.5" y1="198" x2="482" y2="202.5" />
+          <line x1="496.5" y1="322" x2="482" y2="317.5" />
+          <line x1="430" y1="442" x2="420" y2="430" />
+          <line x1="322" y1="496.5" x2="317.5" y2="482" />
+          <line x1="198" y1="496.5" x2="202.5" y2="482" />
+          <line x1="90" y1="442" x2="100" y2="430" />
+          <line x1="23.5" y1="322" x2="38" y2="317.5" />
+          <line x1="23.5" y1="198" x2="38" y2="202.5" />
+          <line x1="90" y1="78" x2="100" y2="90" />
+          <line x1="198" y1="23.5" x2="202.5" y2="38" />
+        </g>
 
-      <!-- Middle ring -->
-      <circle cx="260" cy="260" r="160" stroke="#ef4444" stroke-width="2" opacity="0.35"/>
+        <!-- Middle ring -->
+        <circle cx="260" cy="260" r="160" stroke="#ef4444" stroke-width="2" opacity="0.35" />
 
-      <!-- Inner ring -->
-      <circle cx="260" cy="260" r="80" stroke="#ef4444" stroke-width="2" opacity="0.5"/>
+        <!-- Inner ring -->
+        <circle cx="260" cy="260" r="80" stroke="#ef4444" stroke-width="2" opacity="0.5" />
 
-      <!-- Crosshair lines — thicker, brighter -->
-      <g stroke="#ef4444" stroke-width="2.5" opacity="0.65">
-        <line x1="260" y1="55" x2="260" y2="170"/>
-        <line x1="260" y1="350" x2="260" y2="465"/>
-        <line x1="55" y1="260" x2="170" y2="260"/>
-        <line x1="350" y1="260" x2="465" y2="260"/>
-      </g>
+        <!-- Crosshair lines — thicker, brighter -->
+        <g stroke="#ef4444" stroke-width="2.5" opacity="0.65">
+          <line x1="260" y1="55" x2="260" y2="170" />
+          <line x1="260" y1="350" x2="260" y2="465" />
+          <line x1="55" y1="260" x2="170" y2="260" />
+          <line x1="350" y1="260" x2="465" y2="260" />
+        </g>
 
-      <!-- Small inner crosshair — brighter -->
-      <g stroke="#ef4444" stroke-width="2.5" opacity="0.85">
-        <line x1="260" y1="235" x2="260" y2="250"/>
-        <line x1="260" y1="270" x2="260" y2="285"/>
-        <line x1="235" y1="260" x2="250" y2="260"/>
-        <line x1="270" y1="260" x2="285" y2="260"/>
-      </g>
+        <!-- Small inner crosshair — brighter -->
+        <g stroke="#ef4444" stroke-width="2.5" opacity="0.85">
+          <line x1="260" y1="235" x2="260" y2="250" />
+          <line x1="260" y1="270" x2="260" y2="285" />
+          <line x1="235" y1="260" x2="250" y2="260" />
+          <line x1="270" y1="260" x2="285" y2="260" />
+        </g>
 
-      <!-- Center dot — bigger -->
-      <circle cx="260" cy="260" r="4.5" fill="#ef4444" opacity="0.9"/>
-    </svg>
-  </div>
+        <!-- Center dot — bigger -->
+        <circle cx="260" cy="260" r="4.5" fill="#ef4444" opacity="0.9" />
+      </svg>
+    </div>
 
-  <div class="logo">
-    <span class="strike">STRIKE</span><span class="map">MAP</span>
-  </div>
-</body>
+    <div class="logo"><span class="strike">STRIKE</span><span class="map">MAP</span></div>
+  </body>
 </html>
