@@ -192,6 +192,41 @@ const LOCATIONS: LocationEntry[] = [
   { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.71, military: false },
   { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
   { keywords: ["musandam"], location: "Musandam, Oman", lat: 26.20, lng: 56.25, military: false },
+
+  // ---- Region-level fallbacks (AFTER specific cities so "Tel Aviv" matches before "central Israel") ----
+
+  // Israeli regions
+  { keywords: ["central israel", "center of israel", "center israel", "gush dan"], location: "Central Israel", lat: 32.05, lng: 34.80, military: false },
+  { keywords: ["northern israel", "north of israel", "north israel", "the north", "galilee", "upper galilee", "lower galilee"], location: "Northern Israel", lat: 32.90, lng: 35.30, military: false },
+  { keywords: ["southern israel", "south of israel", "south israel", "negev"], location: "Southern Israel", lat: 31.25, lng: 34.79, military: false },
+  { keywords: ["gaza envelope", "gaza border", "otef aza", "western negev"], location: "Gaza Envelope, Israel", lat: 31.45, lng: 34.50, military: false },
+  { keywords: ["judea and samaria", "west bank"], location: "West Bank", lat: 32.00, lng: 35.30, military: false },
+  { keywords: ["sharon", "sharon plain", "hasharon"], location: "Sharon Plain, Israel", lat: 32.30, lng: 34.85, military: false },
+
+  // Gaza regions
+  { keywords: ["northern gaza", "north gaza"], location: "Northern Gaza", lat: 31.52, lng: 34.47, military: false },
+  { keywords: ["southern gaza", "south gaza"], location: "Southern Gaza", lat: 31.30, lng: 34.28, military: false },
+  { keywords: ["central gaza"], location: "Central Gaza", lat: 31.42, lng: 34.38, military: false },
+  { keywords: ["gaza"], location: "Gaza", lat: 31.50, lng: 34.47, military: false },
+
+  // Lebanese regions
+  { keywords: ["northern lebanon", "north lebanon"], location: "Northern Lebanon", lat: 34.30, lng: 35.85, military: false },
+  { keywords: ["mount lebanon"], location: "Mount Lebanon", lat: 33.85, lng: 35.65, military: false },
+  { keywords: ["south beirut", "southern beirut"], location: "Southern Beirut, Lebanon", lat: 33.85, lng: 35.50, military: false },
+  { keywords: ["lebanon"], location: "Lebanon", lat: 33.89, lng: 35.50, military: false },
+
+  // Iranian regions
+  { keywords: ["western iran", "west iran"], location: "Western Iran", lat: 34.00, lng: 48.00, military: false },
+  { keywords: ["southern iran", "south iran"], location: "Southern Iran", lat: 29.00, lng: 53.00, military: false },
+  { keywords: ["northern iran", "north iran"], location: "Northern Iran", lat: 37.00, lng: 50.00, military: false },
+  { keywords: ["central iran"], location: "Central Iran", lat: 33.50, lng: 52.00, military: false },
+  { keywords: ["iran"], location: "Iran", lat: 32.43, lng: 53.69, military: false },
+
+  // Country-level fallbacks
+  { keywords: ["syria"], location: "Syria", lat: 35.00, lng: 38.00, military: false },
+  { keywords: ["iraq"], location: "Iraq", lat: 33.30, lng: 44.37, military: false },
+  { keywords: ["yemen"], location: "Yemen", lat: 15.55, lng: 44.20, military: false },
+  { keywords: ["israel"], location: "Israel", lat: 31.77, lng: 35.22, military: false },
 ];
 
 interface WeaponEntry {
@@ -330,7 +365,7 @@ const INTERCEPT_FAILURE_KEYWORDS = [
   "نفوذ کرد",
 ];
 
-function detectInterception(text: string): {
+export function detectInterception(text: string): {
   intercepted_by: string;
   intercept_success: boolean | null;
   missiles_fired?: number;
@@ -510,12 +545,12 @@ function detectCasualties(text: string): CasualtyResult {
   } else if (hasMilitary && !hasCivilian) {
     milCount = totalCount;
   } else if (hasCivilian && hasMilitary) {
-    // Both mentioned — split roughly, lean military
-    milCount = Math.ceil(totalCount * 0.6);
+    // Both mentioned — split roughly
+    milCount = Math.ceil(totalCount * 0.5);
     civCount = totalCount - milCount;
   } else {
-    // No context — default to military (conservative)
-    milCount = totalCount;
+    // No context — default to civilian (most strikes hit mixed/civilian areas)
+    civCount = totalCount;
   }
 
   const desc = `${totalCount} ${hasCivilian && !hasMilitary ? "civilian" : hasMilitary && !hasCivilian ? "military" : ""} casualties reported`.trim().replace(/\s+/g, " ");
@@ -639,6 +674,31 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   // ---- Casualty extraction ----
   const casualtyResult = detectCasualties(text);
 
+  // ---- Statement detection ----
+  // Political statements, quotes, and announcements that matched strike indicators
+  // incidentally (e.g. "Secretary of War", "leaders are dead") should still appear
+  // on the map but not count as actual strikes.
+  const STATEMENT_PATTERNS = [
+    "secretary of", "minister of", "spokesperson", "press conference",
+    "announced", "announces", "announcement", "says ", " said ",
+    "warned", "warns", "warning:", "threatened", "threatens",
+    "we will ", "will be using", "going to ", "plans to ", "pledged",
+    "told reporters", "told media", "statement:", "statement from",
+    "according to", "breaking:", "update:", "developing:",
+    "confirmed that", "sources say", "reports say",
+    "declared", "declares", "vowed", "vows",
+  ];
+  // Strong action words that confirm an actual military event happened
+  const ACTION_CONFIRMATION = [
+    "struck", "bombed", "shelled", "launched at", "fired at", "fired on",
+    "intercepted", "shot down", "exploded", "detonated", "hit by",
+    "impact", "crater", "damage to", "destroyed",
+    "under attack", "came under", "barrage of", "salvo of",
+  ];
+  const isStatementPost = STATEMENT_PATTERNS.some((kw) => lower.includes(kw));
+  const hasActionConfirmation = ACTION_CONFIRMATION.some((kw) => lower.includes(kw));
+  const isStatement = isStatementPost && !hasActionConfirmation;
+
   return {
     location: loc.location,
     lat: loc.lat,
@@ -656,5 +716,6 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
     casualties_military: casualtyResult.casualties_military,
     casualties_civilian: casualtyResult.casualties_civilian,
     casualties_description: casualtyResult.casualties_description || "No casualties reported",
+    isStatement,
   };
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
 import { getWeaponColor } from "./Legend";
-import { MILITARY_BASES, BASE_COLORS, OPERATOR_LABELS, getBaseIcon } from "@/lib/militaryBases";
+import { MilitaryBase, MILITARY_BASES, BASE_COLORS, OPERATOR_LABELS, getBaseIcon } from "@/lib/militaryBases";
 import { PROXY_GROUPS, PROXY_CONNECTIONS, createProxyCircle } from "@/lib/proxyGroups";
 import { createCircleGeoJSON } from "@/lib/weaponsData";
 
@@ -59,9 +59,13 @@ interface MapProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   onMapClick?: () => void;
+  onSelectBase?: (base: MilitaryBase) => void;
   mapStyleUrl?: string;
   markerSize?: number;
   markerOpacity?: number;
+  flashCountry?: string | null;
+  sirenCountries?: string[];
+  showCountries?: boolean;
 }
 
 function getIncidentColor(incident: Incident): string {
@@ -135,9 +139,13 @@ export default function MapView({
   initialCenter,
   initialZoom,
   onMapClick,
+  onSelectBase,
   mapStyleUrl,
   markerSize = 1,
   markerOpacity = 1,
+  flashCountry = null,
+  sirenCountries = [],
+  showCountries = false,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -156,6 +164,7 @@ export default function MapView({
   markerOpacityRef.current = markerOpacity;
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const layersReady = useRef(false);
+  const [styleRevision, setStyleRevision] = useState(0);
 
   const clearBaseMarkers = useCallback(() => {
     baseMarkersRef.current.forEach((m) => m.remove());
@@ -427,6 +436,7 @@ export default function MapView({
       m.setStyle(mapStyleUrl);
       m.once("style.load", () => {
         addIncidentLayers(m);
+        setStyleRevision((r) => r + 1);
       });
     };
 
@@ -464,7 +474,7 @@ export default function MapView({
         requestAnimationFrame(update);
       });
     }
-  }, [incidents, timelineActive, markerOpacity]);
+  }, [incidents, timelineActive, markerOpacity, styleRevision]);
 
   // Update marker sizes when settings change
   useEffect(() => {
@@ -483,7 +493,7 @@ export default function MapView({
         ]);
       }
     } catch { /* layer might not exist yet */ }
-  }, [markerSize]);
+  }, [markerSize, styleRevision]);
 
   // Recalculate age-based fading every 60 seconds
   useEffect(() => {
@@ -526,7 +536,7 @@ export default function MapView({
     } else {
       src.setData({ type: "FeatureCollection", features: [] });
     }
-  }, [selectedIncident]);
+  }, [selectedIncident, styleRevision]);
 
   // Fly to selected incident — zoom in but never zoom out
   useEffect(() => {
@@ -577,17 +587,22 @@ export default function MapView({
 
         el.addEventListener("mouseenter", () => popup.addTo(map.current!));
         el.addEventListener("mouseleave", () => popup.remove());
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          popup.remove();
+          onSelectBase?.(base);
+        });
 
         baseMarkersRef.current.push(marker);
       });
     };
 
-    if (map.current.loaded()) {
+    if (map.current.isStyleLoaded()) {
       addBases();
     } else {
-      map.current.on("load", addBases);
+      map.current.once("idle", addBases);
     }
-  }, [showBases, clearBaseMarkers]);
+  }, [showBases, clearBaseMarkers, onSelectBase]);
 
   // Proxy network overlay
   useEffect(() => {
@@ -695,14 +710,14 @@ export default function MapView({
       });
     };
 
-    if (m.loaded()) {
+    if (m.isStyleLoaded()) {
       addProxies();
     } else {
-      m.on("load", addProxies);
+      m.once("idle", addProxies);
     }
 
     return cleanup;
-  }, [showProxies, clearProxyLabels]);
+  }, [showProxies, clearProxyLabels, styleRevision]);
 
   // Weapon range ring
   useEffect(() => {
@@ -782,7 +797,7 @@ export default function MapView({
     }
 
     return cleanup;
-  }, [rangeWeapon, onRangeWeaponClear]);
+  }, [rangeWeapon, onRangeWeaponClear, styleRevision]);
 
   // FIRMS thermal hotspot overlay
   useEffect(() => {
@@ -874,14 +889,326 @@ export default function MapView({
       });
     };
 
-    if (m.loaded() && layersReady.current) {
+    const onFirmsMouseMove = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      m.getCanvas().style.cursor = "pointer";
+      const props = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      const isCorrelated = props.correlated === "1";
+      const statusColor = isCorrelated ? "#ef4444" : "#f97316";
+      const statusLabel = isCorrelated ? "STRIKE CONFIRMED" : "UNCONFIRMED";
+      popupRef.current!
+        .setLngLat(coords)
+        .setHTML(
+          `<div>
+            <div style="font-weight:700;color:${statusColor};font-size:11px;margin-bottom:4px;letter-spacing:0.5px;">${statusLabel}</div>
+            <div style="color:#ccc;font-size:11px;">FRP: <b>${props.frp} MW</b> · Confidence: <b>${props.confidence}%</b></div>
+            <div style="color:#999;font-size:10px;margin-top:3px;">${props.satellite} · ${props.acq_date} ${props.acq_time} UTC · ${props.daynight === "D" ? "Day" : "Night"}</div>
+            <div style="color:#666;font-size:10px;margin-top:3px;">${coords[1].toFixed(3)}°N, ${coords[0].toFixed(3)}°E</div>
+          </div>`
+        )
+        .addTo(m);
+    };
+
+    const onFirmsMouseLeave = () => {
+      m.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    };
+
+    // Click FIRMS dot with correlated incident → select that incident
+    const onFirmsClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      const incId = e.features[0].properties?.incidentId;
+      if (incId) {
+        const incident = incidentMapRef.current.get(incId);
+        if (incident) onSelectIncidentRef.current(incident);
+      }
+    };
+
+    if (m.isStyleLoaded()) {
       addFirms();
     } else {
-      m.on("load", addFirms);
+      m.once("idle", addFirms);
+    }
+
+    m.on("mousemove", firmsLayerId, onFirmsMouseMove);
+    m.on("mouseleave", firmsLayerId, onFirmsMouseLeave);
+    m.on("click", firmsLayerId, onFirmsClick);
+
+    return () => {
+      cleanup();
+      m.off("mousemove", firmsLayerId, onFirmsMouseMove);
+      m.off("mouseleave", firmsLayerId, onFirmsMouseLeave);
+      m.off("click", firmsLayerId, onFirmsClick);
+    };
+  }, [showFirms, firmsGeoJSON, styleRevision]);
+
+  // Country border/fill overlay toggle
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const srcId = "country-overlay-src";
+    const fillId = "country-overlay-fill";
+    const lineId = "country-overlay-line";
+
+    const cleanup = () => {
+      try {
+        if (m.getLayer(lineId)) m.removeLayer(lineId);
+        if (m.getLayer(fillId)) m.removeLayer(fillId);
+        if (m.getSource(srcId)) m.removeSource(srcId);
+      } catch { /* ignore */ }
+    };
+
+    if (!showCountries) {
+      cleanup();
+      return;
+    }
+
+    const ISO_CODES = [
+      "IRN", "ISR", "IRQ", "SYR", "LBN", "JOR",
+      "SAU", "YEM", "ARE", "BHR", "KWT", "QAT", "OMN", "PSE",
+    ];
+
+    const addLayers = () => {
+      cleanup();
+
+      m.addSource(srcId, {
+        type: "vector",
+        url: "mapbox://mapbox.country-boundaries-v1",
+      });
+
+      const beforeLayer = m.getLayer("incident-clusters") ? "incident-clusters" : undefined;
+
+      m.addLayer({
+        id: fillId,
+        type: "fill",
+        source: srcId,
+        "source-layer": "country_boundaries",
+        filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
+        paint: {
+          "fill-color": [
+            "match", ["get", "iso_3166_1_alpha_3"],
+            "IRN", "rgba(251, 146, 60, 0.15)",
+            "ISR", "rgba(59, 130, 246, 0.15)",
+            "IRQ", "rgba(234, 179, 8, 0.12)",
+            "SYR", "rgba(168, 85, 247, 0.12)",
+            "LBN", "rgba(34, 197, 94, 0.12)",
+            "JOR", "rgba(249, 115, 22, 0.12)",
+            "SAU", "rgba(236, 72, 153, 0.10)",
+            "YEM", "rgba(6, 182, 212, 0.12)",
+            "ARE", "rgba(139, 92, 246, 0.10)",
+            "BHR", "rgba(20, 184, 166, 0.10)",
+            "KWT", "rgba(251, 191, 36, 0.12)",
+            "QAT", "rgba(217, 119, 6, 0.12)",
+            "OMN", "rgba(56, 189, 248, 0.10)",
+            "PSE", "rgba(74, 222, 128, 0.12)",
+            "rgba(100, 100, 100, 0.08)",
+          ],
+        },
+      }, beforeLayer);
+
+      m.addLayer({
+        id: lineId,
+        type: "line",
+        source: srcId,
+        "source-layer": "country_boundaries",
+        filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
+        paint: {
+          "line-color": "rgba(255, 255, 255, 0.35)",
+          "line-width": 1.5,
+        },
+      }, beforeLayer);
+    };
+
+    if (m.isStyleLoaded()) {
+      addLayers();
+    } else {
+      m.once("idle", addLayers);
     }
 
     return cleanup;
-  }, [showFirms, firmsGeoJSON]);
+  }, [showCountries, styleRevision]);
+
+  // Country name → ISO 3166-1 alpha-3 mapping for flash/siren effects
+  const countryToISO = useCallback((name: string): string | null => {
+    const map: Record<string, string> = {
+      "Iran": "IRN", "Israel": "ISR", "Iraq": "IRQ", "Syria": "SYR",
+      "Lebanon": "LBN", "Jordan": "JOR", "Saudi Arabia": "SAU", "Yemen": "YEM",
+      "United Arab Emirates": "ARE", "Bahrain": "BHR", "Kuwait": "KWT",
+      "Qatar": "QAT", "Oman": "OMN", "Palestine": "PSE",
+      "Pakistan": "PAK", "Afghanistan": "AFG", "Cyprus": "CYP",
+      "UAE": "ARE", "Gaza": "PSE", "Turkey": "TUR",
+    };
+    return map[name] ?? null;
+  }, []);
+
+  // One-shot flash for strike on a country (fade out over 3s) — uses Mapbox vector tileset
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !flashCountry) return;
+    const iso = countryToISO(flashCountry);
+    if (!iso) return;
+
+    const srcId = "flash-country-src";
+    const fillId = "country-flash-fill";
+    const lineId = "country-flash-line";
+
+    const addFlash = () => {
+      try {
+        // Add source if not present
+        if (!m.getSource(srcId)) {
+          m.addSource(srcId, { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
+        }
+
+        // Remove old layers if present
+        if (m.getLayer(fillId)) m.removeLayer(fillId);
+        if (m.getLayer(lineId)) m.removeLayer(lineId);
+
+        const isoFilter: mapboxgl.FilterSpecification = ["==", ["get", "iso_3166_1_alpha_3"], iso];
+
+        m.addLayer({
+          id: fillId,
+          type: "fill",
+          source: srcId,
+          "source-layer": "country_boundaries",
+          filter: isoFilter,
+          paint: { "fill-color": "#ef4444", "fill-opacity": 0.35 },
+        });
+        m.addLayer({
+          id: lineId,
+          type: "line",
+          source: srcId,
+          "source-layer": "country_boundaries",
+          filter: isoFilter,
+          paint: { "line-color": "#ef4444", "line-width": 2, "line-opacity": 0.8 },
+        });
+
+        // Fade out over 3s
+        const steps = 30;
+        const interval = 100;
+        let step = 0;
+        const fadeTimer = setInterval(() => {
+          step++;
+          const progress = step / steps;
+          try {
+            m.setPaintProperty(fillId, "fill-opacity", 0.35 * (1 - progress));
+            m.setPaintProperty(lineId, "line-opacity", 0.8 * (1 - progress));
+          } catch { /* layer removed */ }
+          if (step >= steps) {
+            clearInterval(fadeTimer);
+            try {
+              if (m.getLayer(fillId)) m.removeLayer(fillId);
+              if (m.getLayer(lineId)) m.removeLayer(lineId);
+            } catch { /* ignore */ }
+          }
+        }, interval);
+
+        return fadeTimer;
+      } catch { /* layers not ready */ }
+      return undefined;
+    };
+
+    let fadeTimer: ReturnType<typeof setInterval> | undefined;
+    if (m.isStyleLoaded()) {
+      fadeTimer = addFlash();
+    } else {
+      m.once("idle", () => { fadeTimer = addFlash(); });
+    }
+
+    return () => {
+      if (fadeTimer) clearInterval(fadeTimer);
+      try {
+        if (m.getLayer(fillId)) m.removeLayer(fillId);
+        if (m.getLayer(lineId)) m.removeLayer(lineId);
+      } catch { /* ignore */ }
+    };
+  }, [flashCountry, sirenCountries, countryToISO, styleRevision]);
+
+  // Sustained pulsing flash for siren countries — uses Mapbox vector tileset
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const srcId = "siren-country-src";
+    const sirenFillId = "country-siren-fill";
+    const sirenLineId = "country-siren-line";
+
+    const cleanup = () => {
+      try {
+        if (m.getLayer(sirenFillId)) m.removeLayer(sirenFillId);
+        if (m.getLayer(sirenLineId)) m.removeLayer(sirenLineId);
+        if (m.getSource(srcId)) m.removeSource(srcId);
+      } catch { /* ignore */ }
+    };
+
+    if (sirenCountries.length === 0) {
+      cleanup();
+      return;
+    }
+
+    // Convert country names to ISO codes
+    const isoCodes = sirenCountries
+      .map((name) => countryToISO(name))
+      .filter((c): c is string => c !== null);
+
+    if (isoCodes.length === 0) {
+      cleanup();
+      return;
+    }
+
+    const addSiren = () => {
+      cleanup();
+
+      m.addSource(srcId, { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
+
+      const isoFilter: mapboxgl.FilterSpecification = [
+        "in", ["get", "iso_3166_1_alpha_3"],
+        ["literal", isoCodes],
+      ];
+
+      m.addLayer({
+        id: sirenFillId,
+        type: "fill",
+        source: srcId,
+        "source-layer": "country_boundaries",
+        filter: isoFilter,
+        paint: { "fill-color": "#ef4444", "fill-opacity": 0.08 },
+      });
+      m.addLayer({
+        id: sirenLineId,
+        type: "line",
+        source: srcId,
+        "source-layer": "country_boundaries",
+        filter: isoFilter,
+        paint: { "line-color": "#ef4444", "line-width": 2.5, "line-opacity": 0.3 },
+      });
+    };
+
+    if (m.isStyleLoaded()) {
+      addSiren();
+    } else {
+      m.once("idle", addSiren);
+    }
+
+    // Pulsing animation: opacity oscillates between 0.08 and 0.30
+    let frame = 0;
+    const pulseTimer = setInterval(() => {
+      frame++;
+      const cycle = (Math.sin(frame * 0.12) + 1) / 2;
+      const fillOp = 0.08 + cycle * 0.22;
+      const lineOp = 0.3 + cycle * 0.5;
+      try {
+        m.setPaintProperty(sirenFillId, "fill-opacity", fillOp);
+        m.setPaintProperty(sirenLineId, "line-opacity", lineOp);
+      } catch { /* ignore */ }
+    }, 50);
+
+    return () => {
+      clearInterval(pulseTimer);
+      cleanup();
+    };
+  }, [sirenCountries, countryToISO, styleRevision]);
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import { Incident, NOTAM } from "@/lib/types";
 import { computeEscalation } from "@/lib/escalationScore";
 
@@ -11,6 +11,18 @@ interface MobileStatsPanelProps {
   lastUSStrikeAt?: number;
   lastIsraelStrikeAt?: number;
   onClose?: () => void;
+}
+
+interface SideCasualties {
+  killed: number;
+  injured: number;
+  military: number;
+  civilian: number;
+}
+
+interface CasualtyData {
+  iran: SideCasualties;
+  usIsrael: SideCasualties;
 }
 
 export default memo(function MobileStatsPanel({
@@ -50,14 +62,22 @@ export default memo(function MobileStatsPanel({
     return { intercepted: totalIntercepted, missed: totalMissed, rate: confirmed > 0 ? Math.round((totalIntercepted / confirmed) * 100) : 0 };
   }, [incidents]);
 
-  const casualties = useMemo(() => {
-    let mil = 0, civ = 0;
-    for (const i of incidents) {
-      mil += i.casualties_military || 0;
-      civ += i.casualties_civilian || 0;
-    }
-    return { mil, civ, total: mil + civ };
-  }, [incidents]);
+  // Fetch Wikipedia-sourced casualties
+  const [casualties, setCasualties] = useState<CasualtyData | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/casualties")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && !d.error) setCasualties(d);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const casualtyTotal = casualties
+    ? casualties.iran.killed + casualties.usIsrael.killed
+    : 0;
 
   const lastStrikes = useMemo(() => {
     const findLast = (side: string, override?: number) => {
@@ -254,31 +274,61 @@ export default memo(function MobileStatsPanel({
           </div>
         </div>
 
-        {/* Casualties */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-              Casualties
-            </span>
-            <span className="text-xs font-bold text-neutral-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-              {casualties.total} total
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-red-400 block mb-1">Military</span>
-              <span className="text-xl font-bold text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {casualties.mil}
+        {/* Casualties — Wikipedia sourced */}
+        {casualties && casualtyTotal > 0 && (
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                Casualties
+              </span>
+              <span className="text-xs font-bold text-neutral-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                {casualtyTotal.toLocaleString()} total
               </span>
             </div>
-            <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400 block mb-1">Civilian</span>
-              <span className="text-xl font-bold text-orange-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {casualties.civ}
-              </span>
+            <div className="space-y-2">
+              {casualties.iran.killed > 0 && (
+                <div className="bg-[#111] rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                      Iranian
+                    </span>
+                    <span className="text-sm font-bold text-red-400 font-mono">{casualties.iran.killed.toLocaleString()}</span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-neutral-500">
+                    {casualties.iran.military > 0 && <span><span className="text-red-400/80 font-mono">{casualties.iran.military.toLocaleString()}</span> military</span>}
+                    {casualties.iran.civilian > 0 && <span><span className="text-orange-400/80 font-mono">{casualties.iran.civilian.toLocaleString()}</span> civilian</span>}
+                    {casualties.iran.injured > 0 && <span><span className="text-yellow-400/80 font-mono">{casualties.iran.injured.toLocaleString()}</span> injured</span>}
+                  </div>
+                </div>
+              )}
+              {casualties.usIsrael.killed > 0 && (
+                <div className="bg-[#111] rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      US / Israeli
+                    </span>
+                    <span className="text-sm font-bold text-blue-400 font-mono">{casualties.usIsrael.killed.toLocaleString()}</span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-neutral-500">
+                    {casualties.usIsrael.military > 0 && <span><span className="text-red-400/80 font-mono">{casualties.usIsrael.military.toLocaleString()}</span> military</span>}
+                    {casualties.usIsrael.civilian > 0 && <span><span className="text-orange-400/80 font-mono">{casualties.usIsrael.civilian.toLocaleString()}</span> civilian</span>}
+                    {casualties.usIsrael.injured > 0 && <span><span className="text-yellow-400/80 font-mono">{casualties.usIsrael.injured.toLocaleString()}</span> injured</span>}
+                  </div>
+                </div>
+              )}
             </div>
+            <a
+              href="https://en.wikipedia.org/wiki/2025_Iran%E2%80%93Israel_conflict"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors block text-right mt-2"
+            >
+              Source: Wikipedia
+            </a>
           </div>
-        </div>
+        )}
 
         {/* Total Strikes Summary */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
@@ -289,19 +339,19 @@ export default memo(function MobileStatsPanel({
             <div className="bg-[#111] rounded-lg p-3 text-center">
               <span className="text-[9px] font-bold uppercase text-neutral-500 block mb-1">Total</span>
               <span className="text-lg font-bold text-neutral-200" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {incidents.length}
+                {incidents.filter((i) => !i.isStatement).length}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
               <span className="text-[9px] font-bold uppercase text-red-400 block mb-1">Iran</span>
               <span className="text-lg font-bold text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {incidents.filter((i) => i.side === "iran").length}
+                {incidents.filter((i) => i.side === "iran" && !i.isStatement).length}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
               <span className="text-[9px] font-bold uppercase text-blue-400 block mb-1">US/IL</span>
               <span className="text-lg font-bold text-blue-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel").length}
+                {incidents.filter((i) => (i.side === "us_israel" || i.side === "us" || i.side === "israel") && !i.isStatement).length}
               </span>
             </div>
           </div>

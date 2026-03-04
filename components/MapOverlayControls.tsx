@@ -10,9 +10,13 @@ interface MapOverlayControlsProps {
   onToggleProxies: () => void;
   showFirms: boolean;
   onToggleFirms: () => void;
+  showCountries?: boolean;
+  onToggleCountries?: () => void;
   firmsCount?: number;
   mapStyle?: string;
   onMapStyleChange?: (id: string) => void;
+  onOpenChat?: () => void;
+  hasUnreadChat?: boolean;
 }
 
 export default memo(function MapOverlayControls({
@@ -22,16 +26,20 @@ export default memo(function MapOverlayControls({
   onToggleProxies,
   showFirms,
   onToggleFirms,
+  showCountries = false,
+  onToggleCountries,
   firmsCount = 0,
   mapStyle = "dark",
   onMapStyleChange,
+  onOpenChat,
+  hasUnreadChat = false,
 }: MapOverlayControlsProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       {/* Desktop controls — unchanged */}
-      <div className="fixed top-[4.5rem] right-4 md:right-[19rem] z-40 hidden md:flex flex-col gap-2">
+      <div className="fixed right-4 hidden md:flex flex-col gap-2" style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}>
         <ToggleButton
           label="Bases"
           icon={<StarIcon />}
@@ -54,6 +62,15 @@ export default memo(function MapOverlayControls({
           activeColor="#f97316"
           badge={showFirms && firmsCount > 0 ? firmsCount : undefined}
         />
+        {onToggleCountries && (
+          <ToggleButton
+            label="Borders"
+            icon={<BordersIcon />}
+            active={showCountries}
+            onClick={onToggleCountries}
+            activeColor="#8b5cf6"
+          />
+        )}
         {onMapStyleChange && (
           <div className="flex gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
             {MAP_STYLES.map((s) => (
@@ -105,10 +122,22 @@ export default memo(function MapOverlayControls({
             </>
           )}
         </div>
+        {onOpenChat && (
+          <button
+            onClick={onOpenChat}
+            className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 text-xs font-medium rounded-lg border transition-all bg-[#1a1a1a] border-[#2a2a2a] text-neutral-400 hover:text-white hover:border-[#3b82f6]/50 hover:bg-[#3b82f6]/10 relative"
+          >
+            <ChatIcon />
+            Live Chat
+            {hasUnreadChat && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Mobile FAB + expandable menu */}
-      <div className="fixed top-[4.5rem] right-3 z-40 md:hidden">
+      <div className="fixed right-3 md:hidden" style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}>
         <button
           onClick={() => setMobileOpen((p) => !p)}
           className={`w-11 h-11 rounded-full flex items-center justify-center border shadow-lg transition-all ${
@@ -148,6 +177,27 @@ export default memo(function MapOverlayControls({
               activeColor="#f97316"
               badge={showFirms && firmsCount > 0 ? firmsCount : undefined}
             />
+            {onToggleCountries && (
+              <ToggleButton
+                label="Borders"
+                icon={<BordersIcon />}
+                active={showCountries}
+                onClick={onToggleCountries}
+                activeColor="#8b5cf6"
+              />
+            )}
+            {onOpenChat && (
+              <button
+                onClick={onOpenChat}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all bg-[#1a1a1a] border-[#2a2a2a] text-neutral-400 hover:text-white hover:border-[#3b82f6]/50 hover:bg-[#3b82f6]/10 relative"
+              >
+                <ChatIcon />
+                Live Chat
+                {hasUnreadChat && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                )}
+              </button>
+            )}
             {onMapStyleChange && (
               <div className="flex gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1">
                 {MAP_STYLES.map((s) => (
@@ -195,6 +245,24 @@ function FlameIcon() {
   return (
     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 23c-4.97 0-8-3.03-8-7 0-2.5 1.5-5 3-6.5.5-.5 1.5-.5 1.5.5 0 1.5.5 3 2 4 0-4 2-7 5.5-9.5.5-.5 1.5 0 1.5.5 0 3 1 5.5 2 7.5.5 1 1 2 1 3.5 0 3.97-3.03 7-8.5 7z" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function BordersIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="12" y1="3" x2="12" y2="21" />
     </svg>
   );
 }

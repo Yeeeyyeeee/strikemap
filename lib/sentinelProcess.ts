@@ -27,24 +27,19 @@ const IMG_HEIGHT = 1024;
 // ─── Evalscripts ────────────────────────────────────────────────
 
 /**
- * L2A true-color RGB from 10m bands (B04, B03, B02) with SCL cloud masking.
- * SCL values 3 (cloud shadow), 8 (cloud medium prob), 9 (cloud high prob),
- * 10 (thin cirrus) are masked to black.
- * Reflectance DN scaled to 0-255 with 3.5x gain for visual brightness.
+ * L2A true-color RGB from 10m bands (B04, B03, B02).
+ * No SCL masking — mosaickingOrder: "leastCC" already picks the clearest image.
+ * Reflectance DN scaled to 0-255 with 2.5x gain for natural brightness.
  */
 const L2A_RGB_EVALSCRIPT = `//VERSION=3
 function setup() {
   return {
-    input: [{ bands: ["B02", "B03", "B04", "SCL"], units: "DN" }],
+    input: [{ bands: ["B02", "B03", "B04"], units: "DN" }],
     output: { bands: 3, sampleType: "UINT8" }
   };
 }
 function evaluatePixel(sample) {
-  var scl = sample.SCL;
-  if (scl === 3 || scl === 8 || scl === 9 || scl === 10) {
-    return [0, 0, 0];
-  }
-  var gain = 3.5;
+  var gain = 2.5;
   return [
     Math.min(255, Math.round(sample.B04 * gain / 10000 * 255)),
     Math.min(255, Math.round(sample.B03 * gain / 10000 * 255)),
@@ -245,7 +240,7 @@ export async function fetchL2ARGB(
     lat + BBOX_SIZE_DEG,
   ];
 
-  // Try Process API first (L2A with SCL cloud masking)
+  // Try Process API first with relaxed cloud filter (50% — leastCC mosaicking still picks clearest)
   const processResult = await fetchProcessedImage(
     token,
     bbox,
@@ -255,10 +250,25 @@ export async function fetchL2ARGB(
     "sentinel-2-l2a",
     width,
     height,
-    15,
+    50,
   );
 
   if (processResult) return processResult;
+
+  // Retry without any cloud cover filter — better a cloudy image than none
+  console.warn("[sentinelProcess] Process API (50% CC) returned nothing, retrying without CC filter");
+  const retryResult = await fetchProcessedImage(
+    token,
+    bbox,
+    dateFrom,
+    dateTo,
+    L2A_RGB_EVALSCRIPT,
+    "sentinel-2-l2a",
+    width,
+    height,
+  );
+
+  if (retryResult) return retryResult;
 
   // Fallback: WMS TRUE-COLOR (proven to work, uses instance configuration)
   console.warn("[sentinelProcess] Process API failed, falling back to WMS");
@@ -268,7 +278,7 @@ export async function fetchL2ARGB(
     return null;
   }
 
-  return fetchWmsImage(token, instanceId, lat, lng, dateFrom, dateTo, 15, width, height);
+  return fetchWmsImage(token, instanceId, lat, lng, dateFrom, dateTo, 100, width, height);
 }
 
 // ─── Sentinel-1 SAR ────────────────────────────────────────────

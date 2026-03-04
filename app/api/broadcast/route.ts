@@ -5,6 +5,8 @@ import { applyEnrichment } from "@/lib/enrichmentUtils";
 import { sendFeedPost, sendIncident } from "@/lib/telegramBot";
 import { getRedis } from "@/lib/redis";
 import { REDIS_BROADCAST_KEY, BROADCAST_MAX_PER_RUN, BROADCAST_SET_MAX_SIZE } from "@/lib/constants";
+import { isStrikeBroadcastDuplicate, recordStrikeBroadcast } from "@/lib/broadcastDedup";
+import { sendDiscordStrike, sendDiscordFeed } from "@/lib/discord";
 
 export const maxDuration = 30;
 
@@ -103,13 +105,34 @@ export async function GET(req: Request) {
       const kwResult = enrichWithKeywords(post.text);
       if (kwResult) applyEnrichment(inc, kwResult);
 
+      // Spatial dedup: skip if a nearby strike was already broadcast recently
+      const isDup = await isStrikeBroadcastDuplicate(post.lat!, post.lng!);
+      if (isDup) {
+        console.log(`[broadcast] STRIKE DEDUP: ${post.id} → ${inc.location} (nearby strike already broadcast)`);
+        newSentIds.push(post.id); // Mark as sent so we don't retry
+        continue;
+      }
+
       console.log(`[broadcast] Sending STRIKE: ${post.id} → ${inc.location}`);
       ok = await sendIncident(inc, post, siteUrl);
-      if (ok) strikes++;
+      if (ok) {
+        strikes++;
+        await recordStrikeBroadcast(post.lat!, post.lng!);
+        sendDiscordStrike(inc).catch(() => {});
+      }
     } else {
       console.log(`[broadcast] Sending FEED: ${post.id} (${post.channelUsername})`);
       ok = await sendFeedPost(post, siteUrl);
-      if (ok) feed++;
+      if (ok) {
+        feed++;
+        sendDiscordFeed({
+          text: post.text,
+          channelUsername: post.channelUsername,
+          timestamp: post.timestamp,
+          imageUrls: post.imageUrls,
+          location: post.location,
+        }).catch(() => {});
+      }
     }
 
     if (ok) {
@@ -127,9 +150,12 @@ export async function GET(req: Request) {
     await redis.sadd(REDIS_BROADCAST_KEY, ...(newSentIds as [string, ...string[]]));
     const size = await redis.scard(REDIS_BROADCAST_KEY);
     if (size > BROADCAST_SET_MAX_SIZE) {
-      await redis.del(REDIS_BROADCAST_KEY);
-      const recentIds = posts.slice(0, 100).map((p) => p.id) as [string, ...string[]];
-      await redis.sadd(REDIS_BROADCAST_KEY, ...recentIds);
+      // Trim oldest half instead of nuking the entire set
+      const allMembers = await redis.smembers(REDIS_BROADCAST_KEY) as string[];
+      const toRemove = allMembers.slice(0, Math.floor(allMembers.length / 2));
+      if (toRemove.length > 0) {
+        await redis.srem(REDIS_BROADCAST_KEY, ...(toRemove as [string, ...string[]]));
+      }
     }
   }
 

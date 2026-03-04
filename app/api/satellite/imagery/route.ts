@@ -37,6 +37,7 @@ export async function GET(request: Request) {
   const date = url.searchParams.get("date");
   const wantSuperRes = url.searchParams.get("superres") === "1";
   const wantSAR = url.searchParams.get("sar") === "1";
+  const debug = url.searchParams.get("debug") === "1";
 
   if (!id || isNaN(lat) || isNaN(lng) || !date) {
     return NextResponse.json(
@@ -63,22 +64,29 @@ export async function GET(request: Request) {
       import("@/lib/sentinelProcess"),
     ]);
 
-    // ─── Step 1: Get satellite imagery metadata (catalog search) ──
-    const imagery = await getSatelliteImagery(id, lat, lng, date);
-    if (!imagery) {
-      return NextResponse.json(
-        { error: "Satellite imagery unavailable" },
-        { status: 404 },
-      );
-    }
-
+    // ─── Step 0: Authenticate first ────────────────────────────────
+    console.log("[satellite/imagery] Step 0: Getting access token...");
     const token = await getAccessToken();
     if (!token) {
+      console.error("[satellite/imagery] OAuth token failed - check SENTINEL_HUB_CLIENT_ID and SENTINEL_HUB_CLIENT_SECRET are from dataspace.copernicus.eu (not sentinelhub.com)");
       return NextResponse.json(
-        { error: "Failed to authenticate with Sentinel Hub" },
+        { error: "Failed to authenticate with Sentinel Hub. Ensure credentials are from Copernicus Data Space (dataspace.copernicus.eu)." },
         { status: 502 },
       );
     }
+    console.log("[satellite/imagery] Step 0: Token obtained successfully");
+
+    // ─── Step 1: Get satellite imagery metadata (catalog search) ──
+    console.log(`[satellite/imagery] Step 1: Catalog search for ${lat},${lng} on ${date}...`);
+    const imagery = await getSatelliteImagery(id, lat, lng, date);
+    if (!imagery) {
+      console.error("[satellite/imagery] Catalog search returned no results");
+      return NextResponse.json(
+        { error: "Satellite imagery unavailable - no clear images found in catalog" },
+        { status: 404 },
+      );
+    }
+    console.log(`[satellite/imagery] Step 1: Found imagery - before: ${imagery.beforeDateFrom}→${imagery.beforeDateTo}, after: ${imagery.afterDateFrom}→${imagery.afterDateTo}`);
 
     // ─── Step 2: Check Maxar Open Data (parallel, non-blocking) ──
     const incidentDate = new Date(date);
@@ -94,16 +102,22 @@ export async function GET(request: Request) {
     // ─── Step 3: Download L2A RGB images via Process API ─────────
     // Use full date ranges with mosaickingOrder: "leastCC" so the
     // Process API picks the clearest image automatically
+    console.log(`[satellite/imagery] Step 3: Downloading L2A RGB...`);
     const [beforeRaw, afterRaw] = await Promise.all([
       fetchL2ARGB(token, lat, lng, imagery.beforeDateFrom, imagery.beforeDateTo),
       fetchL2ARGB(token, lat, lng, imagery.afterDateFrom, imagery.afterDateTo),
     ]);
+    console.log(`[satellite/imagery] Step 3: before=${beforeRaw ? beforeRaw.length + 'B' : 'null'}, after=${afterRaw ? afterRaw.length + 'B' : 'null'}`);
 
     // Check for blank images
     const [beforeBlank, afterBlank] = await Promise.all([
       beforeRaw ? isBlankImage(beforeRaw) : true,
       afterRaw ? isBlankImage(afterRaw) : true,
     ]);
+    if (beforeBlank && beforeRaw) console.warn(`[satellite/imagery] Before image rejected as blank (mean brightness < threshold) for ${lat},${lng}`);
+    if (afterBlank && afterRaw) console.warn(`[satellite/imagery] After image rejected as blank for ${lat},${lng}`);
+    if (!beforeRaw) console.warn(`[satellite/imagery] Before image fetch returned null for ${lat},${lng} (${imagery.beforeDateFrom}→${imagery.beforeDateTo})`);
+    if (!afterRaw) console.warn(`[satellite/imagery] After image fetch returned null for ${lat},${lng} (${imagery.afterDateFrom}→${imagery.afterDateTo})`);
 
     const beforeValid = beforeRaw && !beforeBlank ? beforeRaw : null;
     const afterValid = afterRaw && !afterBlank ? afterRaw : null;
@@ -180,11 +194,19 @@ export async function GET(request: Request) {
     // ─── Step 9: Maxar result ────────────────────────────────────
     const maxar = await maxarPromise;
 
+    // If missing an image, use short CDN cache so it re-fetches sooner
+    // (satellite may revisit within hours)
+    const hasBothImages = beforeJpeg && afterJpeg;
+    const cacheControl = hasBothImages
+      ? "public, s-maxage=3600, stale-while-revalidate=7200"
+      : "public, s-maxage=300, stale-while-revalidate=600";
+
     return NextResponse.json(
       {
         incidentId: imagery.incidentId,
         beforeDate: imagery.beforeDate,
         afterDate: imagery.afterDate,
+        afterDateTo: imagery.afterDateTo,
         beforeImage: beforeJpeg
           ? `data:image/jpeg;base64,${beforeJpeg.toString("base64")}`
           : null,
@@ -201,16 +223,18 @@ export async function GET(request: Request) {
         superResMethod,
       },
       {
-        headers: {
-          "Cache-Control":
-            "public, s-maxage=3600, stale-while-revalidate=7200",
-        },
+        headers: { "Cache-Control": cacheControl },
       },
     );
   } catch (err) {
-    console.error("[api/satellite/imagery] Error:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    console.error("[api/satellite/imagery] Error:", errorMsg, errorStack);
     return NextResponse.json(
-      { error: "Failed to fetch satellite imagery" },
+      {
+        error: "Failed to fetch satellite imagery",
+        ...(debug ? { detail: errorMsg, stack: errorStack } : {}),
+      },
       { status: 500 },
     );
   }

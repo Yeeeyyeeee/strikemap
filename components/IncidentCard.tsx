@@ -37,10 +37,11 @@ const CARD_WIDTH = 360;
 const CARD_OFFSET = 24; // px from marker
 
 function useIsMobile() {
-  const [mobile, setMobile] = useState(false);
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 768);
-    check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
@@ -347,17 +348,17 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
 
   const hasCoords = incident.lat !== 0 || incident.lng !== 0;
 
-  // --- Mobile or no coordinates: bottom sheet / centered panel ---
+  // --- Mobile or no coordinates: fullscreen panel ---
   if (isMobile || !hasCoords) {
     return (
-      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter w-full max-w-full overflow-hidden">
+      <div className="fixed top-14 bottom-14 md:top-0 md:bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter w-full max-w-full overflow-hidden">
         <div
           ref={cardRef}
-          className="bg-[#1a1a1a] border-t border-[#2a2a2a] rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.7)] overflow-hidden max-h-[75vh] md:max-h-[85vh] flex flex-col w-full"
+          className="bg-[#1a1a1a] md:border-t md:border-[#2a2a2a] md:rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.7)] overflow-hidden h-full md:max-h-[85vh] flex flex-col w-full"
         >
-          {/* Drag handle + close */}
-          <div className="sticky top-0 bg-[#1a1a1a] pt-3 pb-2 px-4 flex items-center justify-between z-10 rounded-t-2xl border-b border-[#2a2a2a]/50">
-            <div className="w-10 h-1 bg-neutral-600 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
+          {/* Header + close */}
+          <div className="shrink-0 bg-[#1a1a1a] pt-3 pb-2 px-4 flex items-center justify-between z-10 border-b border-[#2a2a2a]/50">
+            <div className="w-10 h-1 bg-neutral-600 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2 md:block hidden" />
             <div />
             <button
               onClick={onClose}

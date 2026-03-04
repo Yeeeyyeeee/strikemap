@@ -80,7 +80,7 @@ const COUNTRIES: CountryEntry[] = [
   { keywords: ["oman", "omani", "muscat", "salalah"], displayName: "Oman" },
   { keywords: ["turkey", "turkish", "ankara", "istanbul", "hatay", "gaziantep", "kilis", "sanliurfa"], displayName: "Turkey" },
   { keywords: ["pakistan", "pakistani", "islamabad", "karachi", "lahore"], displayName: "Pakistan" },
-  { keywords: ["ukraine", "ukrainian", "kyiv", "kharkiv", "odessa"], displayName: "Ukraine" },
+  { keywords: ["cyprus", "cypriot", "nicosia", "larnaca", "limassol", "paphos", "famagusta"], displayName: "Cyprus" },
 ];
 
 // Israel exclusion — skip these entirely (Tzeva Adom handles Israel)
@@ -100,7 +100,7 @@ const ISRAEL_KEYWORDS = [
 
 const activeSirens = new Map<string, SirenAlert & { expiresAt: number }>();
 
-const SIREN_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes auto-expire
+const SIREN_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes auto-expire
 const SUPPRESS_DURATION_MS = 60 * 60 * 1000; // 1 hour suppress after admin clear
 
 // Countries suppressed by admin — won't be auto-recreated from Telegram
@@ -207,7 +207,7 @@ export async function processSirenPosts(posts: Array<{
   channelUsername: string;
   text: string;
   timestamp: string;
-}>): Promise<void> {
+}>): Promise<SirenAlert[]> {
   // Must await suppression load before checking
   await loadSuppressions();
 
@@ -218,6 +218,7 @@ export async function processSirenPosts(posts: Array<{
 
   let activated = 0;
   let cleared = 0;
+  const newAlerts: SirenAlert[] = [];
 
   for (const post of posts) {
     const text = post.text;
@@ -231,9 +232,11 @@ export async function processSirenPosts(posts: Array<{
 
     // Check for siren clear first
     if (hasClearKeywords(text)) {
+      const r = getRedis();
       for (const [id, siren] of activeSirens) {
         if (siren.country === country && siren.status === "active") {
           activeSirens.delete(id);
+          if (r) r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
           cleared++;
           console.log(`[siren] CLEARED: ${country} (post: ${post.id})`);
         }
@@ -247,20 +250,37 @@ export async function processSirenPosts(posts: Array<{
       const suppressUntil = suppressedCountries.get(country.toLowerCase());
       if (suppressUntil && now < suppressUntil) continue;
 
-      // Extend existing siren for this country
+      // Skip if siren already active for this country (no extending / re-triggering)
+      // Check both in-memory and Redis to handle cross-instance dedup
       let existing = false;
       for (const siren of activeSirens.values()) {
         if (siren.country === country && siren.status === "active") {
-          siren.lastSeenAt = now;
-          siren.expiresAt = now + SIREN_EXPIRY_MS;
           existing = true;
           break;
+        }
+      }
+      if (!existing) {
+        const r = getRedis();
+        if (r) {
+          try {
+            const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
+            if (raw && typeof raw === "object") {
+              for (const value of Object.values(raw)) {
+                const s: SirenAlert & { expiresAt?: number } =
+                  typeof value === "string" ? JSON.parse(value) : value as SirenAlert & { expiresAt?: number };
+                if (s.country === country && s.status === "active" && s.expiresAt && now < s.expiresAt) {
+                  existing = true;
+                  break;
+                }
+              }
+            }
+          } catch { /* ignore */ }
         }
       }
 
       if (!existing) {
         const alertId = `siren-${post.channelUsername}-${post.id.replace("/", "-")}-${now}`;
-        activeSirens.set(alertId, {
+        const alert: SirenAlert & { expiresAt: number } = {
           id: alertId,
           country,
           activatedAt: now,
@@ -269,7 +289,13 @@ export async function processSirenPosts(posts: Array<{
           sourceText: text.slice(0, 200),
           status: "active",
           expiresAt: now + SIREN_EXPIRY_MS,
-        });
+        };
+        activeSirens.set(alertId, alert);
+        // Persist to Redis so other serverless instances see it
+        const r = getRedis();
+        if (r) r.hset(REDIS_MANUAL_SIRENS_KEY, { [alertId]: JSON.stringify(alert) }).catch(() => {});
+        const { expiresAt: _, ...rest } = alert;
+        newAlerts.push(rest);
         activated++;
         console.log(`[siren] ACTIVATED: ${country} via ${post.channelUsername} (post: ${post.id})`);
         console.log(`[siren]   text: ${text.slice(0, 120)}`);
@@ -278,16 +304,20 @@ export async function processSirenPosts(posts: Array<{
   }
 
   // Expire old sirens
+  const rExpiry = getRedis();
   for (const [id, siren] of activeSirens) {
     if (now > siren.expiresAt) {
       console.log(`[siren] EXPIRED: ${siren.country}`);
       activeSirens.delete(id);
+      if (rExpiry) rExpiry.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
     }
   }
 
   if (activated > 0 || cleared > 0 || activeSirens.size > 0) {
     console.log(`[siren] Result: ${activated} new, ${cleared} cleared, ${activeSirens.size} active`);
   }
+
+  return newAlerts;
 }
 
 /**
@@ -326,6 +356,12 @@ export async function getActiveSirenAlerts(): Promise<SirenAlert[]> {
       const siren: SirenAlert & { expiresAt?: number } =
         typeof value === "string" ? JSON.parse(value) : value as SirenAlert & { expiresAt?: number };
       if (siren.expiresAt && now > siren.expiresAt) {
+        r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
+        continue;
+      }
+      // Skip suppressed countries (admin cleared)
+      const suppressUntil = suppressedCountries.get(siren.country.toLowerCase());
+      if (suppressUntil && now < suppressUntil) {
         r.hdel(REDIS_MANUAL_SIRENS_KEY, id).catch(() => {});
         continue;
       }
@@ -404,7 +440,7 @@ export async function clearSirenByCountry(country: string): Promise<number> {
   suppressedCountries.set(country.toLowerCase(), now + SUPPRESS_DURATION_MS);
   const r2 = getRedis();
   if (r2) {
-    r2.hset("siren_suppressed", { [country.toLowerCase()]: String(now + SUPPRESS_DURATION_MS) }).catch(() => {});
+    await r2.hset("siren_suppressed", { [country.toLowerCase()]: String(now + SUPPRESS_DURATION_MS) });
   }
 
   if (cleared > 0) {
@@ -418,20 +454,36 @@ export async function clearSirenByCountry(country: string): Promise<number> {
  */
 export async function clearAllSirens(): Promise<number> {
   const now = Date.now();
-  // Suppress all currently active countries
+  let count = 0;
+
+  // Suppress countries from in-memory sirens
   for (const siren of activeSirens.values()) {
     suppressedCountries.set(siren.country.toLowerCase(), now + SUPPRESS_DURATION_MS);
+    count++;
   }
-  const count = activeSirens.size;
   activeSirens.clear();
+
   const r = getRedis();
   if (r) {
+    // Also read Redis sirens to suppress their countries (in-memory may be empty on fresh instances)
+    try {
+      const raw = await r.hgetall(REDIS_MANUAL_SIRENS_KEY);
+      if (raw && typeof raw === "object") {
+        for (const value of Object.values(raw)) {
+          const siren: SirenAlert = typeof value === "string" ? JSON.parse(value) : value as SirenAlert;
+          suppressedCountries.set(siren.country.toLowerCase(), now + SUPPRESS_DURATION_MS);
+          count++;
+        }
+      }
+    } catch { /* ignore */ }
+
     await r.del(REDIS_MANUAL_SIRENS_KEY);
-    // Persist suppressions to Redis
+
+    // Persist suppressions to Redis (awaited to prevent race conditions)
     if (suppressedCountries.size > 0) {
       const entries: Record<string, string> = {};
       for (const [c, until] of suppressedCountries) entries[c] = String(until);
-      r.hset("siren_suppressed", entries).catch(() => {});
+      await r.hset("siren_suppressed", entries);
     }
   }
   if (count > 0) {

@@ -23,6 +23,7 @@ const COUNTRY_ORDER = [
   { country: "Yemen", code: "YE" },
   { country: "UAE", code: "AE" },
   { country: "Bahrain", code: "BH" },
+  { country: "Oman", code: "OM" },
 ];
 
 const STATUS_COLORS = {
@@ -66,12 +67,14 @@ export default memo(function AirspaceStatus() {
       const hasRestricted = firs.some((f) => f.status === "restricted");
       const totalActive = firs.reduce((sum, f) => sum + f.active_notams, 0);
       const totalCritical = firs.reduce((sum, f) => sum + f.critical_notams, 0);
+      const hasManualOverride = firs.some((f) => f.manual_override);
       return {
         country,
         code,
         status: hasClosed ? ("closed" as const) : hasRestricted ? ("restricted" as const) : ("open" as const),
         activeNotams: totalActive,
         criticalNotams: totalCritical,
+        manualOverride: hasManualOverride,
       };
     });
   }, [data]);
@@ -84,7 +87,7 @@ export default memo(function AirspaceStatus() {
   const israelClosed = countryStatuses.find((c) => c.code === "IL")?.status === "closed";
 
   return (
-    <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg p-3 w-52">
+    <div className="w-full p-3">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <h3
@@ -170,7 +173,7 @@ export default memo(function AirspaceStatus() {
       {/* Country rows */}
       {data && !allOpen && (
         <div className="space-y-1">
-          {countryStatuses.map(({ country, code, status }) => (
+          {countryStatuses.map(({ country, code, status, manualOverride }) => (
             <div key={code} className="flex items-center gap-2">
               {/* Status dot */}
               <span
@@ -187,6 +190,15 @@ export default memo(function AirspaceStatus() {
               >
                 {country}
               </span>
+              {/* Manual override badge */}
+              {manualOverride && (
+                <span
+                  className="text-[7px] font-bold text-sky-400 bg-sky-500/20 px-1 rounded flex-shrink-0"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  M
+                </span>
+              )}
               {/* Status label */}
               <span
                 className="text-[9px] font-bold flex-shrink-0"

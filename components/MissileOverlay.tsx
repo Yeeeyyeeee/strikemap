@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { MissileAlert } from "@/lib/types";
+import { greatCircleArc, interpolateArc, bearingAtArcPoint } from "@/lib/greatCircle";
 import { startSiren, stopSiren } from "@/lib/sounds";
 
 interface MissileOverlayProps {
@@ -12,331 +13,389 @@ interface MissileOverlayProps {
   soundEnabled?: boolean;
 }
 
-interface AnimState {
-  startTime: number; // based on alert timestamp, not Date.now()
-  duration: number;  // ms
-  cleared: boolean;
-  clearTime: number;
+interface MissileState {
+  alertId: string;
+  arc: [number, number][]; // full great-circle arc [lng, lat][]
+  startTime: number;
+  duration: number;
+  isDrone: boolean;
+  headMarker: mapboxgl.Marker;
+  originMarker: mapboxgl.Marker;
+  impactMarker: mapboxgl.Marker;
+  sourceId: string;
+  glowLayerId: string;
+  lineLayerId: string;
+  lastArcIndex: number; // track how many points are in the trail GeoJSON
+  arrived: boolean;
 }
 
 // Flight durations
-const MISSILE_FLIGHT_MS = 3.5 * 60 * 1000; // 3.5 min for missiles
-const DRONE_FLIGHT_MS = 8 * 60 * 1000;     // 8 min for drones (slower)
+const MISSILE_FLIGHT_MS = 3.5 * 60 * 1000;
+const DRONE_FLIGHT_MS = 8 * 60 * 1000;
+const MIN_VISIBLE_FLIGHT_MS = 4000;
+const ARC_POINTS = 64;
 
-/** Quadratic Bezier point at parameter t */
-function bezier(
-  t: number,
-  p0: { x: number; y: number },
-  p1: { x: number; y: number },
-  p2: { x: number; y: number }
-) {
-  const mt = 1 - t;
-  return {
-    x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
-    y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y,
-  };
-}
+const MISSILE_SVG = `<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="18" fill="rgba(255,60,60,0.35)"/>
+  <circle cx="24" cy="24" r="10" fill="rgba(255,80,80,0.5)"/>
+  <rect x="8" y="22" width="28" height="4" rx="1.5" fill="#ff4444" stroke="#fff" stroke-width="0.8"/>
+  <path d="M36 22 L44 24 L36 26 Z" fill="#ffffff"/>
+  <path d="M8 22 L13 22 L8 18 Z" fill="#cc3333" stroke="#fff" stroke-width="0.5"/>
+  <path d="M8 26 L13 26 L8 30 Z" fill="#cc3333" stroke="#fff" stroke-width="0.5"/>
+  <path d="M4 22.5 L8 24 L4 25.5 Z" fill="#ff8c00"/>
+  <path d="M2 23 L5 24 L2 25 Z" fill="#ffcc00" opacity="0.8"/>
+</svg>`;
 
-/** Quadratic Bezier tangent angle at parameter t (for rotation) */
-function bezierAngle(
-  t: number,
-  p0: { x: number; y: number },
-  p1: { x: number; y: number },
-  p2: { x: number; y: number }
-) {
-  const mt = 1 - t;
-  const dx = 2 * mt * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
-  const dy = 2 * mt * (p1.y - p0.y) + 2 * t * (p2.y - p1.y);
-  return Math.atan2(dy, dx);
-}
+const DRONE_SVG = `<svg viewBox="0 0 28 28" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 9 L22 14 L14 16 L6 14 Z" fill="#a855f7" stroke="#fff" stroke-width="0.5"/>
+  <line x1="7" y1="10" x2="21" y2="10" stroke="#a855f7" stroke-width="1.5"/>
+  <circle cx="7" cy="10" r="2.5" fill="#a855f7" stroke="#fff" stroke-width="0.5"/>
+  <circle cx="21" cy="10" r="2.5" fill="#a855f7" stroke="#fff" stroke-width="0.5"/>
+  <circle cx="7" cy="18" r="2.5" fill="#a855f7" stroke="#fff" stroke-width="0.5"/>
+  <circle cx="21" cy="18" r="2.5" fill="#a855f7" stroke="#fff" stroke-width="0.5"/>
+  <line x1="7" y1="18" x2="21" y2="18" stroke="#a855f7" stroke-width="1.5"/>
+</svg>`;
 
-/** Build SVG path string for a quadratic Bezier */
-function bezierPath(
-  p0: { x: number; y: number },
-  p1: { x: number; y: number },
-  p2: { x: number; y: number }
-) {
-  return `M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`;
-}
+// Tehran fallback
+const IRAN_DEFAULT_ORIGIN = { lat: 35.6892, lng: 51.3890 };
 
 /**
- * Parse the alert timestamp into an epoch ms.
+ * Get the current UTC offset for Israel (IST +02:00 / IDT +03:00).
  */
+function getIsraelOffset(): string {
+  const now = new Date();
+  const israelTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+  const diffMs = israelTime.getTime() - now.getTime() + now.getTimezoneOffset() * 60000;
+  const diffHours = Math.round(diffMs / 3600000);
+  return `+${String(diffHours).padStart(2, "0")}:00`;
+}
+
 function getAlertEpoch(alert: MissileAlert): number {
+  const offset = getIsraelOffset();
   const dateMatch = alert.rawText?.match(/(\d{2})\/(\d{2})\/(\d{4})/);
   const timeMatch = alert.rawText?.match(/(\d{1,2}:\d{2})[:\s)]/);
   if (dateMatch && timeMatch) {
     const [, dd, mm, yyyy] = dateMatch;
     const [hh, min] = timeMatch[1].split(":");
-    const d = new Date(`${yyyy}-${mm}-${dd}T${hh.padStart(2, "0")}:${min}:00+02:00`);
+    const d = new Date(`${yyyy}-${mm}-${dd}T${hh.padStart(2, "0")}:${min}:00${offset}`);
     if (!isNaN(d.getTime())) return d.getTime();
   }
   if (alert.timestamp) {
     const [hh, min] = alert.timestamp.split(":");
     const now = new Date();
     const d = new Date(
-      `${now.toISOString().split("T")[0]}T${hh.padStart(2, "0")}:${min}:00+02:00`
+      `${now.toISOString().split("T")[0]}T${hh.padStart(2, "0")}:${min}:00${offset}`
     );
     if (!isNaN(d.getTime())) return d.getTime();
   }
   return Date.now();
 }
 
-const MISSILE_SVG = `<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-  <path d="M2 12 L8 8 L22 12 L8 16 Z" fill="#ef4444" stroke="#fff" stroke-width="0.5"/>
-  <path d="M2 12 L5 9.5 L5 14.5 Z" fill="#f97316"/>
-</svg>`;
+function createHeadMarkerEl(isDrone: boolean, title: string, onClick: () => void): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = isDrone ? "drone-icon" : "missile-icon";
+  el.innerHTML = isDrone ? DRONE_SVG : MISSILE_SVG;
+  el.style.cursor = "pointer";
+  el.title = title;
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return el;
+}
 
-const DRONE_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 8 L20 12 L12 14 L4 12 Z" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
-  <line x1="6" y1="9" x2="18" y2="9" stroke="#a855f7" stroke-width="1.5"/>
-  <circle cx="6" cy="9" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
-  <circle cx="18" cy="9" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
-  <circle cx="6" cy="15" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
-  <circle cx="18" cy="15" r="2" fill="#a855f7" stroke="#fff" stroke-width="0.4"/>
-  <line x1="6" y1="15" x2="18" y2="15" stroke="#a855f7" stroke-width="1.5"/>
-</svg>`;
+function createOriginMarkerEl(isDrone: boolean, siteName?: string): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = isDrone ? "launch-site-marker drone" : "launch-site-marker";
+  if (siteName) el.title = `Launch site: ${siteName}`;
+  return el;
+}
+
+function createImpactMarkerEl(isDrone: boolean, onClick: () => void): HTMLDivElement {
+  const el = document.createElement("div");
+  el.className = isDrone ? "drone-pulse" : "impact-ring";
+  el.style.cursor = "pointer";
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return el;
+}
 
 export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled = true }: MissileOverlayProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const animStates = useRef<Map<string, AnimState>>(new Map());
+  const statesRef = useRef<Map<string, MissileState>>(new Map());
   const rafRef = useRef<number>(0);
-  const elementsRef = useRef<
-    Map<string, { missile: HTMLDivElement; trail: SVGSVGElement; ring: HTMLDivElement }>
-  >(new Map());
-
-  // Stable reference for render loop data — avoids recreating the render callback
   const alertsRef = useRef(alerts);
   alertsRef.current = alerts;
-  const mapRef = useRef(map);
-  mapRef.current = map;
   const soundRef = useRef(soundEnabled);
   soundRef.current = soundEnabled;
   const onAlertClickRef = useRef(onAlertClick);
   onAlertClickRef.current = onAlertClick;
+  const lastFrameRef = useRef(0);
 
-  // Memoize active alerts by ID to avoid unnecessary re-renders
   const activeAlerts = useMemo(
     () => alerts.filter((a) => a.lat !== 0 && a.lng !== 0 && a.status === "active"),
     [alerts]
   );
 
-  // Create/remove DOM elements for alerts
-  useEffect(() => {
-    if (!containerRef.current || !map) return;
+  // Clean up a single missile's Mapbox resources
+  const cleanupMissile = useCallback((state: MissileState, currentMap: mapboxgl.Map) => {
+    state.headMarker.remove();
+    state.originMarker.remove();
+    state.impactMarker.remove();
+    try {
+      if (currentMap.getLayer(state.glowLayerId)) currentMap.removeLayer(state.glowLayerId);
+      if (currentMap.getLayer(state.lineLayerId)) currentMap.removeLayer(state.lineLayerId);
+      if (currentMap.getSource(state.sourceId)) currentMap.removeSource(state.sourceId);
+    } catch {
+      // layers/sources may already be gone if map is being destroyed
+    }
+  }, []);
 
-    const container = containerRef.current;
+  // Setup / teardown missile states
+  useEffect(() => {
+    if (!map) return;
+
+    const currentMap = map;
 
     for (const alert of activeAlerts) {
-      if (elementsRef.current.has(alert.id)) continue;
+      if (statesRef.current.has(alert.id)) continue;
 
       const isDrone = alert.threatType === "drone";
+      const isTest = alert.id.startsWith("test-");
+      const isTimeline = alert.id.startsWith("timeline-");
+      const duration = (isTest || isTimeline)
+        ? (isDrone ? 20_000 : 12_000)
+        : (isDrone ? DRONE_FLIGHT_MS : MISSILE_FLIGHT_MS);
 
-      if (!animStates.current.has(alert.id)) {
+      let startTime: number;
+      if (isTest || isTimeline) {
+        startTime = Date.now();
+      } else {
         const alertEpoch = getAlertEpoch(alert);
-        animStates.current.set(alert.id, {
-          startTime: alertEpoch,
-          duration: isDrone ? DRONE_FLIGHT_MS : MISSILE_FLIGHT_MS,
-          cleared: false,
-          clearTime: 0,
-        });
+        const elapsed = Date.now() - alertEpoch;
+        if (elapsed >= duration) {
+          startTime = Date.now() - (duration - MIN_VISIBLE_FLIGHT_MS);
+        } else {
+          startTime = alertEpoch;
+        }
       }
 
-      // Create missile/drone element
-      const missile = document.createElement("div");
-      missile.className = isDrone ? "drone-icon" : "missile-icon";
-      missile.innerHTML = isDrone ? DRONE_SVG : MISSILE_SVG;
-      missile.style.pointerEvents = "auto";
-      missile.style.cursor = "pointer";
-      missile.title = isDrone
-        ? `Hostile drone incursion — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`
-        : `Incoming hostile missiles — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`;
+      const originLat = alert.originLat || IRAN_DEFAULT_ORIGIN.lat;
+      const originLng = alert.originLng || IRAN_DEFAULT_ORIGIN.lng;
+
+      // Compute great-circle arc
+      const arc = greatCircleArc(
+        [originLng, originLat],
+        [alert.lng, alert.lat],
+        ARC_POINTS,
+      ) as [number, number][];
+
       const alertId = alert.id;
-      missile.addEventListener("click", (e) => {
-        e.stopPropagation();
+      const handleClick = () => {
         const current = alertsRef.current.find((a) => a.id === alertId);
         if (current) onAlertClickRef.current?.(current);
+      };
+
+      const title = isDrone
+        ? `Hostile drone incursion — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`
+        : `Incoming hostile missiles — ${alert.regions.join(", ") || alert.cities.slice(0, 3).join(", ")}`;
+
+      // Create markers
+      const headEl = createHeadMarkerEl(isDrone, title, handleClick);
+      const headMarker = new mapboxgl.Marker({ element: headEl, anchor: "center", rotationAlignment: "map" })
+        .setLngLat([originLng, originLat])
+        .addTo(currentMap);
+
+      const originEl = createOriginMarkerEl(isDrone, alert.originName);
+      const originMarker = new mapboxgl.Marker({ element: originEl, anchor: "center" })
+        .setLngLat([originLng, originLat])
+        .addTo(currentMap);
+
+      const impactEl = createImpactMarkerEl(isDrone, handleClick);
+      const impactMarker = new mapboxgl.Marker({ element: impactEl, anchor: "center" })
+        .setLngLat([alert.lng, alert.lat]);
+      // Don't add to map yet — only shown on arrival
+
+      // Create Mapbox source + layers for the trail
+      const sourceId = `missile-trail-${alertId}`;
+      const glowLayerId = `missile-glow-${alertId}`;
+      const lineLayerId = `missile-line-${alertId}`;
+
+      const color = isDrone ? "#a855f7" : "#ef4444";
+
+      currentMap.addSource(sourceId, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: [arc[0]] },
+        },
+        lineMetrics: true,
       });
-      container.appendChild(missile);
 
-      // Drones: static pulse ring at target. Missiles: trail SVG + impact ring.
-      let trail: SVGSVGElement;
-      let ring: HTMLDivElement;
+      // Glow layer (wider, blurred, low opacity)
+      currentMap.addLayer({
+        id: glowLayerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": color,
+          "line-width": 12,
+          "line-blur": 8,
+          "line-opacity": 0.25,
+          "line-gradient": [
+            "interpolate", ["linear"], ["line-progress"],
+            0, "transparent",
+            0.3, color,
+            1, color,
+          ],
+        },
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
 
-      if (isDrone) {
-        // Drone: no trail, just a purple pulse ring
-        trail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        trail.style.display = "none"; // not used for drones
+      // Main trail line
+      currentMap.addLayer({
+        id: lineLayerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": color,
+          "line-width": [
+            "interpolate", ["linear"], ["line-progress"],
+            0, 1.5,
+            0.35, 3.5,
+            0.65, 3.5,
+            1, 1.5,
+          ],
+          "line-opacity": 0.85,
+          "line-gradient": [
+            "interpolate", ["linear"], ["line-progress"],
+            0, "transparent",
+            0.15, color,
+            1, color,
+          ],
+        },
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+        },
+      });
 
-        ring = document.createElement("div");
-        ring.className = "drone-pulse";
-        ring.style.display = "block";
-        ring.style.pointerEvents = "auto";
-        ring.style.cursor = "pointer";
-        ring.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const current = alertsRef.current.find((a) => a.id === alertId);
-          if (current) onAlertClickRef.current?.(current);
-        });
-        container.appendChild(ring);
-      } else {
-        // Missile: animated trail + impact ring
-        const trail_ = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        trail_.setAttribute("class", "missile-trail");
-        trail_.style.position = "absolute";
-        trail_.style.inset = "0";
-        trail_.style.width = "100%";
-        trail_.style.height = "100%";
-        trail_.style.pointerEvents = "none";
-        trail_.style.overflow = "visible";
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", "#ef4444");
-        path.setAttribute("stroke-width", "2");
-        path.setAttribute("stroke-dasharray", "8 4");
-        path.setAttribute("opacity", "0.6");
-        trail_.appendChild(path);
-        container.appendChild(trail_);
-        trail = trail_;
-
-        ring = document.createElement("div");
-        ring.className = "impact-ring";
-        ring.style.display = "none";
-        ring.style.pointerEvents = "auto";
-        ring.style.cursor = "pointer";
-        ring.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const current = alertsRef.current.find((a) => a.id === alertId);
-          if (current) onAlertClickRef.current?.(current);
-        });
-        container.appendChild(ring);
-      }
-
-      elementsRef.current.set(alert.id, { missile, trail, ring });
+      statesRef.current.set(alertId, {
+        alertId,
+        arc,
+        startTime,
+        duration,
+        isDrone,
+        headMarker,
+        originMarker,
+        impactMarker,
+        sourceId,
+        glowLayerId,
+        lineLayerId,
+        lastArcIndex: 0,
+        arrived: false,
+      });
     }
 
-    // Remove elements for alerts no longer active
+    // Remove states for alerts no longer active
     const activeIds = new Set(activeAlerts.map((a) => a.id));
-    for (const [id, els] of elementsRef.current) {
+    for (const [id, state] of statesRef.current) {
       if (!activeIds.has(id)) {
-        els.missile.remove();
-        els.trail.remove();
-        els.ring.remove();
-        elementsRef.current.delete(id);
-        animStates.current.delete(id);
+        cleanupMissile(state, currentMap);
+        statesRef.current.delete(id);
       }
     }
-  }, [activeAlerts, map]);
+  }, [activeAlerts, map, cleanupMissile]);
 
-  // Animation loop — uses refs so callback is stable and never recreated
+  // Animation loop
   useEffect(() => {
     if (!map || activeAlerts.length === 0) {
       stopSiren();
       return;
     }
 
+    const currentMap = map;
+
     function render() {
-      const currentMap = mapRef.current;
-      const container = containerRef.current;
-      if (!currentMap || !container) {
+      const now = Date.now();
+
+      // Throttle to ~30fps
+      if (now - lastFrameRef.current < 33) {
         rafRef.current = requestAnimationFrame(render);
         return;
       }
+      lastFrameRef.current = now;
 
-      const now = Date.now();
-      let anyInFlight = false;
-      const currentAlerts = alertsRef.current.filter(
-        (a) => a.lat !== 0 && a.lng !== 0 && a.status === "active"
-      );
+      let anyActive = false;
 
-      for (const alert of currentAlerts) {
-        const state = animStates.current.get(alert.id);
-        if (!state) continue;
+      for (const state of statesRef.current.values()) {
+        const elapsed = now - state.startTime;
+        const t = Math.min(elapsed / state.duration, 1);
 
-        const els = elementsRef.current.get(alert.id);
-        if (!els) continue;
+        if (t < 1) {
+          // -- In flight --
+          anyActive = true;
 
-        const isDrone = alert.threatType === "drone";
+          // Update head marker position
+          const headPos = interpolateArc(state.arc, t);
+          state.headMarker.setLngLat(headPos);
+          state.headMarker.getElement().style.display = "block";
 
-        if (isDrone) {
-          // --- DRONE: static icon at spotted location with pulsing ring ---
-          anyInFlight = true;
-          const target = currentMap.project([alert.lng, alert.lat]);
-          els.missile.style.transform = `translate(${target.x - 11}px, ${target.y - 11}px)`;
-          els.missile.style.display = "block";
-          els.ring.style.display = "block";
-          els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
-        } else {
-          // --- MISSILE: animated Bezier trajectory from origin to target ---
-          const rawOrigin = currentMap.project([alert.originLng, alert.originLat]);
-          const target = currentMap.project([alert.lng, alert.lat]);
+          // Rotate head marker to match bearing
+          const bearing = bearingAtArcPoint(state.arc, t);
+          state.headMarker.setRotation(bearing - 90); // SVG points right, bearing is from north
 
-          // Clamp origin to viewport edge if off-screen — preserves direction,
-          // prevents broken Bezier curves on mobile when zoomed out
-          const cw = container.clientWidth;
-          const ch = container.clientHeight;
-          const pad = 40; // px padding inside viewport edge
-          let origin = rawOrigin;
-          const isOffScreen = rawOrigin.x < -pad || rawOrigin.x > cw + pad || rawOrigin.y < -pad || rawOrigin.y > ch + pad;
-          if (isOffScreen) {
-            // Direction from target to origin
-            const dx = rawOrigin.x - target.x;
-            const dy = rawOrigin.y - target.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            if (len > 0) {
-              const nx = dx / len;
-              const ny = dy / len;
-              // Walk from target toward origin until we hit viewport edge
-              const maxDist = Math.max(cw, ch);
-              const sx = target.x + nx * maxDist;
-              const sy = target.y + ny * maxDist;
-              // Clamp to viewport bounds
-              const clampX = Math.max(-pad, Math.min(cw + pad, sx));
-              const clampY = Math.max(-pad, Math.min(ch + pad, sy));
-              origin = { x: clampX, y: clampY } as mapboxgl.Point;
+          // Update trail GeoJSON — only when trail has grown by 1+ points
+          const currentArcIndex = Math.floor(t * ARC_POINTS);
+          if (currentArcIndex > state.lastArcIndex) {
+            state.lastArcIndex = currentArcIndex;
+            const trailCoords = state.arc.slice(0, currentArcIndex + 1);
+            // Append current head position for smooth tip
+            trailCoords.push(headPos);
+            const source = currentMap.getSource(state.sourceId) as mapboxgl.GeoJSONSource | undefined;
+            if (source) {
+              source.setData({
+                type: "Feature",
+                properties: {},
+                geometry: { type: "LineString", coordinates: trailCoords },
+              });
             }
           }
+        } else {
+          // -- Arrived --
+          anyActive = true;
 
-          // Control point for the arc
-          const midX = (origin.x + target.x) / 2;
-          const dist = Math.sqrt((target.x - origin.x) ** 2 + (target.y - origin.y) ** 2);
-          const arcHeight = Math.min(dist * 0.4, 200);
-          const midY = Math.min(origin.y, target.y) - arcHeight;
-          const ctrl = { x: midX, y: midY };
+          if (!state.arrived) {
+            state.arrived = true;
 
-          // Flight progress based on real alert time
-          const elapsed = now - state.startTime;
-          const t = Math.min(elapsed / state.duration, 1);
+            // Hide missile head for missiles, keep for drones
+            if (!state.isDrone) {
+              state.headMarker.getElement().style.display = "none";
+            } else {
+              // Park drone at target
+              state.headMarker.setLngLat([state.arc[state.arc.length - 1][0], state.arc[state.arc.length - 1][1]]);
+            }
 
-          // Update trail SVG
-          const pathD = bezierPath(origin, ctrl, target);
-          const pathEl = els.trail.querySelector("path");
-          if (pathEl) {
-            pathEl.setAttribute("d", pathD);
-            const totalLen = (pathEl as SVGPathElement).getTotalLength?.() || dist;
-            pathEl.setAttribute("stroke-dasharray", `${totalLen * t} ${totalLen}`);
-          }
+            // Show impact/pulse marker
+            state.impactMarker.addTo(currentMap);
 
-          if (t < 1) {
-            // Missile in flight
-            anyInFlight = true;
-            const pos = bezier(t, origin, ctrl, target);
-            const angle = bezierAngle(t, origin, ctrl, target);
-            els.missile.style.transform = `translate(${pos.x - 10}px, ${pos.y - 10}px) rotate(${angle}rad)`;
-            els.missile.style.display = "block";
-            els.ring.style.display = "none";
-          } else {
-            // Missile reached target — show impact ring
-            anyInFlight = true;
-            els.missile.style.display = "none";
-            els.ring.style.display = "block";
-            els.ring.style.transform = `translate(${target.x}px, ${target.y}px)`;
+            // Set full trail
+            const source = currentMap.getSource(state.sourceId) as mapboxgl.GeoJSONSource | undefined;
+            if (source) {
+              source.setData({
+                type: "Feature",
+                properties: {},
+                geometry: { type: "LineString", coordinates: state.arc },
+              });
+            }
           }
         }
       }
 
-      // Siren while any alert is active
-      if (anyInFlight && soundRef.current) {
+      // Siren control
+      if (anyActive && soundRef.current) {
         startSiren();
       } else {
         stopSiren();
@@ -347,22 +406,23 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
 
     rafRef.current = requestAnimationFrame(render);
 
-    // Also re-render on map move for reprojection
-    const moveHandler = () => {}; // RAF already handles reprojection each frame
-    map.on("move", moveHandler);
-
     return () => {
       cancelAnimationFrame(rafRef.current);
-      map.off("move", moveHandler);
       stopSiren();
     };
-    // Only restart the loop when activeAlerts changes (memoized) or map changes
   }, [map, activeAlerts.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div
-      ref={containerRef}
-      className="missile-overlay"
-    />
-  );
+  // Full cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (!map) return;
+      for (const state of statesRef.current.values()) {
+        cleanupMissile(state, map);
+      }
+      statesRef.current.clear();
+    };
+  }, [map, cleanupMissile]);
+
+  // No DOM container needed — everything is Mapbox-native
+  return null;
 }

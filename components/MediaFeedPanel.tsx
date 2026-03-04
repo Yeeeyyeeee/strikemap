@@ -24,7 +24,7 @@ interface FeedItem {
   side: string;
 }
 
-/** Individual media slide — handles video autoplay via IntersectionObserver */
+/** Individual video slide — handles autoplay via IntersectionObserver */
 function MediaSlide({ item, index, total }: { item: FeedItem; index: number; total: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,6 +40,7 @@ function MediaSlide({ item, index, total }: { item: FeedItem; index: number; tot
             videoRef.current.play().catch(() => {});
           } else {
             videoRef.current.pause();
+            videoRef.current.currentTime = 0;
           }
         }
       },
@@ -49,71 +50,72 @@ function MediaSlide({ item, index, total }: { item: FeedItem; index: number; tot
     return () => obs.disconnect();
   }, []);
 
-  const ytUrl = item.media.type === "video" ? getYouTubeEmbedUrl(item.media.url) : null;
+  const ytUrl = getYouTubeEmbedUrl(item.media.url);
 
   return (
     <div
       ref={ref}
-      className="snap-start w-full h-full shrink-0 relative bg-black flex items-center justify-center"
+      className="w-full shrink-0 relative bg-black flex items-center justify-center"
+      style={{ height: "100%", scrollSnapAlign: "start", scrollSnapStop: "always" }}
     >
-      {/* Media content */}
-      {item.media.type === "video" ? (
-        ytUrl ? (
-          <iframe
-            src={ytUrl}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Video"
-          />
-        ) : isDirectVideoUrl(item.media.url) ? (
-          <video
-            ref={videoRef}
-            key={item.media.url}
-            src={item.media.url}
-            controls
-            playsInline
-            muted
-            loop
-            preload="metadata"
-            className="w-full h-full object-contain"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <a
-              href={item.media.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-white/10 rounded-lg text-sm text-red-400 hover:text-red-300"
-            >
-              Watch video ↗
-            </a>
-          </div>
-        )
-      ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={item.media.url}
-          alt=""
-          className="w-full h-full object-contain"
-          loading="lazy"
-          draggable={false}
+      {/* Video content */}
+      {ytUrl ? (
+        <iframe
+          src={`${ytUrl}?autoplay=1&mute=0&loop=1&controls=0&modestbranding=1`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Video"
         />
+      ) : isDirectVideoUrl(item.media.url) ? (
+        <video
+          ref={videoRef}
+          key={item.media.url}
+          src={item.media.url}
+          controls
+          playsInline
+          loop
+          preload="metadata"
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <a
+            href={item.media.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-white/10 rounded-lg text-sm text-red-400 hover:text-red-300"
+          >
+            Watch video ↗
+          </a>
+        </div>
       )}
 
-      {/* Minimal overlay — location + counter */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 py-3 pointer-events-none">
+      {/* TikTok-style bottom overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-4 pb-4 pt-12 pointer-events-none">
         <div className="flex items-end justify-between">
           <div>
             {item.location && (
-              <p className="text-xs font-medium text-white/90 drop-shadow-sm">{item.location}</p>
+              <p className="text-sm font-semibold text-white drop-shadow-lg">{item.location}</p>
             )}
-            <p className="text-[10px] text-white/50">{item.date}</p>
+            <p className="text-[11px] text-white/60 mt-0.5">{item.date}</p>
           </div>
-          <div className="text-[10px] text-white/50 tabular-nums">
-            {index + 1} / {total}
+          <div className="text-[11px] text-white/50 tabular-nums font-medium">
+            {index + 1}/{total}
           </div>
         </div>
+      </div>
+
+      {/* Side progress indicator */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 pointer-events-none">
+        {Array.from({ length: Math.min(total, 8) }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-1 rounded-full transition-all duration-300 ${
+              i === index % 8 ? "h-4 bg-white/80" : "h-1.5 bg-white/20"
+            }`}
+          />
+        ))}
       </div>
     </div>
   );
@@ -142,7 +144,7 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
     fetchArea();
   }, [fetchArea]);
 
-  // Flatten all media from all incidents into one feed
+  // Flatten all VIDEO media from all incidents (skip images)
   const feedItems: FeedItem[] = useMemo(() => {
     const items: FeedItem[] = [];
     for (const inc of incidents) {
@@ -154,6 +156,8 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
             : [];
 
       for (let i = 0; i < mediaList.length; i++) {
+        // Only include videos
+        if (mediaList[i].type !== "video") continue;
         items.push({
           key: `${inc.id}-${i}`,
           media: mediaList[i],
@@ -175,10 +179,10 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
             className="text-[11px] font-bold uppercase tracking-wider text-neutral-400"
             style={{ fontFamily: "JetBrains Mono, monospace" }}
           >
-            Media
+            Videos
           </h3>
           <span className="text-[10px] text-neutral-600">
-            {feedItems.length} items
+            {feedItems.length} clips
           </span>
         </div>
         <button
@@ -191,15 +195,22 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
         </button>
       </div>
 
-      {/* TikTok-style vertical snap-scroll feed */}
-      <div className="flex-1 overflow-y-auto snap-y snap-mandatory">
+      {/* TikTok/Reels-style vertical snap-scroll feed */}
+      <div
+        className="flex-1 overflow-y-auto scrollbar-hide"
+        style={{
+          scrollSnapType: "y mandatory",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+        }}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-xs text-neutral-500 animate-pulse">Loading media...</div>
+            <div className="text-xs text-neutral-500 animate-pulse">Loading videos...</div>
           </div>
         ) : feedItems.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-xs text-neutral-500">No media in this area</div>
+            <div className="text-xs text-neutral-500">No videos in this area</div>
           </div>
         ) : (
           feedItems.map((item, i) => (

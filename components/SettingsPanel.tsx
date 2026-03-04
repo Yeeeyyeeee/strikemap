@@ -3,6 +3,8 @@
 import { memo } from "react";
 import { UserSettings } from "@/lib/settings";
 
+const SIREN_COUNTRIES = ["Israel", "Iran", "Lebanon", "Syria", "Iraq", "Yemen", "Gaza"];
+
 interface SettingsPanelProps {
   settings: UserSettings;
   onChange: (settings: UserSettings) => void;
@@ -99,10 +101,48 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
             </h3>
             <div className="space-y-2">
               <ToggleRow label="Gauges" checked={settings.showGauges} onChange={(v) => update({ showGauges: v })} />
-              <ToggleRow label="Feed Sidebar" checked={settings.showFeed} onChange={(v) => update({ showFeed: v })} />
+
               <ToggleRow label="Legend" checked={settings.showLegend} onChange={(v) => update({ showLegend: v })} />
               <ToggleRow label="Sound Effects" checked={settings.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
               <ToggleRow label="Notifications" checked={settings.notificationsEnabled} onChange={(v) => update({ notificationsEnabled: v })} />
+            </div>
+          </div>
+
+          {/* Siren Country Filter */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <h3
+              className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-3"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Siren Alerts For
+            </h3>
+            <div className="relative">
+              <select
+                value={(() => {
+                  const ac = settings.alertCountries;
+                  if (!ac || ac === "all") return "all";
+                  if (Array.isArray(ac) && ac.length === 1) return ac[0];
+                  return "all";
+                })()}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "all") {
+                    update({ alertCountries: "all" });
+                  } else {
+                    update({ alertCountries: [val] });
+                  }
+                }}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-neutral-300 font-semibold uppercase tracking-wider appearance-none cursor-pointer focus:outline-none focus:border-red-500/50 pr-8"
+                style={{ fontFamily: "JetBrains Mono, monospace", colorScheme: "dark" }}
+              >
+                <option value="all">All Countries</option>
+                {SIREN_COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
             </div>
           </div>
         </div>
@@ -110,6 +150,7 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
     </div>
   );
 });
+
 
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (

@@ -26,10 +26,14 @@ const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "Cyprus", keywords: ["cyprus", "cypriot", "nicosia", "larnaca", "limassol", "🇨🇾"] },
 ];
 
-function matchesCountryFilter(text: string, filter: typeof COUNTRY_FILTERS[number]): boolean {
-  if (filter.keywords.length === 0) return true; // "All"
+function matchesCountryFilter(text: string, selectedLabels: Set<string>): boolean {
+  if (selectedLabels.size === 0) return true; // none selected = show all
   const lower = text.toLowerCase();
-  return filter.keywords.some((kw) => lower.includes(kw));
+  for (const label of selectedLabels) {
+    const filter = COUNTRY_FILTERS.find((f) => f.label === label);
+    if (filter && filter.keywords.some((kw) => lower.includes(kw))) return true;
+  }
+  return false;
 }
 
 interface FeedSidebarProps {
@@ -41,21 +45,32 @@ export default memo(function FeedSidebar({
   incidents,
   onSelectIncident,
 }: FeedSidebarProps) {
-  const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<ChannelPost[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [YOUTUBE_VIDEO_IDS, setYouTubeIds] = useState<string[]>([]);
-  const [countryFilter, setCountryFilter] = useState(COUNTRY_FILTERS[0]);
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
   const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set());
   const knownIdsRef = useRef<Set<string>>(new Set());
 
+  // Close dropdown on outside click
   useEffect(() => {
-    fetch("/api/youtube-links")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.liveCams?.length) setYouTubeIds(d.liveCams.map((c: { id: string }) => c.id));
-      })
-      .catch(() => {});
+    function handleClick(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    if (filterOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [filterOpen]);
+
+  const toggleCountry = useCallback((label: string) => {
+    setSelectedCountries((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
   }, []);
 
   const fetchFeed = useCallback(async () => {
@@ -145,82 +160,66 @@ export default memo(function FeedSidebar({
     [incidents, onSelectIncident]
   );
 
-  if (posts.length === 0) return null;
+  const isEmpty = posts.length === 0;
 
   return (
-    <div className="fixed top-14 right-0 w-72 h-[calc(100vh-3.5rem)] bg-[#111] border-l border-[#2a2a2a] z-40 hidden md:flex flex-col">
-      {/* Tab header */}
-      <div className="p-2 border-b border-[#2a2a2a] flex items-center gap-1 bg-[#0a0a0a]/50">
-        <button
-          onClick={() => setTab("telegram")}
-          className={`flex-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${
-            tab === "telegram"
-              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-              : "text-neutral-500 hover:text-neutral-400"
-          }`}
-          style={{ fontFamily: "JetBrains Mono, monospace" }}
-        >
-          Live Feed
-        </button>
-        <button
-          onClick={() => setTab("youtube")}
-          className={`flex-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-1.5 ${
-            tab === "youtube"
-              ? "bg-red-500/20 text-red-400 border border-red-500/30"
-              : "text-neutral-500 hover:text-neutral-400"
-          }`}
-          style={{ fontFamily: "JetBrains Mono, monospace" }}
-        >
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-          </span>
-          Live Cam
-        </button>
-      </div>
-
-      {/* Tab content */}
-      {tab === "youtube" ? (
-        <div className="flex-1 overflow-y-auto">
-          {YOUTUBE_VIDEO_IDS.map((vid, i) => (
-            <iframe
-              key={vid}
-              className="w-full aspect-video block"
-              src={`https://www.youtube.com/embed/${vid}?autoplay=${i === 0 ? 1 : 0}&mute=1`}
-              title={`Live Cam ${i + 1}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              frameBorder="0"
-            />
-          ))}
+    <div className="flex flex-col h-full overflow-hidden">
+      {isEmpty ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-neutral-500">
+            <div className="animate-spin w-5 h-5 border-2 border-neutral-600 border-t-neutral-400 rounded-full mx-auto mb-2" />
+            <span className="text-[10px] uppercase tracking-wider">Waiting for feed...</span>
+          </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Country filter dropdown */}
-          <div className="px-2 py-1.5 border-b border-[#2a2a2a]/50 shrink-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Country filter multi-select */}
+          <div className="px-2 py-1.5 border-b border-[#2a2a2a]/50 shrink-0" ref={filterRef}>
             <div className="relative">
-              <select
-                value={countryFilter.label}
-                onChange={(e) => {
-                  const f = COUNTRY_FILTERS.find((c) => c.label === e.target.value);
-                  if (f) setCountryFilter(f);
-                }}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[10px] text-neutral-300 font-semibold uppercase tracking-wider appearance-none cursor-pointer focus:outline-none focus:border-red-500/50 pr-6"
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[10px] text-neutral-300 font-semibold uppercase tracking-wider text-left cursor-pointer focus:outline-none focus:border-red-500/50 pr-6"
                 style={{ fontFamily: "JetBrains Mono, monospace" }}
               >
-                {COUNTRY_FILTERS.map((f) => (
-                  <option key={f.label} value={f.label}>
-                    {f.label === "All" ? "All Countries" : f.label}
-                  </option>
-                ))}
-              </select>
+                {selectedCountries.size === 0
+                  ? "All Countries"
+                  : Array.from(selectedCountries).join(", ")}
+              </button>
               <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
               </svg>
+              {filterOpen && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                  {selectedCountries.size > 0 && (
+                    <button
+                      onClick={() => setSelectedCountries(new Set())}
+                      className="w-full text-left px-2 py-1 text-[10px] text-red-400 hover:bg-[#252525] uppercase tracking-wider border-b border-[#2a2a2a]/50"
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    >
+                      Clear All
+                    </button>
+                  )}
+                  {COUNTRY_FILTERS.filter((f) => f.label !== "All").map((f) => (
+                    <label
+                      key={f.label}
+                      className="flex items-center gap-2 px-2 py-1 text-[10px] text-neutral-300 hover:bg-[#252525] cursor-pointer uppercase tracking-wider"
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCountries.has(f.label)}
+                        onChange={() => toggleCountry(f.label)}
+                        className="accent-red-500 w-3 h-3"
+                      />
+                      {f.label}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50" style={{ WebkitOverflowScrolling: "touch" }}>
-          {posts.filter((p) => matchesCountryFilter(p.text, countryFilter)).map((post) => {
+          {posts.filter((p) => matchesCountryFilter(p.text, selectedCountries)).map((post) => {
             const isExpanded = expandedId === post.id;
             const onMap = hasMapPoint(post);
             const msgId = post.id.split("/").pop() || "";

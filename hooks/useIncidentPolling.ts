@@ -104,8 +104,9 @@ export function useIncidentPolling(options: IncidentPollingOptions): IncidentPol
       // Only update state if incident list actually changed (avoids cascade re-renders)
       setIncidents((prev) => {
         if (prev.length !== allData.length) return allData;
-        // Quick check: compare IDs of first and last elements
-        if (prev.length > 0 && (prev[0].id !== allData[0].id || prev[prev.length - 1].id !== allData[allData.length - 1].id)) return allData;
+        for (let i = 0; i < prev.length; i++) {
+          if (prev[i].id !== allData[i].id) return allData;
+        }
         return prev;
       });
     } catch {

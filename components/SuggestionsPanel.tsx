@@ -50,13 +50,12 @@ const DEVICE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 /**
- * Sorting: completed ("Deployed") at the bottom,
- * then first 3 slots are the most recent (by createdAt desc),
+ * Sorting: first 3 slots are the most recent (by createdAt desc),
  * remaining slots sorted by vote count desc.
+ * Completed suggestions are hidden entirely.
  */
 function sortSuggestions(arr: Suggestion[]): Suggestion[] {
   const active = arr.filter((s) => s.status !== "completed");
-  const deployed = arr.filter((s) => s.status === "completed");
 
   const byRecent = [...active].sort((a, b) => b.createdAt - a.createdAt);
   const recentThree = byRecent.slice(0, 3);
@@ -69,13 +68,12 @@ function sortSuggestions(arr: Suggestion[]): Suggestion[] {
       return b.createdAt - a.createdAt;
     });
 
-  const sortedDeployed = [...deployed].sort((a, b) => b.createdAt - a.createdAt);
-
-  return [...recentThree, ...rest, ...sortedDeployed];
+  return [...recentThree, ...rest];
 }
 
 export default function SuggestionsPanel() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [device, setDevice] = useState<"desktop" | "mobile" | "all">("all");
@@ -150,30 +148,92 @@ export default function SuggestionsPanel() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Suggestion list */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-3 md:px-2 py-2 space-y-2">
-        {sorted.length === 0 && !showForm && (
+      {/* Suggestion list / detail view */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 md:px-2 py-2 space-y-2">
+        {sorted.length === 0 && !showForm && !selectedId && (
           <div className="text-neutral-600 text-sm md:text-xs text-center mt-8">
             No suggestions yet. Be the first!
           </div>
         )}
-        {sorted.map((sug) => {
+
+        {/* Expanded detail view */}
+        {selectedId && (() => {
+          const sug = suggestions.find((s) => s.id === selectedId);
+          if (!sug) return null;
+          const voted = hasVoted(sug);
+          const badge = DEVICE_BADGE[sug.device] || DEVICE_BADGE.all;
+          const isDeployed = sug.status === "completed";
+          return (
+            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 relative">
+              <button
+                onClick={() => setSelectedId(null)}
+                className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-300 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-1.5 flex-wrap mb-2 pr-6">
+                <span className={`text-sm font-semibold ${isDeployed ? "text-neutral-500 line-through" : "text-neutral-200"}`}>
+                  {sug.title}
+                </span>
+                <span className={`text-[8px] font-bold uppercase px-1 py-0.5 rounded ${badge.cls}`}>
+                  {badge.label}
+                </span>
+                <span className={`text-[8px] font-bold uppercase px-1 py-0.5 rounded ${
+                  isDeployed ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
+                }`}>
+                  {isDeployed ? "Deployed" : "WIP"}
+                </span>
+              </div>
+              <p className={`text-xs leading-relaxed whitespace-pre-line mb-3 ${isDeployed ? "text-neutral-600" : "text-neutral-300"}`}>
+                {sug.description}
+              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[10px] text-neutral-600">
+                  <span>{sug.nickname}</span>
+                  <span>{relativeTime(sug.createdAt)}</span>
+                </div>
+                <button
+                  onClick={() => !voted && !isDeployed && handleVote(sug.id)}
+                  disabled={voted || isDeployed || votingId === sug.id}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    isDeployed
+                      ? "text-green-500/50 cursor-default"
+                      : voted
+                        ? "text-red-400 bg-red-500/10 cursor-default"
+                        : "text-neutral-500 bg-[#1a1a1a] hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                  </svg>
+                  {sug.votes}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* List view */}
+        {!selectedId && sorted.map((sug) => {
           const voted = hasVoted(sug);
           const badge = DEVICE_BADGE[sug.device] || DEVICE_BADGE.all;
           const isDeployed = sug.status === "completed";
           return (
             <div
               key={sug.id}
-              className={`rounded-lg p-3 ${
+              className={`rounded-lg p-3 cursor-pointer hover:border-neutral-600 transition-colors ${
                 isDeployed
                   ? "bg-[#111] border border-green-500/20 opacity-60"
                   : "bg-[#151515] border border-[#2a2a2a]"
               }`}
+              onClick={() => setSelectedId(sug.id)}
             >
               <div className="flex items-start gap-2">
                 {/* Vote button */}
                 <button
-                  onClick={() => !voted && !isDeployed && handleVote(sug.id)}
+                  onClick={(e) => { e.stopPropagation(); !voted && !isDeployed && handleVote(sug.id); }}
                   disabled={voted || isDeployed || votingId === sug.id}
                   className={`flex flex-col items-center pt-0.5 shrink-0 transition-colors ${
                     isDeployed
@@ -206,7 +266,7 @@ export default function SuggestionsPanel() {
                       {isDeployed ? "Deployed" : "WIP"}
                     </span>
                   </div>
-                  <p className={`text-xs md:text-[11px] leading-snug line-clamp-3 mb-1.5 ${isDeployed ? "text-neutral-600" : "text-neutral-400"}`}>
+                  <p className={`text-xs md:text-[11px] leading-snug line-clamp-2 mb-1.5 ${isDeployed ? "text-neutral-600" : "text-neutral-400"}`}>
                     {sug.description}
                   </p>
                   <div className="flex items-center gap-2 text-[10px] text-neutral-600">

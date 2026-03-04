@@ -16,6 +16,7 @@ interface Speech {
 
 interface YTConfig {
   liveCams: LiveCam[];
+  liveNews: LiveCam[];
   speech: Speech;
 }
 
@@ -117,6 +118,8 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  const [newNewsUrl, setNewNewsUrl] = useState("");
+  const [newNewsLabel, setNewNewsLabel] = useState("");
 
   // Siren alerts state
   const [sirenAlerts, setSirenAlerts] = useState<SirenAlertInfo[]>([]);
@@ -128,6 +131,7 @@ export default function AdminPage() {
   const [missileLoading, setMissileLoading] = useState(false);
   const [missileTarget, setMissileTarget] = useState("");
   const [missileThreat, setMissileThreat] = useState<"missile" | "drone">("missile");
+  const [missileOrigin, setMissileOrigin] = useState<string>("auto");
   const [missileTTI, setMissileTTI] = useState(90);
 
   // Shared alert error banner
@@ -138,9 +142,28 @@ export default function AdminPage() {
   const [currentAnnouncement, setCurrentAnnouncement] = useState<string | null>(null);
   const [announcementLoading, setAnnouncementLoading] = useState(false);
 
+  // Ticker text state
+  const [tickerTextInput, setTickerTextInput] = useState("");
+  const [currentTickerText, setCurrentTickerText] = useState<string | null>(null);
+  const [tickerTextLoading, setTickerTextLoading] = useState(false);
+
+  // Changelog state
+  const [changelogEntries, setChangelogEntries] = useState<{ id: string; text: string; createdAt: number }[]>([]);
+  const [changelogText, setChangelogText] = useState("");
+  const [changelogLoading, setChangelogLoading] = useState(false);
+
+  // Chat bans state
+  const [chatBans, setChatBans] = useState<string[]>([]);
+  const [banInput, setBanInput] = useState("");
+  const [bansLoading, setBansLoading] = useState(false);
+
   // Suggestions state
   const [suggestions, setSuggestions] = useState<{ id: string; title: string; device: string; description: string; status: string; votes: number; nickname: string; createdAt: number }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  // Airspace override state
+  const [airspaceOverrides, setAirspaceOverrides] = useState<Record<string, { status: string; setAt: string }>>({});
+  const [airspaceLoading, setAirspaceLoading] = useState(false);
 
   // Check existing session on mount
   useEffect(() => {
@@ -185,7 +208,7 @@ export default function AdminPage() {
       const res = await fetch("/api/siren-alerts");
       const data = await res.json();
       setSirenAlerts(data.sirenAlerts || []);
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -204,7 +227,7 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear", country }),
       });
       await loadSirens();
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     setSirenLoading(false);
   };
 
@@ -217,7 +240,7 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadSirens();
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     setSirenLoading(false);
   };
 
@@ -244,13 +267,66 @@ export default function AdminPage() {
     setSirenLoading(false);
   };
 
+  // Load airspace overrides
+  const loadAirspaceOverrides = useCallback(async () => {
+    try {
+      const res = await fetch("/api/airspace-status");
+      const data = await res.json();
+      setAirspaceOverrides(data.overrides || {});
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadAirspaceOverrides();
+  }, [authed, loadAirspaceOverrides]);
+
+  const setAirspaceOverride = async (fir: string, status: string) => {
+    setAirspaceLoading(true);
+    try {
+      await fetch("/api/airspace-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set", fir, status }),
+      });
+      await loadAirspaceOverrides();
+    } catch { /* ignore */ }
+    setAirspaceLoading(false);
+  };
+
+  const clearAirspaceOverride = async (fir: string) => {
+    setAirspaceLoading(true);
+    try {
+      await fetch("/api/airspace-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear", fir }),
+      });
+      await loadAirspaceOverrides();
+    } catch { /* ignore */ }
+    setAirspaceLoading(false);
+  };
+
+  const clearAllAirspaceOverrides = async () => {
+    setAirspaceLoading(true);
+    try {
+      await fetch("/api/airspace-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear-all" }),
+      });
+      await loadAirspaceOverrides();
+    } catch { /* ignore */ }
+    setAirspaceLoading(false);
+  };
+
   // Poll announcement
   const loadAnnouncement = useCallback(async () => {
     try {
       const res = await fetch("/api/announcement");
       const data = await res.json();
       setCurrentAnnouncement(data.announcement?.text || null);
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -291,8 +367,155 @@ export default function AdminPage() {
       });
       setCurrentAnnouncement(null);
       setAnnouncementText("");
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     setAnnouncementLoading(false);
+  };
+
+  // Poll ticker text
+  const loadTickerText = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ticker-text");
+      const data = await res.json();
+      setCurrentTickerText(data.text || null);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadTickerText();
+  }, [authed, loadTickerText]);
+
+  const postTickerText = async () => {
+    if (!tickerTextInput.trim()) return;
+    setTickerTextLoading(true);
+    setAlertError("");
+    try {
+      const res = await fetch("/api/ticker-text", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: tickerTextInput.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAlertError(data.error || `Ticker text failed (${res.status})`);
+      } else {
+        setCurrentTickerText(tickerTextInput.trim());
+        setTickerTextInput("");
+      }
+    } catch (err) {
+      setAlertError(`Network error: ${err}`);
+    }
+    setTickerTextLoading(false);
+  };
+
+  const clearTickerText = async () => {
+    setTickerTextLoading(true);
+    try {
+      await fetch("/api/ticker-text", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "" }),
+      });
+      setCurrentTickerText(null);
+      setTickerTextInput("");
+    } catch { /* ignore */ }
+    setTickerTextLoading(false);
+  };
+
+  // Poll changelog
+  const loadChangelog = useCallback(async () => {
+    try {
+      const res = await fetch("/api/changelog");
+      const data = await res.json();
+      setChangelogEntries(data.entries || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadChangelog();
+  }, [authed, loadChangelog]);
+
+  const addChangelogEntry = async () => {
+    if (!changelogText.trim()) return;
+    setChangelogLoading(true);
+    setAlertError("");
+    try {
+      const res = await fetch("/api/changelog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add", text: changelogText.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAlertError(data.error || `Changelog add failed (${res.status})`);
+      } else {
+        setChangelogText("");
+        await loadChangelog();
+      }
+    } catch (err) {
+      setAlertError(`Network error: ${err}`);
+    }
+    setChangelogLoading(false);
+  };
+
+  const deleteChangelogEntry = async (id: string) => {
+    setChangelogLoading(true);
+    try {
+      await fetch("/api/changelog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id }),
+      });
+      await loadChangelog();
+    } catch {}
+    setChangelogLoading(false);
+  };
+
+  // Load chat bans
+  const loadBans = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list-bans" }),
+      });
+      const data = await res.json();
+      setChatBans(data.bans || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadBans();
+  }, [authed, loadBans]);
+
+  const banUser = async () => {
+    if (!banInput.trim()) return;
+    setBansLoading(true);
+    try {
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "ban", nickname: banInput.trim() }),
+      });
+      setBanInput("");
+      await loadBans();
+    } catch {}
+    setBansLoading(false);
+  };
+
+  const unbanUser = async (nick: string) => {
+    setBansLoading(true);
+    try {
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unban", nickname: nick }),
+      });
+      await loadBans();
+    } catch {}
+    setBansLoading(false);
   };
 
   // Poll suggestions
@@ -301,7 +524,7 @@ export default function AdminPage() {
       const res = await fetch("/api/suggestions");
       const data = await res.json();
       setSuggestions(data.suggestions || []);
-    } catch {}
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -320,13 +543,16 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "status", id, status: currentStatus === "wip" ? "completed" : "wip" }),
       });
       await loadSuggestions();
-    } catch {}
+    } catch (e) {}
     setSuggestionsLoading(false);
+  };
+
+  const loadMissileAlerts = useCallback(async () => {
     try {
       const res = await fetch("/api/alerts");
       const data = await res.json();
       setMissileAlerts((data.alerts || []).filter((a: MissileAlertInfo) => a.id.startsWith("manual-")));
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -349,6 +575,7 @@ export default function AdminPage() {
           target: missileTarget.trim(),
           threatType: missileThreat,
           timeToImpact: missileTTI,
+          ...(missileOrigin !== "auto" && { origin: missileOrigin }),
         }),
       });
       if (!res.ok) {
@@ -373,7 +600,7 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear", id }),
       });
       await loadMissileAlerts();
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     setMissileLoading(false);
   };
 
@@ -386,7 +613,7 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadMissileAlerts();
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     setMissileLoading(false);
   };
 
@@ -436,6 +663,48 @@ export default function AdminPage() {
   };
 
   const saveCamLabel = () => {
+    if (!config) return;
+    save(config);
+  };
+
+  const addNews = () => {
+    if (!config || !newNewsUrl.trim()) return;
+    const id = extractVideoId(newNewsUrl);
+    if (!id) return;
+    const label = newNewsLabel.trim() || `Live News ${(config.liveNews || []).length + 1}`;
+    const next = { ...config, liveNews: [...(config.liveNews || []), { id, label }] };
+    setConfig(next);
+    save(next);
+    setNewNewsUrl("");
+    setNewNewsLabel("");
+  };
+
+  const removeNews = (index: number) => {
+    if (!config) return;
+    const next = { ...config, liveNews: (config.liveNews || []).filter((_, i) => i !== index) };
+    setConfig(next);
+    save(next);
+  };
+
+  const moveNews = (index: number, dir: -1 | 1) => {
+    if (!config) return;
+    const news = [...(config.liveNews || [])];
+    const target = index + dir;
+    if (target < 0 || target >= news.length) return;
+    [news[index], news[target]] = [news[target], news[index]];
+    const next = { ...config, liveNews: news };
+    setConfig(next);
+    save(next);
+  };
+
+  const updateNewsLabel = (index: number, label: string) => {
+    if (!config) return;
+    const news = [...(config.liveNews || [])];
+    news[index] = { ...news[index], label };
+    setConfig({ ...config, liveNews: news });
+  };
+
+  const saveNewsLabel = () => {
     if (!config) return;
     save(config);
   };
@@ -572,6 +841,136 @@ export default function AdminPage() {
           </div>
         </section>
 
+        {/* ── Ticker Text ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Ticker Text
+              {currentTickerText && (
+                <span className="ml-2 px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[10px]">
+                  LIVE
+                </span>
+              )}
+            </h2>
+            {currentTickerText && (
+              <button
+                onClick={clearTickerText}
+                disabled={tickerTextLoading}
+                className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-30 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {currentTickerText && (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-3 mb-4">
+              <p className="text-sm text-orange-200">{currentTickerText}</p>
+            </div>
+          )}
+
+          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
+            <p
+              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              {currentTickerText ? "Update Ticker Text" : "Set Ticker Text"}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Custom text appended to ticker roll..."
+                value={tickerTextInput}
+                onChange={(e) => setTickerTextInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && postTickerText()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <button
+                onClick={postTickerText}
+                disabled={!tickerTextInput.trim() || tickerTextLoading}
+                className="px-4 py-2 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-md text-sm font-medium hover:bg-orange-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Changelog ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Changelog
+              {changelogEntries.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">
+                  {changelogEntries.length} ENTRIES
+                </span>
+              )}
+            </h2>
+          </div>
+
+          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
+            <p
+              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Add Change
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Describe the change..."
+                value={changelogText}
+                onChange={(e) => setChangelogText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addChangelogEntry()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <button
+                onClick={addChangelogEntry}
+                disabled={!changelogText.trim() || changelogLoading}
+                className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-sm font-medium hover:bg-green-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {changelogEntries.length === 0 ? (
+            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
+              <p className="text-neutral-600 text-sm text-center">No changelog entries yet</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {changelogEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 flex items-start gap-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-neutral-200">{entry.text}</p>
+                    <span className="text-[10px] text-neutral-600 mt-1 block">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => deleteChangelogEntry(entry.id)}
+                    disabled={changelogLoading}
+                    className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-xs font-bold uppercase hover:bg-red-500/30 disabled:opacity-30 transition-colors shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ── Active Siren Alerts ── */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -667,6 +1066,115 @@ export default function AdminPage() {
           )}
         </section>
 
+        {/* ── Airspace Override ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Airspace Override
+              {Object.keys(airspaceOverrides).length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded text-[10px]">
+                  {Object.keys(airspaceOverrides).length} MANUAL
+                </span>
+              )}
+            </h2>
+            {Object.keys(airspaceOverrides).length > 0 && (
+              <button
+                onClick={clearAllAirspaceOverrides}
+                disabled={airspaceLoading}
+                className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-30 transition-colors"
+              >
+                Clear All Overrides
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { fir: "OIIX", country: "Iran" },
+              { fir: "LLLL", country: "Israel" },
+              { fir: "OLBB", country: "Lebanon" },
+              { fir: "OSTT", country: "Syria" },
+              { fir: "ORBB", country: "Iraq" },
+              { fir: "OJAC", country: "Jordan" },
+              { fir: "OEJD", country: "Saudi Arabia" },
+              { fir: "OYSC", country: "Yemen" },
+              { fir: "OMAE", country: "UAE" },
+              { fir: "OBBB", country: "Bahrain" },
+            ].map(({ fir, country }) => {
+              const override = airspaceOverrides[fir];
+              const currentStatus = override?.status || null;
+              return (
+                <div
+                  key={fir}
+                  className="bg-[#151515] border rounded-lg p-3"
+                  style={{ borderColor: override ? "rgba(56, 189, 248, 0.3)" : "#2a2a2a" }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span
+                      className="text-xs font-bold text-neutral-300"
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    >
+                      {country}
+                    </span>
+                    {override && (
+                      <span className="text-[8px] font-bold text-sky-400 bg-sky-500/20 px-1 py-0.5 rounded uppercase">
+                        M
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className="text-[10px] text-neutral-600 mb-2"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    {fir} {override ? `\u2022 ${currentStatus?.toUpperCase()}` : "\u2022 AUTO"}
+                  </p>
+                  <div className="flex gap-1 mb-1.5">
+                    {(["open", "restricted", "closed"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setAirspaceOverride(fir, s)}
+                        disabled={airspaceLoading}
+                        className="flex-1 py-1 rounded text-[9px] font-bold uppercase transition-colors disabled:opacity-30"
+                        style={{
+                          backgroundColor:
+                            currentStatus === s
+                              ? s === "open" ? "rgba(34,197,94,0.25)" : s === "restricted" ? "rgba(234,179,8,0.25)" : "rgba(239,68,68,0.25)"
+                              : "rgba(255,255,255,0.03)",
+                          color:
+                            currentStatus === s
+                              ? s === "open" ? "#22c55e" : s === "restricted" ? "#eab308" : "#ef4444"
+                              : "#666",
+                          border: `1px solid ${
+                            currentStatus === s
+                              ? s === "open" ? "rgba(34,197,94,0.4)" : s === "restricted" ? "rgba(234,179,8,0.4)" : "rgba(239,68,68,0.4)"
+                              : "rgba(255,255,255,0.06)"
+                          }`,
+                          fontFamily: "JetBrains Mono, monospace",
+                        }}
+                      >
+                        {s === "open" ? "OPN" : s === "restricted" ? "RST" : "CLS"}
+                      </button>
+                    ))}
+                  </div>
+                  {override && (
+                    <button
+                      onClick={() => clearAirspaceOverride(fir)}
+                      disabled={airspaceLoading}
+                      className="w-full py-1 text-[9px] font-bold uppercase text-neutral-500 hover:text-neutral-300 bg-[#1a1a1a] border border-[#2a2a2a] rounded transition-colors disabled:opacity-30"
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    >
+                      Revert to Auto
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* ── Missile Alerts ── */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -732,6 +1240,19 @@ export default function AdminPage() {
                     Drone
                   </button>
                 </div>
+                <select
+                  value={missileOrigin}
+                  onChange={(e) => setMissileOrigin(e.target.value)}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1.5 text-xs text-neutral-200 outline-none focus:border-neutral-500 transition-colors"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="iran">Iran</option>
+                  <option value="lebanon">Lebanon</option>
+                  <option value="yemen">Yemen</option>
+                  <option value="iraq">Iraq</option>
+                  <option value="syria">Syria</option>
+                  <option value="gaza">Gaza</option>
+                </select>
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-neutral-500">TTI</label>
                   <input
@@ -797,6 +1318,280 @@ export default function AdminPage() {
             </div>
           )}
         </section>
+
+        {/* ── Chat Bans (Shadow) ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Shadow Bans
+              {chatBans.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">
+                  {chatBans.length} BANNED
+                </span>
+              )}
+            </h2>
+          </div>
+
+          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
+            <p
+              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Ban Username
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. ABCD-1234"
+                value={banInput}
+                onChange={(e) => setBanInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && banUser()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <button
+                onClick={banUser}
+                disabled={!banInput.trim() || bansLoading}
+                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Ban
+              </button>
+            </div>
+            <p className="text-[10px] text-neutral-600 mt-2">User can still send messages but they won&apos;t appear for anyone else.</p>
+          </div>
+
+          {chatBans.length === 0 ? (
+            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
+              <p className="text-neutral-600 text-sm text-center">No banned users</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {chatBans.map((nick) => (
+                <div
+                  key={nick}
+                  className="bg-[#151515] border border-red-500/20 rounded-lg p-4 flex items-center justify-between"
+                >
+                  <span className="text-sm font-semibold text-neutral-200 uppercase" style={{ fontFamily: "JetBrains Mono, monospace" }}>{nick}</span>
+                  <button
+                    onClick={() => unbanUser(nick)}
+                    disabled={bansLoading}
+                    className="px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-xs font-bold uppercase hover:bg-green-500/30 disabled:opacity-30 transition-colors"
+                  >
+                    Unban
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── Suggestions ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Suggestions
+              {suggestions.filter((s) => s.status === "wip").length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                  {suggestions.filter((s) => s.status === "wip").length} OPEN
+                </span>
+              )}
+            </h2>
+          </div>
+
+          {suggestions.length === 0 ? (
+            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
+              <p className="text-neutral-600 text-sm text-center">No suggestions yet</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {suggestions.map((sug) => {
+                const isDone = sug.status === "completed";
+                return (
+                  <div
+                    key={sug.id}
+                    className={`bg-[#151515] border rounded-lg p-4 flex items-start gap-4 ${
+                      isDone ? "border-green-500/20 opacity-50" : "border-[#2a2a2a]"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-sm font-semibold ${isDone ? "text-neutral-500 line-through" : "text-neutral-200"}`}>
+                          {sug.title}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          sug.device === "desktop"
+                            ? "bg-purple-500/20 text-purple-400"
+                            : sug.device === "mobile"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-neutral-700 text-neutral-400"
+                        }`}>
+                          {sug.device === "all" ? "Both" : sug.device}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          isDone ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
+                        }`}>
+                          {isDone ? "Done" : "WIP"}
+                        </span>
+                        <span className="text-[10px] text-neutral-600 font-medium">
+                          {sug.votes} vote{sug.votes !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-400 mb-1.5">{sug.description}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-neutral-600">
+                        <span>by {sug.nickname}</span>
+                        <span>{new Date(sug.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => toggleSuggestionStatus(sug.id, sug.status)}
+                        disabled={suggestionsLoading}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-colors disabled:opacity-30 ${
+                          isDone
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
+                            : "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                        }`}
+                      >
+                        {isDone ? "Reopen" : "Done"}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setSuggestionsLoading(true);
+                          try {
+                            await fetch("/api/suggestions", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action: "clear", id: sug.id }),
+                            });
+                            await loadSuggestions();
+                          } catch {}
+                          setSuggestionsLoading(false);
+                        }}
+                        disabled={suggestionsLoading}
+                        className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-xs font-bold uppercase hover:bg-red-500/30 disabled:opacity-30 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ── Live News ── */}
+        {config && <section>
+          <h2
+            className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
+            Live News Streams
+          </h2>
+
+          {(config.liveNews || []).length === 0 && (
+            <p className="text-neutral-600 text-sm mb-4">No live news streams added yet.</p>
+          )}
+
+          <div className="space-y-2">
+            {(config.liveNews || []).map((stream, i) => (
+              <div
+                key={`${stream.id}-${i}`}
+                className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-3 group"
+              >
+                <img
+                  src={`https://img.youtube.com/vi/${stream.id}/mqdefault.jpg`}
+                  alt=""
+                  className="w-28 h-16 object-cover rounded bg-[#222] flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    value={stream.label}
+                    onChange={(e) => updateNewsLabel(i, e.target.value)}
+                    onBlur={saveNewsLabel}
+                    onKeyDown={(e) => e.key === "Enter" && saveNewsLabel()}
+                    className="bg-transparent text-sm text-neutral-200 font-medium w-full outline-none border-b border-transparent focus:border-neutral-600 transition-colors"
+                  />
+                  <p className="text-[10px] text-neutral-600 mt-0.5 font-mono truncate">
+                    {stream.id}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <button
+                    onClick={() => moveNews(i, -1)}
+                    disabled={i === 0}
+                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                    title="Move up"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => moveNews(i, 1)}
+                    disabled={i === (config.liveNews || []).length - 1}
+                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                    title="Move down"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => removeNews(i)}
+                    className="p-1.5 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-colors"
+                    title="Remove"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add new */}
+          <div className="mt-4 bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
+            <p
+              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Add News Stream
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="YouTube URL or video ID"
+                value={newNewsUrl}
+                onChange={(e) => setNewNewsUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addNews()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <input
+                type="text"
+                placeholder="Label (optional)"
+                value={newNewsLabel}
+                onChange={(e) => setNewNewsLabel(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addNews()}
+                className="sm:w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+              />
+              <button
+                onClick={addNews}
+                disabled={!newNewsUrl.trim()}
+                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </section>}
 
         {/* ── Live Cams ── */}
         {config && <section>

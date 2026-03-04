@@ -5,6 +5,7 @@ import { REDIS_YOUTUBE_KEY } from "@/lib/constants";
 
 const DEFAULT_CONFIG = {
   liveCams: [] as { id: string; label: string }[],
+  liveNews: [] as { id: string; label: string }[],
   speech: { id: "", title: "", enabled: false },
 };
 

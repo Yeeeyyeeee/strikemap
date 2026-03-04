@@ -26,22 +26,44 @@ export const FIR_CONFIG: FIREntry[] = [
   { fir: "OYSC", country: "Yemen",        code: "YE", region: "gulf",   bbox: [12, 42, 19, 54],     normalTraffic: 5 },
   { fir: "OMAE", country: "UAE",          code: "AE", region: "gulf",   bbox: [22.5, 51, 26.2, 56.5], normalTraffic: 20 },
   { fir: "OBBB", country: "Bahrain",      code: "BH", region: "gulf",   bbox: [25.5, 50, 26.5, 51], normalTraffic: 3 },
+  { fir: "OOMM", country: "Oman",         code: "OM", region: "gulf",   bbox: [16.5, 52, 26.5, 60], normalTraffic: 15 },
+  { fir: "OTBD", country: "Qatar",        code: "QA", region: "gulf",   bbox: [24.4, 50.7, 26.2, 51.7], normalTraffic: 10 },
+  { fir: "OKAC", country: "Kuwait",       code: "KW", region: "gulf",   bbox: [28.5, 46.5, 30.1, 48.5], normalTraffic: 8 },
 ];
 
-// ── OpenSky Network API ──────────────────────────────────────────────────────
-// Free, no-auth API that returns live ADS-B flight positions.
-// We use a SINGLE request covering the entire Middle East, then bucket
-// aircraft into FIR zones by lat/lng. This directly measures whether
-// airspace is in use — zero flights = closed.
+// ── Flight Data APIs ─────────────────────────────────────────────────────────
+// Primary: ADSB.lol — free, no auth, no rate limits
+// Fallback: OpenSky Network — free, rate-limited
+//
+// We fetch live ADS-B positions, filter out military aircraft, then bucket
+// into FIR zones by lat/lng to measure traffic density.
 //
 // Thresholds (fraction of normalTraffic):
 //   < 10%  → CLOSED  (critical)
 //   < 40%  → RESTRICTED (warning)
 //   >= 40% → OPEN
 
+const ADSB_LOL_API = "https://api.adsb.lol/v2";
 const OPENSKY_API = "https://opensky-network.org/api/states/all";
-// Full Middle East bounding box
+// Full Middle East bounding box (for OpenSky fallback)
 const ME_BBOX = { lamin: 12, lomin: 34, lamax: 40, lomax: 63 };
+
+// Center points + radius for each FIR (for ADSB.lol point queries)
+const FIR_CENTERS: { code: string; lat: number; lon: number; radius: number }[] = [
+  { code: "IR", lat: 32.5, lon: 53.5, radius: 250 },  // Iran
+  { code: "IL", lat: 31.2, lon: 35.0, radius: 60 },   // Israel
+  { code: "LB", lat: 33.8, lon: 35.8, radius: 40 },   // Lebanon
+  { code: "SY", lat: 34.8, lon: 38.9, radius: 100 },  // Syria
+  { code: "IQ", lat: 33.2, lon: 43.5, radius: 150 },  // Iraq
+  { code: "JO", lat: 31.2, lon: 36.9, radius: 70 },   // Jordan
+  { code: "SA", lat: 24.0, lon: 45.0, radius: 250 },  // Saudi Arabia
+  { code: "YE", lat: 15.5, lon: 48.0, radius: 200 },  // Yemen
+  { code: "AE", lat: 24.4, lon: 53.8, radius: 80 },   // UAE
+  { code: "BH", lat: 26.0, lon: 50.5, radius: 30 },   // Bahrain
+  { code: "OM", lat: 21.5, lon: 57.0, radius: 200 },  // Oman
+  { code: "QA", lat: 25.3, lon: 51.2, radius: 40 },   // Qatar
+  { code: "KW", lat: 29.3, lon: 47.5, radius: 50 },   // Kuwait
+];
 
 // ── Military aircraft filtering ──────────────────────────────────────────────
 // Military aircraft shouldn't count toward civilian traffic density.
@@ -122,46 +144,128 @@ function isMilitary(icao24: string, callsign: string | null): boolean {
   return false;
 }
 
-/** Fetch all aircraft over the Middle East from OpenSky (single request) */
-async function fetchFlightDensity(): Promise<Map<string, number>> {
+/** Process a list of aircraft into FIR counts (shared by both APIs) */
+function bucketAircraftIntoCounts(
+  aircraft: { icao24: string; callsign: string | null; lat: number; lng: number }[]
+): Map<string, number> {
   const counts = new Map<string, number>();
   for (const f of FIR_CONFIG) counts.set(f.code, 0);
+  const seen = new Set<string>(); // Deduplicate by ICAO24
 
-  try {
-    const url = `${OPENSKY_API}?lamin=${ME_BBOX.lamin}&lomin=${ME_BBOX.lomin}&lamax=${ME_BBOX.lamax}&lomax=${ME_BBOX.lomax}`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(15_000),
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(`OpenSky ${res.status}`);
-    const data = await res.json();
-    const states: unknown[][] = data?.states || [];
+  for (const ac of aircraft) {
+    if (seen.has(ac.icao24)) continue;
+    if (isMilitary(ac.icao24, ac.callsign)) continue;
+    seen.add(ac.icao24);
 
-    for (const s of states) {
-      const icao24 = s[0] as string;
-      const callsign = s[1] as string | null;
-      const lng = s[5] as number | null;
-      const lat = s[6] as number | null;
-      const onGround = s[8] as boolean;
-      if (lat == null || lng == null || onGround) continue;
-
-      // Skip military aircraft — only count civilian traffic
-      if (isMilitary(icao24, callsign)) continue;
-
-      // Bucket into FIR by bounding box
-      for (const f of FIR_CONFIG) {
-        const [latMin, lonMin, latMax, lonMax] = f.bbox;
-        if (lat >= latMin && lat <= latMax && lng >= lonMin && lng <= lonMax) {
-          counts.set(f.code, (counts.get(f.code) || 0) + 1);
-          break; // Each aircraft counted once (first matching FIR)
-        }
+    for (const f of FIR_CONFIG) {
+      const [latMin, lonMin, latMax, lonMax] = f.bbox;
+      if (ac.lat >= latMin && ac.lat <= latMax && ac.lng >= lonMin && ac.lng <= lonMax) {
+        counts.set(f.code, (counts.get(f.code) || 0) + 1);
+        break;
       }
     }
-  } catch (e) {
-    console.error("OpenSky fetch failed:", e);
-    // Return all zeros — will be treated as "data unavailable"
   }
 
+  return counts;
+}
+
+/** Primary: Fetch from ADSB.lol (free, no auth, no rate limits) */
+async function fetchFromADSBLol(): Promise<Map<string, number>> {
+  const allAircraft: { icao24: string; callsign: string | null; lat: number; lng: number }[] = [];
+
+  // Query each FIR center in parallel
+  const results = await Promise.allSettled(
+    FIR_CENTERS.map(async (center) => {
+      const url = `${ADSB_LOL_API}/point/${center.lat}/${center.lon}/${center.radius}`;
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`ADSB.lol ${res.status}`);
+      return res.json();
+    })
+  );
+
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    const data = result.value;
+    const ac = data?.ac || [];
+    for (const a of ac) {
+      const lat = a.lat as number | undefined;
+      const lon = a.lon as number | undefined;
+      if (lat == null || lon == null) continue;
+      // Skip aircraft on ground
+      if (a.alt_baro === "ground" || a.ground === true) continue;
+      allAircraft.push({
+        icao24: (a.hex || "") as string,
+        callsign: (a.flight || null) as string | null,
+        lat,
+        lng: lon,
+      });
+    }
+  }
+
+  return bucketAircraftIntoCounts(allAircraft);
+}
+
+/** Fallback: Fetch from OpenSky Network (rate-limited) */
+async function fetchFromOpenSky(): Promise<Map<string, number>> {
+  const allAircraft: { icao24: string; callsign: string | null; lat: number; lng: number }[] = [];
+
+  const url = `${OPENSKY_API}?lamin=${ME_BBOX.lamin}&lomin=${ME_BBOX.lomin}&lamax=${ME_BBOX.lamax}&lomax=${ME_BBOX.lomax}`;
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(15_000),
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`OpenSky ${res.status}`);
+  const data = await res.json();
+  const states: unknown[][] = data?.states || [];
+
+  for (const s of states) {
+    const lng = s[5] as number | null;
+    const lat = s[6] as number | null;
+    const onGround = s[8] as boolean;
+    if (lat == null || lng == null || onGround) continue;
+    allAircraft.push({
+      icao24: s[0] as string,
+      callsign: s[1] as string | null,
+      lat,
+      lng,
+    });
+  }
+
+  return bucketAircraftIntoCounts(allAircraft);
+}
+
+/** Fetch flight density: ADSB.lol primary → OpenSky fallback */
+async function fetchFlightDensity(): Promise<Map<string, number>> {
+  // Try ADSB.lol first
+  try {
+    const counts = await fetchFromADSBLol();
+    // Verify we got meaningful data (at least some aircraft somewhere)
+    const total = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      console.log(`[Airspace] ADSB.lol: ${total} civilian aircraft across ${counts.size} FIRs`);
+      return counts;
+    }
+    console.warn("[Airspace] ADSB.lol returned 0 aircraft, trying OpenSky...");
+  } catch (e) {
+    console.warn("[Airspace] ADSB.lol failed, trying OpenSky:", e);
+  }
+
+  // Fallback to OpenSky
+  try {
+    const counts = await fetchFromOpenSky();
+    const total = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+    console.log(`[Airspace] OpenSky fallback: ${total} civilian aircraft`);
+    return counts;
+  } catch (e) {
+    console.error("[Airspace] Both APIs failed:", e);
+  }
+
+  // Both failed — return zeros
+  const counts = new Map<string, number>();
+  for (const f of FIR_CONFIG) counts.set(f.code, 0);
   return counts;
 }
 

@@ -7,7 +7,8 @@
 import { Incident } from "./types";
 import { getRedis } from "./redis";
 import { haversineKm } from "./geo";
-import { REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY, DEDUP_RADIUS_KM, DEDUP_WINDOW_MS } from "./constants";
+import { REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY, DEDUP_RADIUS_KM, DEDUP_WINDOW_MS, TEXT_DEDUP_THRESHOLD } from "./constants";
+import { trigramSimilarity } from "./textDedup";
 
 const REDIS_KEY = REDIS_INCIDENTS_KEY;
 const BATCH_SIZE = REDIS_BATCH_SIZE;
@@ -135,23 +136,36 @@ export async function getIncidentCount(): Promise<number> {
 
 /** Returns the matching existing incident if duplicate, or null */
 function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | null {
-  if (inc.lat === 0 && inc.lng === 0) return null;
-
   const incTime = inc.timestamp ? new Date(inc.timestamp).getTime() : 0;
   if (!incTime) return null;
 
+  // Spatial dedup for mapped incidents
+  if (inc.lat !== 0 || inc.lng !== 0) {
+    for (const existing of store.values()) {
+      if (existing.lat === 0 && existing.lng === 0) continue;
+      if (existing.side !== inc.side) continue;
+
+      const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+      if (!existTime || Math.abs(incTime - existTime) > DEDUP_WINDOW_MS) continue;
+
+      const dist = haversineKm(inc.lat, inc.lng, existing.lat, existing.lng);
+      if (dist < DEDUP_RADIUS_KM) return existing;
+    }
+    return null;
+  }
+
+  // Text-based dedup for unmapped incidents (lat=0, lng=0)
+  const incText = `${inc.description} ${inc.details || ""}`;
+  if (incText.length < 30) return null; // Too short for meaningful comparison
+
   for (const existing of store.values()) {
-    if (existing.lat === 0 && existing.lng === 0) continue;
     if (existing.side !== inc.side) continue;
-
     const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
-    if (!existTime) continue;
+    if (!existTime || Math.abs(incTime - existTime) > DEDUP_WINDOW_MS) continue;
 
-    const timeDiff = Math.abs(incTime - existTime);
-    if (timeDiff > DEDUP_WINDOW_MS) continue;
-
-    const dist = haversineKm(inc.lat, inc.lng, existing.lat, existing.lng);
-    if (dist < DEDUP_RADIUS_KM) return existing;
+    const existText = `${existing.description} ${existing.details || ""}`;
+    const sim = trigramSimilarity(incText, existText);
+    if (sim > TEXT_DEDUP_THRESHOLD) return existing; // Prefer existing (may be mapped)
   }
 
   return null;
@@ -184,6 +198,25 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
       }
       if (inc.casualties_description && !existing.casualties_description) {
         existing.casualties_description = inc.casualties_description;
+        updated = true;
+      }
+      if (inc.weapon && !existing.weapon) {
+        existing.weapon = inc.weapon;
+        updated = true;
+      }
+      if (inc.damage_severity && !existing.damage_severity) {
+        existing.damage_severity = inc.damage_severity;
+        updated = true;
+      }
+      if (inc.intercepted_by && !existing.intercepted_by) {
+        existing.intercepted_by = inc.intercepted_by;
+        existing.intercept_success = inc.intercept_success;
+        existing.missiles_fired = inc.missiles_fired ?? existing.missiles_fired;
+        existing.missiles_intercepted = inc.missiles_intercepted ?? existing.missiles_intercepted;
+        updated = true;
+      }
+      if (inc.media && inc.media.length > 0 && (!existing.media || existing.media.length === 0)) {
+        existing.media = inc.media;
         updated = true;
       }
       if (updated) {
@@ -340,6 +373,73 @@ export async function reEnrichCasualties(): Promise<number> {
   }
 
   return updated.length;
+}
+
+/**
+ * Cleanup unmapped incidents:
+ * 1. Remove non-Iran-related unmapped incidents
+ * 2. Text-dedup remaining unmapped against all incidents (1h window)
+ */
+export async function cleanupUnmapped(): Promise<{ removedNonIran: number; removedDupes: number }> {
+  const { isIranRelated } = await import("./telegram");
+  const store = await ensureLoaded();
+  const removeIds: string[] = [];
+
+  // Step 1: Remove non-Iran-related unmapped incidents
+  for (const [id, inc] of store) {
+    if (inc.lat !== 0 || inc.lng !== 0) continue;
+    const text = inc.details || inc.description || "";
+    if (!isIranRelated(text)) {
+      removeIds.push(id);
+      store.delete(id);
+    }
+  }
+  const removedNonIran = removeIds.length;
+  console.log(`[cleanup] Removed ${removedNonIran} non-Iran unmapped incidents`);
+
+  // Step 2: Text-dedup remaining unmapped against all incidents (wider 1h window)
+  const CLEANUP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const unmapped = Array.from(store.entries()).filter(([, inc]) => inc.lat === 0 && inc.lng === 0);
+  const dupeIds: string[] = [];
+
+  for (const [id, inc] of unmapped) {
+    const incTime = inc.timestamp ? new Date(inc.timestamp).getTime() : 0;
+    if (!incTime) continue;
+
+    const incText = `${inc.description} ${inc.details || ""}`;
+    if (incText.length < 30) continue;
+
+    for (const [existId, existing] of store) {
+      if (existId === id) continue;
+      if (dupeIds.includes(id)) break;
+
+      const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+      if (!existTime || Math.abs(incTime - existTime) > CLEANUP_WINDOW_MS) continue;
+
+      const existText = `${existing.description} ${existing.details || ""}`;
+      const sim = trigramSimilarity(incText, existText);
+      if (sim > TEXT_DEDUP_THRESHOLD) {
+        dupeIds.push(id);
+        store.delete(id);
+        break;
+      }
+    }
+  }
+  console.log(`[cleanup] Removed ${dupeIds.length} text-duplicate unmapped incidents`);
+
+  // Persist deletions to Redis
+  const allRemoved = [...removeIds, ...dupeIds];
+  if (allRemoved.length > 0) {
+    const r = getRedis();
+    if (r) {
+      for (let i = 0; i < allRemoved.length; i += BATCH_SIZE) {
+        const batch = allRemoved.slice(i, i + BATCH_SIZE);
+        await r.hdel(REDIS_KEY, ...batch);
+      }
+    }
+  }
+
+  return { removedNonIran, removedDupes: dupeIds.length };
 }
 
 /**

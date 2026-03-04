@@ -2,19 +2,6 @@
 
 import { memo, useState, useEffect, useCallback } from "react";
 
-function useYouTubeIds() {
-  const [ids, setIds] = useState<string[]>([]);
-  useEffect(() => {
-    fetch("/api/youtube-links")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.liveCams?.length) setIds(d.liveCams.map((c: { id: string }) => c.id));
-      })
-      .catch(() => {});
-  }, []);
-  return ids;
-}
-
 // -------------------------------------------------------
 // Telegram feed types (minimal, matches /api/feed)
 // -------------------------------------------------------
@@ -27,13 +14,11 @@ interface FeedPost {
   videoUrl?: string;
 }
 
-/** Desktop version — collapsible panel in left sidebar with Telegram / YouTube tabs */
+/** Desktop version — collapsible panel in left sidebar with Telegram feed */
 export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"telegram" | "youtube">("telegram");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const YOUTUBE_VIDEO_IDS = useYouTubeIds();
 
   const fetchFeed = useCallback(async () => {
     try {
@@ -46,12 +31,12 @@ export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
   }, []);
 
   useEffect(() => {
-    if (open && tab === "telegram") {
+    if (open) {
       fetchFeed();
       const iv = setInterval(fetchFeed, 30_000);
       return () => clearInterval(iv);
     }
-  }, [open, tab, fetchFeed]);
+  }, [open, fetchFeed]);
 
   return (
     <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg w-full overflow-hidden">
@@ -84,53 +69,7 @@ export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
 
       {open && (
         <div className="border-t border-[#2a2a2a]">
-          {/* Tabs */}
-          <div className="flex items-center gap-1 p-1.5 bg-[#0a0a0a]/50">
-            <button
-              onClick={() => setTab("telegram")}
-              className={`flex-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded transition-colors ${
-                tab === "telegram"
-                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                  : "text-neutral-500 hover:text-neutral-400"
-              }`}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Telegram
-            </button>
-            <button
-              onClick={() => setTab("youtube")}
-              className={`flex-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 ${
-                tab === "youtube"
-                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                  : "text-neutral-500 hover:text-neutral-400"
-              }`}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-              </span>
-              Live Cam
-            </button>
-          </div>
-
-          {/* Tab content */}
-          {tab === "youtube" ? (
-            <div className="max-h-64 overflow-y-auto">
-              {YOUTUBE_VIDEO_IDS.map((vid, i) => (
-                <iframe
-                  key={vid}
-                  className="w-full aspect-video block"
-                  src={`https://www.youtube.com/embed/${vid}?autoplay=${i === 0 ? 1 : 0}&mute=1`}
-                  title={`Live Cam ${i + 1}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  frameBorder="0"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="max-h-64 overflow-y-auto divide-y divide-[#2a2a2a]/50">
+          <div className="max-h-64 overflow-y-auto divide-y divide-[#2a2a2a]/50">
               {posts.length === 0 ? (
                 <div className="flex items-center justify-center py-6">
                   <span className="text-neutral-600 text-[10px]">Loading feed...</span>
@@ -170,7 +109,6 @@ export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
                 })
               )}
             </div>
-          )}
         </div>
       )}
     </div>

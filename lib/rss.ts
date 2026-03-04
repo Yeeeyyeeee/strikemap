@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { Incident } from "./types";
 import { enrichBatch } from "./geocodeWithAI";
 import { isIranRelated } from "./telegram";
@@ -48,9 +49,10 @@ export async function fetchRSSIncidents(): Promise<Incident[]> {
       isIranRelated(item.title + " " + item.description)
     );
 
-    const incidents: Incident[] = filtered.map((item, i) => ({
-      id: `rss-${i}`,
+    const incidents: Incident[] = filtered.map((item) => ({
+      id: `rss-${createHash("md5").update(`${item.title}|${item.link}`).digest("hex").slice(0, 10)}`,
       date: item.pubDate ? new Date(item.pubDate).toISOString().split("T")[0] : "",
+      timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : "",
       location: "",
       lat: 0,
       lng: 0,

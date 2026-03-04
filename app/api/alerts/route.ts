@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchTzevAdomAlerts, fetchTzevAdomAlertsDebug, addManualAlert, clearAlert, clearAllManualAlerts } from "@/lib/tzevaadom";
+import { getInterceptionOutcomes } from "@/lib/interceptionOutcome";
 import { isAdminRequest } from "@/lib/adminAuth";
-import { geocodeIsraeliLocation, getOriginForTarget } from "@/lib/israelGeocode";
+import { geocodeIsraeliLocation } from "@/lib/israelGeocode";
+import { selectLaunchOrigin } from "@/lib/launchSites";
 
 const EXTRA_LOCATIONS: Record<string, { lat: number; lng: number }> = {
   "kuwait": { lat: 29.3759, lng: 47.9774 },
@@ -56,17 +58,20 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const alerts = await fetchTzevAdomAlerts();
+    const [alerts, outcomes] = await Promise.all([
+      fetchTzevAdomAlerts(),
+      getInterceptionOutcomes(),
+    ]);
     return NextResponse.json(
-      { alerts },
+      { alerts, outcomes },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=10, stale-while-revalidate=15",
+          "Cache-Control": "public, s-maxage=3, stale-while-revalidate=5",
         },
       }
     );
   } catch (err) {
-    return NextResponse.json({ alerts: [], error: String(err) });
+    return NextResponse.json({ alerts: [], outcomes: [], error: String(err) });
   }
 }
 
@@ -79,7 +84,7 @@ export async function POST(req: NextRequest) {
   const { action } = body;
 
   if (action === "add") {
-    const { target, threatType = "missile", timeToImpact = 90 } = body;
+    const { target, threatType = "missile", timeToImpact = 90, origin: originCountry } = body;
     if (!target) {
       return NextResponse.json({ error: "target is required" }, { status: 400 });
     }
@@ -113,7 +118,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const origin = getOriginForTarget(lat, lng, threatType, timeToImpact);
+    const origin = selectLaunchOrigin(lat, lng, threatType, timeToImpact, originCountry);
     const id = `manual-${Date.now()}`;
     const now = new Date();
     const timestamp = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
@@ -132,6 +137,8 @@ export async function POST(req: NextRequest) {
       status: "active",
       rawText: `Manual Alert: ${cityName} — ${threatType}`,
       threatType,
+      threatClass: origin.threatClass,
+      originName: origin.siteName,
     });
 
     return NextResponse.json({ ok: true, id });

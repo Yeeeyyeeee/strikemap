@@ -194,34 +194,74 @@ body {
   background: #444;
 }
 
-/* Missile trajectory overlay */
-.missile-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 30;
-  overflow: hidden;
+/* Launch site origin marker — pulsing circle at missile launch point */
+.launch-site-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.6);
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  animation: launch-site-pulse 2s ease-in-out infinite;
+}
+
+.launch-site-marker.drone {
+  background: rgba(168, 85, 247, 0.6);
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+}
+
+@keyframes launch-site-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
 }
 
 .missile-icon {
-  position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 48px;
+  height: 48px;
   transform-origin: center;
-  filter: drop-shadow(0 0 8px #ef4444) drop-shadow(0 0 16px rgba(239, 68, 68, 0.5));
+  filter: drop-shadow(0 0 12px #ff4444) drop-shadow(0 0 24px rgba(255, 68, 68, 0.7)) drop-shadow(0 0 48px rgba(255, 68, 68, 0.35));
   z-index: 2;
+  animation: missile-pulse 0.6s ease-in-out infinite alternate;
 }
 
-.missile-trail {
-  z-index: 1;
+@keyframes missile-pulse {
+  0% { filter: drop-shadow(0 0 12px #ff4444) drop-shadow(0 0 24px rgba(255, 68, 68, 0.7)) drop-shadow(0 0 48px rgba(255, 68, 68, 0.35)); }
+  100% { filter: drop-shadow(0 0 16px #ff6666) drop-shadow(0 0 32px rgba(255, 68, 68, 0.9)) drop-shadow(0 0 56px rgba(255, 68, 68, 0.5)); }
 }
+
+.missile-icon::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 8px;
+  background: radial-gradient(ellipse at right, #ffaa00 0%, #ff4500 50%, transparent 100%);
+  border-radius: 50%;
+  opacity: 0.9;
+  animation: exhaust-flicker 0.12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes exhaust-flicker {
+  0% { opacity: 0.6; transform: translateY(-50%) scaleX(0.7); }
+  100% { opacity: 1; transform: translateY(-50%) scaleX(1.3); }
+}
+
+/* missile trails are now Mapbox-native line layers */
 
 /* Impact ring — double concentric pulses while alert is active */
 .impact-ring {
-  position: absolute;
   width: 0;
   height: 0;
-  z-index: 2;
 }
 
 .impact-ring::before,
@@ -254,10 +294,8 @@ body {
 
 /* Drone static pulse — persistent purple glow at spotted location */
 .drone-pulse {
-  position: absolute;
   width: 0;
   height: 0;
-  z-index: 2;
 }
 
 .drone-pulse::before,
@@ -291,14 +329,15 @@ body {
 }
 
 .drone-icon {
-  position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   transform-origin: center;
   filter: drop-shadow(0 0 8px #a855f7) drop-shadow(0 0 16px rgba(168, 85, 247, 0.5));
   z-index: 3;
   animation: drone-hover 3s ease-in-out infinite;
 }
+
+/* drone trails are now Mapbox-native line layers */
 
 @keyframes drone-hover {
   0%, 100% {
@@ -383,6 +422,66 @@ body {
 
 .incident-marker.timeline-new {
   animation: marker-appear 0.4s ease-out;
+}
+
+/* Crosshair marker for timeline replay strikes */
+.timeline-crosshair {
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+  animation: crosshair-in 0.5s ease-out forwards;
+}
+
+.timeline-crosshair.fade-out {
+  animation: crosshair-out 1s ease-in forwards;
+}
+
+@keyframes crosshair-in {
+  0% {
+    transform: scale(2.5) rotate(45deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.9) rotate(-5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes crosshair-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Pulsing ring around crosshair */
+.timeline-crosshair::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--crosshair-color, #ef4444);
+  animation: crosshair-pulse-ring 1.5s ease-out 2;
+  opacity: 0;
+}
+
+@keyframes crosshair-pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 
 /* Strike flash overlay */
@@ -550,4 +649,163 @@ body {
     animation: none;
     background: rgba(220, 38, 38, 0.9);
   }
+}
+
+/* Interception banner — blue flash for outcome reports */
+.interception-banner-inner {
+  animation: interception-flash-banner 1.2s ease-in-out infinite;
+}
+
+@keyframes interception-flash-banner {
+  0%, 100% {
+    background: rgba(37, 99, 235, 0.9);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    background: rgba(14, 165, 233, 0.9);
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
+  }
+}
+
+/* Hit-target variant — orange/red flash */
+.interception-banner-inner.hit-target {
+  animation: hit-flash-banner 1s ease-in-out infinite;
+}
+
+@keyframes hit-flash-banner {
+  0%, 100% {
+    background: rgba(234, 88, 12, 0.9);
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    background: rgba(220, 38, 38, 0.9);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interception-banner-inner {
+    animation: none;
+    background: rgba(37, 99, 235, 0.9);
+  }
+  .interception-banner-inner.hit-target {
+    animation: none;
+    background: rgba(234, 88, 12, 0.9);
+  }
+}
+
+/* A-10 Warthog flyover overlay */
+.a10-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 35;
+  overflow: visible;
+}
+
+.a10-warthog {
+  position: absolute;
+  width: 120px;
+  height: 60px;
+  filter: drop-shadow(0 0 8px rgba(68, 170, 255, 0.35)) drop-shadow(0 3px 14px rgba(0, 0, 0, 0.7));
+  z-index: 2;
+}
+
+.a10-muzzle-flash {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 1;
+}
+
+.a10-muzzle-flash::before {
+  content: "";
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  top: -50px;
+  left: -50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 50, 0.95) 0%, rgba(255, 100, 0, 0.6) 30%, rgba(255, 0, 0, 0.2) 60%, transparent 100%);
+  animation: brrt-flash 1s ease-out forwards;
+}
+
+.a10-muzzle-flash::after {
+  content: "";
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  top: -80px;
+  left: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 80, 0.3) 0%, rgba(255, 100, 0, 0.1) 40%, transparent 70%);
+  animation: brrt-flash 1s ease-out 0.08s forwards;
+}
+
+.a10-tracers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.a10-tracer-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #ffcc33;
+  box-shadow: 0 0 8px 3px rgba(255, 200, 50, 0.8), 0 0 16px 6px rgba(255, 100, 0, 0.4);
+  animation: tracer-pop 0.5s ease-out forwards;
+}
+
+@keyframes tracer-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes brrt-flash {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Chat like heart animation */
+@keyframes like-heart-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-like-heart {
+  animation: like-heart-pop 0.6s ease-out forwards;
 }

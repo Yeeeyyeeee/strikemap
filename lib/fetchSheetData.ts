@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { createHash } from "crypto";
 import { Incident } from "./types";
 
 export async function fetchSheetData(): Promise<Incident[]> {
@@ -16,8 +17,8 @@ export async function fetchSheetData(): Promise<Incident[]> {
         const rows = results.data as Record<string, string>[];
         const incidents: Incident[] = rows
           .filter((row) => row.lat && row.lng)
-          .map((row, i) => ({
-            id: `sheet-${i}`,
+          .map((row) => ({
+            id: `sheet-${createHash("md5").update(`${row.date}|${row.location}|${row.lat}|${row.lng}`).digest("hex").slice(0, 10)}`,
             date: row.date || "",
             location: row.location || "",
             lat: parseFloat(row.lat),

@@ -1,38 +1,30 @@
 /**
  * Satellite image enhancement pipeline.
- * CLAHE + gamma + unsharp mask + brightness/saturation.
+ * Light sharpen + saturation boost only. No CLAHE (causes wash-out with satellite tiles).
  * Conservative tuning for natural-looking damage assessment imagery.
  */
 
 import sharp from "sharp";
 
 export interface EnhanceOptions {
-  claheWidth: number;
-  claheHeight: number;
-  claheMaxSlope: number;
   sharpenSigma: number;
   sharpenFlat: number;
   sharpenJagged: number;
-  gamma: number;
   saturation: number;
   brightness: number;
 }
 
 const DEFAULTS: EnhanceOptions = {
-  claheWidth: 16,
-  claheHeight: 16,
-  claheMaxSlope: 3,
-  sharpenSigma: 1.0,
+  sharpenSigma: 0.8,
   sharpenFlat: 1.0,
-  sharpenJagged: 0.5,
-  gamma: 0.92,
-  saturation: 1.15,
-  brightness: 1.03,
+  sharpenJagged: 0.3,
+  saturation: 1.2,
+  brightness: 1.0,
 };
 
 /**
- * Full enhancement pipeline for satellite imagery.
- * Order: CLAHE → gamma → unsharp mask → brightness/saturation.
+ * Light enhancement for satellite imagery.
+ * Order: sharpen → brightness/saturation.
  * Returns PNG buffer (lossless intermediate; JPEG conversion at API boundary).
  */
 export async function enhanceSatelliteImage(
@@ -42,8 +34,6 @@ export async function enhanceSatelliteImage(
   const o = { ...DEFAULTS, ...opts };
 
   return sharp(input)
-    .clahe({ width: o.claheWidth, height: o.claheHeight, maxSlope: o.claheMaxSlope })
-    .gamma(o.gamma)
     .sharpen({ sigma: o.sharpenSigma, m1: o.sharpenFlat, m2: o.sharpenJagged })
     .modulate({ brightness: o.brightness, saturation: o.saturation })
     .png()
@@ -56,7 +46,7 @@ export async function enhanceSatelliteImage(
  */
 export async function isBlankImage(
   input: Buffer,
-  threshold = 3,
+  threshold = 8,
 ): Promise<boolean> {
   try {
     const stats = await sharp(input).stats();

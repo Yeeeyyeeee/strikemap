@@ -65,7 +65,10 @@ export async function getAccessToken(): Promise<string | null> {
   });
 
   if (!res.ok) {
-    console.error(`[sentinel] Token fetch failed (${res.status}):`, await res.text().catch(() => ""));
+    const errBody = await res.text().catch(() => "");
+    console.error(`[sentinel] Token fetch failed (${res.status}): ${errBody}`);
+    console.error(`[sentinel] Token URL: ${TOKEN_URL}`);
+    console.error(`[sentinel] Client ID starts with: ${clientId.substring(0, 8)}...`);
     return null;
   }
 
@@ -116,18 +119,16 @@ export async function getSatelliteImagery(
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Before: 90 days to 10 days before incident
+  // Before: 90 days to 1 day before incident
   const beforeStart = new Date(incidentDate);
   beforeStart.setDate(beforeStart.getDate() - 90);
   const beforeEnd = new Date(incidentDate);
-  beforeEnd.setDate(beforeEnd.getDate() - 10);
+  beforeEnd.setDate(beforeEnd.getDate() - 1);
   const beforeStartStr = beforeStart.toISOString().split("T")[0];
   const beforeEndStr = beforeEnd.toISOString().split("T")[0];
 
-  // After: 3 days before incident to today
-  const afterStart = new Date(incidentDate);
-  afterStart.setDate(afterStart.getDate() - 3);
-  const afterStartStr = afterStart.toISOString().split("T")[0];
+  // After: day of incident to today (must be AFTER the strike)
+  const afterStartStr = date; // incident date itself
 
   // Search catalog for clearest images in both windows (non-blocking, for metadata)
   const [beforeResult, afterResult] = await Promise.all([
@@ -152,10 +153,12 @@ export async function getSatelliteImagery(
     fetchedAt: new Date().toISOString(),
   };
 
-  // Cache
+  // Cache — shorter TTL if catalog found no results (so we retry sooner)
+  const hasBothCatalog = beforeResult && afterResult;
+  const cacheTTL = hasBothCatalog ? SENTINEL_IMAGERY_TTL_S : Math.min(SENTINEL_IMAGERY_TTL_S, 300);
   if (redis) {
     try {
-      await redis.set(cacheKey, JSON.stringify(imagery), { ex: SENTINEL_IMAGERY_TTL_S });
+      await redis.set(cacheKey, JSON.stringify(imagery), { ex: cacheTTL });
     } catch {}
   }
 

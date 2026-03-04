@@ -17,6 +17,7 @@ export interface EnrichmentResult {
   casualties_military: number;
   casualties_civilian: number;
   casualties_description: string;
+  isStatement?: boolean;
 }
 
 // ---- In-memory cache (survives within a warm serverless instance) ----
@@ -36,11 +37,9 @@ const responseSchema: ResponseSchema = {
     intercept_success: { type: SchemaType.BOOLEAN, description: "true if the projectile was confirmed intercepted by a defense system, false otherwise" },
     damage_assessment: { type: SchemaType.STRING, description: "Brief 1-2 sentence damage assessment describing physical destruction, casualties if known, and strategic impact" },
     damage_severity: { type: SchemaType.STRING, description: "One of: minor, moderate, severe, catastrophic" },
-    casualties_military: { type: SchemaType.INTEGER, description: "Estimated number of military/combatant casualties killed. Use 0 if none reported." },
-    casualties_civilian: { type: SchemaType.INTEGER, description: "Estimated number of civilian casualties killed. Use 0 if none reported." },
     casualties_description: { type: SchemaType.STRING, description: "Brief description of casualties: who was killed/injured, unit affiliation if known. Use 'No casualties reported' if unknown." },
   },
-  required: ["location", "lat", "lng", "weapon", "target_type", "side", "target_military", "intercepted_by", "intercept_success", "damage_assessment", "damage_severity", "casualties_military", "casualties_civilian", "casualties_description"],
+  required: ["location", "lat", "lng", "weapon", "target_type", "side", "target_military", "intercepted_by", "intercept_success", "damage_assessment", "damage_severity", "casualties_description"],
 };
 
 const SYSTEM_PROMPT = `You are a military intelligence analyst. Extract structured information from this Telegram/news post about military strikes involving Iran.
@@ -57,9 +56,7 @@ Return a JSON object with:
 - intercept_success: true if the projectile was confirmed intercepted, false otherwise
 - damage_assessment: Brief (1-2 sentence) damage assessment. Describe physical destruction, casualties if known, and strategic impact. If unknown, write "Damage assessment pending".
 - damage_severity: Rate as "minor" (limited damage, no casualties), "moderate" (significant damage, few casualties), "severe" (major destruction, multiple casualties), or "catastrophic" (massive destruction, mass casualties)
-- casualties_military: Estimated number of military/combatant killed. Use 0 if not reported.
-- casualties_civilian: Estimated number of civilian killed. Use 0 if not reported.
-- casualties_description: Brief description of casualties — who was killed/injured, unit affiliation if known. If unknown, write "No casualties reported".
+- casualties_description: Brief description of casualties — who was killed/injured, unit affiliation if known. If unknown, write "No casualties reported". Do NOT include specific numbers.
 
 If the post is not about a specific strike or you cannot determine the location, set lat and lng to 0.
 
@@ -126,8 +123,8 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
       intercept_success: !!parsed.intercept_success,
       damage_assessment: parsed.damage_assessment || "Damage assessment pending",
       damage_severity: validSeverities.includes(parsed.damage_severity) ? parsed.damage_severity : "minor",
-      casualties_military: typeof parsed.casualties_military === "number" ? parsed.casualties_military : 0,
-      casualties_civilian: typeof parsed.casualties_civilian === "number" ? parsed.casualties_civilian : 0,
+      casualties_military: 0, // Always 0 — real casualty data sourced from Wikipedia via /api/casualties
+      casualties_civilian: 0, // Always 0 — real casualty data sourced from Wikipedia via /api/casualties
       casualties_description: parsed.casualties_description || "No casualties reported",
     };
 

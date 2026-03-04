@@ -22,6 +22,7 @@ interface KeywordResult {
   casualties_description?: string;
   damage_assessment?: string;
   damage_severity?: string;
+  isStatement?: boolean;
 }
 
 /** Apply keyword enrichment results onto an incident (mutates in place). */
@@ -44,4 +45,5 @@ export function applyEnrichment(inc: Incident, kwResult: KeywordResult): void {
   }
   if (kwResult.damage_assessment) inc.damage_assessment = kwResult.damage_assessment;
   if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+  if (kwResult.isStatement) inc.isStatement = true;
 }

@@ -12,22 +12,23 @@ interface StatsBoardProps {
 
 export default function StatsBoard({ incidents }: StatsBoardProps) {
   const stats = useMemo(() => {
-    const iranStrikes = incidents.filter((i) => i.side === "iran");
-    const usStrikes = incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel");
-    const dates = incidents.map((i) => i.date).sort();
+    const actual = incidents.filter((i) => !i.isStatement);
+    const iranStrikes = actual.filter((i) => i.side === "iran");
+    const usStrikes = actual.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel");
+    const dates = actual.map((i) => i.date).sort();
     const firstDate = dates[0] || "N/A";
     const lastDate = dates[dates.length - 1] || "N/A";
 
     // Weapons breakdown
     const weaponCounts = new Map<string, number>();
-    for (const inc of incidents) {
+    for (const inc of actual) {
       const w = inc.weapon || "Unknown";
       weaponCounts.set(w, (weaponCounts.get(w) || 0) + 1);
     }
 
     // Target types breakdown
     const targetCounts = new Map<string, number>();
-    for (const inc of incidents) {
+    for (const inc of actual) {
       const t = inc.target_type || "Unknown";
       targetCounts.set(t, (targetCounts.get(t) || 0) + 1);
     }
@@ -40,7 +41,7 @@ export default function StatsBoard({ incidents }: StatsBoardProps) {
 
     // Timeline (strikes per day)
     const dailyCounts = new Map<string, number>();
-    for (const inc of incidents) {
+    for (const inc of actual) {
       dailyCounts.set(inc.date, (dailyCounts.get(inc.date) || 0) + 1);
     }
     const sortedDays = Array.from(dailyCounts.entries())
@@ -48,7 +49,7 @@ export default function StatsBoard({ incidents }: StatsBoardProps) {
       .map(([label, value]) => ({ label, value }));
 
     return {
-      total: incidents.length,
+      total: actual.length,
       iranCount: iranStrikes.length,
       usCount: usStrikes.length,
       firstDate,

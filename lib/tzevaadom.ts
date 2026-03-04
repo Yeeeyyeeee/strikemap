@@ -1,7 +1,9 @@
 import { MissileAlert } from "./types";
-import { getOriginForTarget } from "./israelGeocode";
+import { selectLaunchOrigin } from "./launchSites";
 import { getRedis } from "./redis";
 import { REDIS_MANUAL_ALERTS_KEY } from "./constants";
+import { scrapeChannel } from "./telegram";
+import { saveClearedAlertMeta, checkForInterceptionOutcomes } from "./interceptionOutcome";
 
 // ---------------------------------------------------------------------------
 // Types from Tzofar API
@@ -31,6 +33,8 @@ interface TzofarArea {
 interface TzofarAlertEntry {
   time: number; // unix timestamp
   cities: string[]; // Hebrew city names
+  threat?: number; // 0=Rockets, 5=Drone/HostileAircraft, 6=NonConventionalMissile, etc.
+  isDrill?: boolean;
 }
 
 interface TzofarHistoryItem {
@@ -86,6 +90,72 @@ const processedIds = new Set<number>();
 const ALERT_BUFFER_MS = 2 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
+// Telegram "Incident Ended" detection
+// ---------------------------------------------------------------------------
+
+const TZOFAR_TG_CHANNEL = "tzevaadom_en";
+const TG_CHECK_INTERVAL_MS = 15_000; // 15 seconds
+let lastTgCheckTime = 0;
+let lastIncidentEndedEpoch = 0;
+
+/**
+ * Scrape Tzofar's English Telegram channel for "Incident Ended" messages.
+ * When found, immediately expire all Tzofar alerts created before that time.
+ * Throttled to run at most every 15 seconds.
+ */
+async function checkTelegramForClears(now: number): Promise<void> {
+  if (now - lastTgCheckTime < TG_CHECK_INTERVAL_MS) return;
+  lastTgCheckTime = now;
+
+  // Only check if we have active Tzofar alerts
+  let hasTzofarAlerts = false;
+  for (const id of activeAlerts.keys()) {
+    if (id.startsWith("tzofar-")) { hasTzofarAlerts = true; break; }
+  }
+  if (!hasTzofarAlerts) return;
+
+  try {
+    const posts = await scrapeChannel(TZOFAR_TG_CHANNEL);
+
+    for (const post of posts) {
+      const text = (post.text || "").toLowerCase();
+
+      // Detect "Incident Ended" / "incident has ended" messages
+      if (!text.includes("incident ended") && !text.includes("incident has ended")) continue;
+
+      const postTime = new Date(post.timestamp).getTime();
+      if (isNaN(postTime)) continue;
+
+      // Only process recent "ended" messages (within 30 min)
+      if (now - postTime > 30 * 60 * 1000) continue;
+
+      if (postTime > lastIncidentEndedEpoch) {
+        lastIncidentEndedEpoch = postTime;
+
+        // Collect alerts being cleared, save metadata for interception tracking
+        const alertsToCleare: MissileAlert[] = [];
+        for (const [id, alert] of activeAlerts) {
+          if (id.startsWith("tzofar-") && alert.createdAt < postTime) {
+            const { createdAt: _, ...rest } = alert;
+            alertsToCleare.push(rest);
+          }
+        }
+        if (alertsToCleare.length > 0) {
+          saveClearedAlertMeta(alertsToCleare).catch((err) =>
+            console.error("[tzevaadom] Failed to save cleared alert meta:", err)
+          );
+        }
+        for (const a of alertsToCleare) {
+          activeAlerts.delete(a.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[tzevaadom] Telegram clear check failed:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main: fetch alerts from Tzofar API
 // ---------------------------------------------------------------------------
 
@@ -93,6 +163,9 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
   const now = Date.now();
 
   await loadCitiesData();
+
+  // Check IDF channel for interception outcome reports (throttled, non-blocking)
+  await checkForInterceptionOutcomes();
 
   try {
     const res = await fetch("https://api.tzevaadom.co.il/alerts-history/", {
@@ -111,33 +184,33 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
       if (processedIds.has(item.id)) continue;
       processedIds.add(item.id);
 
-      // Determine threat type from description
-      const desc = (item.description || "").toLowerCase();
+      // Consolidate all alert entries within this history item into ONE missile.
+      // A single Tzofar item represents one attack wave — multiple alert entries
+      // are just different areas/times within the same salvo.
+      const allCities: string[] = [];
+      const regions = new Set<string>();
+      let bestLat = 0;
+      let bestLng = 0;
+      let bestCountdown = 60;
       let threatType: "missile" | "drone" | "unknown" = "unknown";
-      if (desc.includes("כלי טיס") || desc.includes("uav") || desc.includes("drone") || desc.includes("חדירת") || desc.includes("hostile aircraft") || desc.includes("כלי טיס עוין")) {
-        threatType = "drone";
-      } else if (desc.includes("רקט") || desc.includes("טיל") || desc.includes("missile") || desc.includes("rocket") || desc.includes("ירי")) {
-        threatType = "missile";
-      }
+      let earliestTime = Infinity;
+      let allDrills = true;
 
       for (const alert of item.alerts) {
-        const alertTimeMs = alert.time * 1000;
-        const ageMs = now - alertTimeMs;
+        if (!alert.isDrill) allDrills = false;
 
-        // Skip alerts older than 30 minutes
-        if (ageMs > 30 * 60 * 1000) continue;
+        // Determine threat type (first non-unknown wins)
+        if (threatType === "unknown") {
+          if (alert.threat === 5) threatType = "drone";
+          else if (alert.threat === 0 || alert.threat === 6) threatType = "missile";
+        }
 
-        // Resolve cities to coordinates
-        const regions = new Set<string>();
-        const cityNames: string[] = [];
-        let bestLat = 0;
-        let bestLng = 0;
-        let bestCountdown = 60;
+        if (alert.time < earliestTime) earliestTime = alert.time;
 
         for (const hebrewCity of alert.cities) {
           const city = lookupCity(hebrewCity);
           if (city) {
-            cityNames.push(city.en);
+            allCities.push(city.en);
             if (city.area) regions.add(getAreaName(city.area));
             if (city.lat && city.lng && !bestLat) {
               bestLat = city.lat;
@@ -146,39 +219,52 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
             }
           }
         }
-
-        if (!bestLat || !bestLng) continue;
-
-        const origin = getOriginForTarget(bestLat, bestLng, threatType, bestCountdown);
-        const alertId = `tzofar-${item.id}-${alert.time}`;
-
-        // Format time
-        const d = new Date(alertTimeMs);
-        const timestamp = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-
-        const regionArr = Array.from(regions).filter(Boolean);
-
-        activeAlerts.set(alertId, {
-          id: alertId,
-          postId: String(item.id),
-          timestamp,
-          regions: regionArr,
-          cities: cityNames,
-          lat: bestLat,
-          lng: bestLng,
-          originLat: origin.lat,
-          originLng: origin.lng,
-          timeToImpact: bestCountdown,
-          status: "active",
-          rawText: `Red Alert: ${regionArr.join(", ")} — ${cityNames.slice(0, 10).join(", ")}`,
-          threatType,
-          createdAt: alertTimeMs,
-        });
       }
+
+      // Skip if all alerts were drills, or no valid coordinates
+      if (allDrills || !bestLat || !bestLng || earliestTime === Infinity) continue;
+
+      const alertTimeMs = earliestTime * 1000;
+      const ageMs = now - alertTimeMs;
+
+      // Skip alerts older than 30 minutes
+      if (ageMs > 30 * 60 * 1000) continue;
+
+      const origin = selectLaunchOrigin(bestLat, bestLng, threatType, bestCountdown);
+      const alertId = `tzofar-${item.id}`;
+
+      // Format time
+      const d = new Date(alertTimeMs);
+      const timestamp = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+
+      const regionArr = Array.from(regions).filter(Boolean);
+
+      activeAlerts.set(alertId, {
+        id: alertId,
+        postId: String(item.id),
+        timestamp,
+        regions: regionArr,
+        cities: allCities,
+        lat: bestLat,
+        lng: bestLng,
+        originLat: origin.lat,
+        originLng: origin.lng,
+        timeToImpact: bestCountdown,
+        status: "active",
+        rawText: `Red Alert: ${regionArr.join(", ")} — ${allCities.slice(0, 10).join(", ")}`,
+        threatType,
+        threatClass: origin.threatClass,
+        originName: origin.siteName,
+        createdAt: alertTimeMs,
+      });
     }
   } catch (err) {
     console.error("Failed to fetch Tzofar alerts:", err);
   }
+
+  // Check Tzofar Telegram for "Incident Ended" signals AFTER processing history,
+  // so cold-start re-added alerts get cleared in the same request
+  await checkTelegramForClears(now);
 
   // Expire alerts once their countdown + buffer has passed
   for (const [id, alert] of activeAlerts) {
@@ -186,6 +272,14 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
     if (now > expiresAt) {
       activeAlerts.delete(id);
     }
+  }
+
+  // Trim processedIds to prevent unbounded memory growth
+  if (processedIds.size > 5000) {
+    const sorted = Array.from(processedIds).sort((a, b) => a - b);
+    const toKeep = sorted.slice(sorted.length - 1000);
+    processedIds.clear();
+    for (const id of toKeep) processedIds.add(id);
   }
 
   return getActiveAlertsWithRedis();

@@ -4,6 +4,7 @@ import { enrichWithKeywords } from "@/lib/keywordEnricher";
 import { processSirenPosts } from "@/lib/sirenDetector";
 import { getRedis } from "@/lib/redis";
 import { REDIS_FEED_POSTS_KEY, FEED_MAX_STORED_POSTS } from "@/lib/constants";
+import { deduplicatePosts } from "@/lib/textDedup";
 
 export const maxDuration = 30;
 
@@ -71,16 +72,14 @@ export async function GET() {
       return true;
     }).slice(0, FEED_MAX_STORED_POSTS);
 
-    // Persist merged posts back to Redis (non-blocking)
-    if (redis) {
-      redis.set(REDIS_FEED_POSTS_KEY, posts).catch(() => {});
-    }
+    // Deduplicate near-identical posts (same news from multiple channels)
+    const dedupedPosts = deduplicatePosts(posts);
 
-    // Process posts for siren detection (populates server-side state)
+    // Process ALL posts for siren detection (before dedup, so we don't miss alerts)
     await processSirenPosts(posts);
 
-    // Enrich Iran-related posts with coordinates so feed clicks can navigate the map
-    for (const post of posts) {
+    // Enrich deduped posts with coordinates so feed clicks can navigate the map
+    for (const post of dedupedPosts) {
       if (isIranRelated(post.text)) {
         const kwResult = enrichWithKeywords(post.text);
         if (kwResult) {
@@ -91,11 +90,16 @@ export async function GET() {
       }
     }
 
+    // Persist full post list to Redis (non-blocking) — keep all for history
+    if (redis) {
+      redis.set(REDIS_FEED_POSTS_KEY, posts).catch(() => {});
+    }
+
     return NextResponse.json(
-      { posts, count: posts.length },
+      { posts: dedupedPosts, count: dedupedPosts.length },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=15",
         },
       }
     );

@@ -7,10 +7,14 @@ export interface UserSettings {
   showLegend: boolean;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
+  volume: number; // 0-100
+  activeWidgets?: string[];
+  widgetPositions?: Record<string, { x: number; y: number; w?: number; h?: number }>;
+  alertCountries?: string[] | "all";
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  dateFrom: "2026-03-01",
+  dateFrom: "2026-02-28",
   markerSize: 0.7,
   markerOpacity: 1,
   showGauges: true,
@@ -18,6 +22,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showLegend: true,
   soundEnabled: true,
   notificationsEnabled: true,
+  volume: 80,
 };
 
 const STORAGE_KEY = "strikemap-settings";

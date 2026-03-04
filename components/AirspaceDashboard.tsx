@@ -168,15 +168,25 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                     </span>
                   </div>
                   <p className="text-[10px] text-neutral-600 mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>{region.fir}</p>
-                  <p
-                    className="text-[10px] font-bold uppercase"
-                    style={{
-                      color: STATUS_COLORS[region.status],
-                      fontFamily: "JetBrains Mono, monospace",
-                    }}
-                  >
-                    {region.status}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p
+                      className="text-[10px] font-bold uppercase"
+                      style={{
+                        color: STATUS_COLORS[region.status],
+                        fontFamily: "JetBrains Mono, monospace",
+                      }}
+                    >
+                      {region.status}
+                    </p>
+                    {region.manual_override && (
+                      <span
+                        className="text-[8px] font-bold text-sky-400 bg-sky-500/20 px-1 py-0.5 rounded uppercase"
+                        style={{ fontFamily: "JetBrains Mono, monospace" }}
+                      >
+                        MANUAL
+                      </span>
+                    )}
+                  </div>
                   {region.active_notams > 0 && (
                     <p className="text-[10px] text-neutral-600 mt-1">
                       {region.active_notams} active NOTAM{region.active_notams !== 1 ? "s" : ""}

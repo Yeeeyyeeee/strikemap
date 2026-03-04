@@ -35,6 +35,7 @@ export interface Incident {
   casualties_civilian?: number; // estimated civilian killed
   casualties_description?: string; // AI-generated casualty summary
   media?: MediaItem[]; // images and videos from Telegram
+  isStatement?: boolean; // true = political statement/news, not an actual strike — still shown on map but excluded from strike counts
 }
 
 export interface MissileAlert {
@@ -51,6 +52,21 @@ export interface MissileAlert {
   status: "active" | "cleared";
   rawText: string;
   threatType?: "missile" | "drone" | "unknown";
+  threatClass?: "ballistic" | "cruise" | "drone" | "rocket";
+  originName?: string;
+}
+
+export interface InterceptionOutcome {
+  id: string;                    // "outcome-{epoch}"
+  alertIds: string[];            // cleared alert IDs this relates to
+  intercepted: boolean | null;   // true=intercepted, false=hit, null=unknown
+  interceptedBy: string;         // "Arrow-3", "Iron Dome", etc.
+  missilesFired?: number;
+  missilesIntercepted?: number;
+  summary: string;               // human-readable banner text
+  sourcePostId: string;          // IDF Telegram post ID
+  detectedAt: number;            // epoch ms
+  alertClearedAt: number;        // epoch ms
 }
 
 // NOTAM / Airspace types
@@ -82,6 +98,44 @@ export interface RegionAirspace {
   active_notams: number;
   critical_notams: number;
   last_updated: string;
+  manual_override?: boolean;
+  override_set_at?: string;
+}
+
+// --- Report / Briefing types ---
+
+export interface BriefingKeyDevelopment {
+  headline: string;
+  detail: string;
+  severity: "low" | "medium" | "high" | "critical";
+}
+
+export interface BriefingTimelineEvent {
+  time: string;
+  event: string;
+  location: string;
+}
+
+export interface BriefingStatistics {
+  total_strikes: number;
+  iran_strikes: number;
+  us_israel_strikes: number;
+  weapons_used: Array<{ weapon: string; count: number }>;
+  locations_affected: string[];
+  overall_damage_level: string;
+}
+
+export interface BriefingReport {
+  executive_summary: string;
+  key_developments: BriefingKeyDevelopment[];
+  timeline: BriefingTimelineEvent[];
+  statistics: BriefingStatistics;
+  threat_assessment: string;
+  sources_summary: string;
+  generatedAt: string;
+  period: number;
+  incidentCount: number;
+  feedPostCount: number;
 }
 
 // --- Satellite / FIRMS types ---

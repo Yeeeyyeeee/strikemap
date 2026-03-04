@@ -3,7 +3,7 @@
 import { memo, useCallback, useRef } from "react";
 
 interface TimelineProps {
-  allDates: string[];
+  allSlots: string[];
   currentIndex: number;
   totalIncidents: number;
   visibleCount: number;
@@ -17,17 +17,18 @@ interface TimelineProps {
 
 const SPEEDS = [1, 2, 5, 10];
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatHourSlot(hourKey: string): string {
+  if (!hourKey) return "\u2014";
+  // "2026-03-01T14" → "Mar 1 — 14:00"
+  const m = hourKey.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})$/);
+  if (!m) return hourKey;
+  const d = new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00`);
+  const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${datePart} \u2014 ${m[4]}:00`;
 }
 
 export default memo(function Timeline({
-  allDates,
+  allSlots,
   currentIndex,
   totalIncidents,
   visibleCount,
@@ -41,9 +42,9 @@ export default memo(function Timeline({
   const trackRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
-  const maxIndex = Math.max(allDates.length - 1, 0);
+  const maxIndex = Math.max(allSlots.length - 1, 0);
   const percentage = maxIndex > 0 ? (currentIndex / maxIndex) * 100 : 100;
-  const currentDate = allDates[currentIndex] ?? "";
+  const currentSlot = allSlots[currentIndex] ?? "";
 
   const indexFromPointer = useCallback(
     (clientX: number) => {
@@ -102,7 +103,7 @@ export default memo(function Timeline({
               REPLAY
             </span>
             <span className="text-neutral-300 text-xs truncate">
-              {currentDate ? formatDate(currentDate) : "\u2014"}
+              {currentSlot ? formatHourSlot(currentSlot) : "\u2014"}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">

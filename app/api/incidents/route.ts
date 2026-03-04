@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { getAllIncidents, seedIfEmpty } from "@/lib/incidentStore";
 import { refreshLiveData } from "@/lib/refresh";
 
@@ -19,17 +20,18 @@ export async function GET() {
 
     const incidents = await getAllIncidents();
 
-    // Build a lightweight ETag from count + most recent ID so clients
-    // that already have the latest data get a fast 304.
-    const latest = incidents[0];
-    const etag = `"inc-${incidents.length}-${latest?.id || "0"}"`;
+    // Build a content-aware ETag so clients detect casualty/side changes, not just count
+    const idString = incidents.map(
+      (i) => `${i.id}:${i.casualties_military || 0}:${i.casualties_civilian || 0}:${i.side}`
+    ).join(",");
+    const hash = createHash("md5").update(idString).digest("hex").slice(0, 12);
+    const etag = `"inc-${incidents.length}-${hash}"`;
 
     return NextResponse.json(
       { incidents, count: incidents.length },
       {
         headers: {
-          // CDN caches for 15s (most polls served from edge), stale OK for 30s more
-          "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+          "Cache-Control": "public, s-maxage=15, stale-while-revalidate=15",
           "ETag": etag,
         },
       }

@@ -66,8 +66,28 @@ export interface ChannelPost {
   location?: string;
 }
 
+// Blocklist: reject messages about Russia/Ukraine conflict even if they match generic keywords
+const RUSSIA_UKRAINE_BLOCKLIST = [
+  "ukraine", "ukrainian", "україн", "украин",
+  "kyiv", "kiev", "kharkiv", "odesa", "odessa", "mykolaiv", "mykolayiv",
+  "zaporizhzhia", "dnipro", "lviv", "kherson", "donetsk", "luhansk",
+  "mariupol", "crimea", "sevastopol", "sumy", "poltava", "chernihiv",
+  "zhytomyr", "vinnytsia", "rivne", "ternopil", "ivano-frankivsk",
+  "cherkasy", "kirovohrad", "kropyvnytskyi", "voznesensk",
+  "russia", "russian", "россия", "русск", "москва", "moscow",
+  "kursk", "belgorod", "bryansk", "rostov",
+  "zelensky", "зеленськ", "зеленск",
+  "putin", "путин",
+  "iskander", "kalibr", "kinzhal",
+  "залужн", "сирський", "будан",
+  "повітряна тривога", "воздушная тревога",
+  "зсу", "всу", "збройні сили",
+];
+
 export function isIranRelated(text: string): boolean {
   const lower = text.toLowerCase();
+  // Reject Russia/Ukraine conflict messages
+  if (RUSSIA_UKRAINE_BLOCKLIST.some((kw) => lower.includes(kw))) return false;
   return IRAN_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
@@ -290,8 +310,8 @@ export function postToIncident(post: ChannelPost): Incident {
 
   return {
     id: `tg-${post.id.replace("/", "-")}`,
-    date: post.date || new Date().toISOString().split("T")[0],
-    timestamp: post.timestamp || new Date().toISOString(),
+    date: post.date || "",
+    timestamp: post.timestamp || "",
     location: "",
     lat: 0,
     lng: 0,
@@ -321,12 +341,13 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
   const allPosts = results.flat();
   console.log(`[telegram] Scraped ${allPosts.length} total posts`);
 
-  // Convert ALL posts to incidents (shown in feed)
-  const allIncidents = allPosts.map((post) => postToIncident(post));
-
-  // Only enrich Iran-related posts (for map coordinates)
+  // Only convert Iran-related posts to incidents — non-related posts (sports, politics, etc.)
+  // inflate the unmapped count and serve no purpose in the incident store.
+  // The feed sidebar uses /api/feed (separate scrape), not the incident store.
   const iranPosts = allPosts.filter((post) => isIranRelated(post.text));
-  console.log(`[telegram] ${iranPosts.length} posts match Iran keywords, enriching with keywords`);
+  console.log(`[telegram] ${iranPosts.length}/${allPosts.length} posts match Iran keywords`);
+
+  const allIncidents = iranPosts.map((post) => postToIncident(post));
 
   if (iranPosts.length > 0) {
     const incidentMap = new Map(allIncidents.map((inc) => [inc.id, inc]));
@@ -339,16 +360,27 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
       if (!inc) continue;
 
       const kwResult = enrichWithKeywords(post.text);
-      if (kwResult) {
+      if (kwResult && kwResult.lat !== 0 && kwResult.lng !== 0) {
         applyEnrichment(inc, kwResult);
       } else {
+        // Keywords couldn't geolocate, but may have extracted casualties/weapon — apply those
+        if (kwResult) {
+          if (kwResult.weapon) inc.weapon = kwResult.weapon;
+          if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
+          if (kwResult.casualties_description) inc.casualties_description = kwResult.casualties_description;
+          if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
+          if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
+          if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
+          if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
+          if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+        }
         needsAI.push(post);
       }
     }
 
     console.log(`[telegram] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`);
 
-    // Second pass: AI fallback only for posts keywords couldn't place
+    // Second pass: AI fallback only for posts keywords couldn't geolocate
     if (needsAI.length > 0 && process.env.GEMINI_API_KEY) {
       console.log(`[telegram] Falling back to AI for ${needsAI.length} unplaced posts`);
       const enrichments = await enrichBatch(needsAI, (p) => p.text, 5);
@@ -358,16 +390,17 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
         const incId = `tg-${post.id.replace("/", "-")}`;
         const inc = incidentMap.get(incId);
         if (inc && enrichment && enrichment.lat !== 0 && enrichment.lng !== 0) {
+          // AI provides geolocation — apply it but preserve keyword-extracted data
           inc.location = enrichment.location;
           inc.lat = enrichment.lat;
           inc.lng = enrichment.lng;
-          inc.weapon = enrichment.weapon;
+          inc.weapon = inc.weapon || enrichment.weapon;
           inc.target_type = enrichment.target_type;
           inc.side = enrichment.side;
           inc.target_military = enrichment.target_military;
-          if (enrichment.casualties_military) inc.casualties_military = enrichment.casualties_military;
-          if (enrichment.casualties_civilian) inc.casualties_civilian = enrichment.casualties_civilian;
-          if (enrichment.casualties_description) inc.casualties_description = enrichment.casualties_description;
+          // Don't overwrite keyword-extracted casualties with AI's zeros
+          if (enrichment.casualties_military && !inc.casualties_military) inc.casualties_military = enrichment.casualties_military;
+          if (enrichment.casualties_description && !inc.casualties_description) inc.casualties_description = enrichment.casualties_description;
         }
       }
     }
@@ -399,11 +432,11 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
 
   console.log(`[telegram-deep] Total scraped: ${allPosts.length} posts`);
 
-  const allIncidents = allPosts.map((post) => postToIncident(post));
-
-  // Enrich all Iran-related posts
+  // Only convert Iran-related posts to incidents
   const iranPosts = allPosts.filter((post) => isIranRelated(post.text));
-  console.log(`[telegram-deep] ${iranPosts.length} posts match keywords, enriching with keywords`);
+  console.log(`[telegram-deep] ${iranPosts.length}/${allPosts.length} posts match keywords`);
+
+  const allIncidents = iranPosts.map((post) => postToIncident(post));
 
   if (iranPosts.length > 0) {
     const incidentMap = new Map(allIncidents.map((inc) => [inc.id, inc]));
@@ -416,16 +449,26 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
       if (!inc) continue;
 
       const kwResult = enrichWithKeywords(post.text);
-      if (kwResult) {
+      if (kwResult && kwResult.lat !== 0 && kwResult.lng !== 0) {
         applyEnrichment(inc, kwResult);
       } else {
+        if (kwResult) {
+          if (kwResult.weapon) inc.weapon = kwResult.weapon;
+          if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
+          if (kwResult.casualties_description) inc.casualties_description = kwResult.casualties_description;
+          if (kwResult.intercepted_by) inc.intercepted_by = kwResult.intercepted_by;
+          if (kwResult.intercept_success != null) inc.intercept_success = kwResult.intercept_success;
+          if (kwResult.missiles_fired) inc.missiles_fired = kwResult.missiles_fired;
+          if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
+          if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+        }
         needsAI.push(post);
       }
     }
 
     console.log(`[telegram-deep] Keyword enricher placed ${iranPosts.length - needsAI.length}/${iranPosts.length} posts on map`);
 
-    // Second pass: AI fallback only for posts keywords couldn't place
+    // Second pass: AI fallback only for posts keywords couldn't geolocate
     if (needsAI.length > 0 && process.env.GEMINI_API_KEY) {
       console.log(`[telegram-deep] Falling back to AI for ${needsAI.length} unplaced posts`);
       const enrichments = await enrichBatch(needsAI, (p) => p.text, 5);
@@ -438,13 +481,12 @@ export async function fetchTelegramIncidentsDeep(pagesPerChannel = 15): Promise<
           inc.location = enrichment.location;
           inc.lat = enrichment.lat;
           inc.lng = enrichment.lng;
-          inc.weapon = enrichment.weapon;
+          inc.weapon = inc.weapon || enrichment.weapon;
           inc.target_type = enrichment.target_type;
           inc.side = enrichment.side;
           inc.target_military = enrichment.target_military;
-          if (enrichment.casualties_military) inc.casualties_military = enrichment.casualties_military;
-          if (enrichment.casualties_civilian) inc.casualties_civilian = enrichment.casualties_civilian;
-          if (enrichment.casualties_description) inc.casualties_description = enrichment.casualties_description;
+          if (enrichment.casualties_military && !inc.casualties_military) inc.casualties_military = enrichment.casualties_military;
+          if (enrichment.casualties_description && !inc.casualties_description) inc.casualties_description = enrichment.casualties_description;
         }
       }
     }

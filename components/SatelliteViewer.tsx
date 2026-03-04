@@ -14,6 +14,7 @@ interface ImageryData {
   afterImage: string | null;
   beforeDate: string;
   afterDate: string;
+  afterDateTo?: string;
   beforeCloudCover?: number;
   afterCloudCover?: number;
   sarChangeMap?: string;
@@ -107,20 +108,30 @@ export default function SatelliteViewer({ incidentId, lat, lng, date }: Satellit
     setSliderPos(pct);
   }, []);
 
+  // Use global listeners for reliable drag tracking
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
     dragging.current = true;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     updateSlider(e.clientX);
   }, [updateSlider]);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging.current) return;
-    updateSlider(e.clientX);
-  }, [updateSlider]);
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      e.preventDefault();
+      updateSlider(e.clientX);
+    };
+    const onUp = () => { dragging.current = false; };
 
-  const onPointerUp = useCallback(() => {
-    dragging.current = false;
-  }, []);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [updateSlider]);
 
   // Nothing to show at all
   if (!loading && !data && !firmsMatch) return null;
@@ -140,6 +151,16 @@ export default function SatelliteViewer({ incidentId, lat, lng, date }: Satellit
       </div>
     );
   }
+
+  const hasBoth = data?.beforeImage && data?.afterImage;
+
+  // Check if after image is missing because incident is too recent (< 6 days for Sentinel-2 revisit)
+  const isRecent = data && !data.afterImage && data.beforeImage && (() => {
+    const today = new Date(data.afterDateTo || data.afterDate);
+    const incidentDate = new Date(date);
+    const daysSinceIncident = (today.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceIncident < 6;
+  })();
 
   return (
     <div className="bg-[#111] border border-[#2a2a2a] rounded-lg overflow-hidden">
@@ -229,30 +250,35 @@ export default function SatelliteViewer({ incidentId, lat, lng, date }: Satellit
             )}
           </div>
 
-          {data.beforeImage && data.afterImage ? (
+          {hasBoth ? (
+            /* ── Before/After comparison slider ── */
             <div
               ref={containerRef}
-              className="relative aspect-square cursor-col-resize select-none"
+              className="relative aspect-square select-none"
+              style={{ touchAction: "none", cursor: "col-resize" }}
               onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
             >
-              <img src={data.afterImage} alt="After" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+              {/* After image — full background layer */}
+              <img src={data.afterImage!} alt="After" className="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable={false} />
               {/* SAR change overlay on after image */}
               {showSAR && data.sarChangeMap && (
                 <img src={data.sarChangeMap} alt="SAR Change" className="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable={false} />
               )}
-              <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPos}%` }}>
+              {/* Before image — clipped from right using clip-path */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+              >
                 <img
-                  src={data.beforeImage}
+                  src={data.beforeImage!}
                   alt="Before"
                   className="absolute inset-0 w-full h-full object-cover"
-                  style={{ width: containerRef.current ? `${containerRef.current.offsetWidth}px` : "100%" }}
                   draggable={false}
                 />
               </div>
+              {/* Slider line + handle */}
               <div
-                className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.5)]"
+                className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.5)] pointer-events-none"
                 style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
               >
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/90 shadow-lg flex items-center justify-center">
@@ -262,13 +288,48 @@ export default function SatelliteViewer({ incidentId, lat, lng, date }: Satellit
                   </svg>
                 </div>
               </div>
-              <div className="absolute top-2 left-2 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider">Before</div>
-              <div className="absolute top-2 right-2 text-[9px] font-bold text-orange-400 bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider">After</div>
+              {/* Labels */}
+              <div className="absolute top-2 left-2 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider pointer-events-none">Before</div>
+              <div className="absolute top-2 right-2 text-[9px] font-bold text-orange-400 bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider pointer-events-none">After</div>
+              {/* Drag hint */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[8px] text-white/50 bg-black/40 px-2 py-0.5 rounded pointer-events-none">
+                drag to compare
+              </div>
             </div>
           ) : (
-            <div className="p-4 text-center">
-              {data.beforeImage && <img src={data.beforeImage} alt="Before" className="w-full rounded" />}
-              {data.afterImage && <img src={data.afterImage} alt="After" className="w-full rounded" />}
+            /* ── Single image fallback with clear labeling ── */
+            <div className="relative">
+              {data.afterImage && (
+                <div className="relative">
+                  <img src={data.afterImage} alt="After strike" className="w-full aspect-square object-cover" />
+                  <div className="absolute top-2 left-2 text-[9px] font-bold text-orange-400 bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    After — {data.afterDate}
+                  </div>
+                  {showSAR && data.sarChangeMap && (
+                    <img src={data.sarChangeMap} alt="SAR Change" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                  )}
+                </div>
+              )}
+              {data.beforeImage && (
+                <div className="relative">
+                  <img src={data.beforeImage} alt="Before strike" className="w-full aspect-square object-cover" />
+                  <div className="absolute top-2 left-2 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    Before — {data.beforeDate}
+                  </div>
+                </div>
+              )}
+              {!data.beforeImage && data.afterImage && (
+                <div className="px-3 py-1.5 text-[9px] text-neutral-600 border-t border-[#2a2a2a]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  Pre-strike image unavailable (cloud cover)
+                </div>
+              )}
+              {data.beforeImage && !data.afterImage && (
+                <div className="px-3 py-1.5 text-[9px] text-neutral-600 border-t border-[#2a2a2a]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  {isRecent
+                    ? "Post-strike image pending — satellite revisit in progress (~5 day cycle)"
+                    : "Post-strike image unavailable (cloud cover)"}
+                </div>
+              )}
             </div>
           )}
         </>
