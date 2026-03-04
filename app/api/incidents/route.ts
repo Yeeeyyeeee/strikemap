@@ -21,9 +21,9 @@ export async function GET() {
     const incidents = await getAllIncidents();
 
     // Build a content-aware ETag so clients detect casualty/side changes, not just count
-    const idString = incidents.map(
-      (i) => `${i.id}:${i.casualties_military || 0}:${i.casualties_civilian || 0}:${i.side}`
-    ).join(",");
+    const idString = incidents
+      .map((i) => `${i.id}:${i.casualties_military || 0}:${i.casualties_civilian || 0}:${i.side}`)
+      .join(",");
     const hash = createHash("md5").update(idString).digest("hex").slice(0, 12);
     const etag = `"inc-${incidents.length}-${hash}"`;
 
@@ -32,15 +32,12 @@ export async function GET() {
       {
         headers: {
           "Cache-Control": "public, s-maxage=15, stale-while-revalidate=15",
-          "ETag": etag,
+          ETag: etag,
         },
       }
     );
   } catch (err) {
     console.error("[incidents] Failed:", err);
-    return NextResponse.json(
-      { incidents: [], count: 0, error: String(err) },
-      { status: 500 },
-    );
+    return NextResponse.json({ incidents: [], count: 0, error: String(err) }, { status: 500 });
   }
 }

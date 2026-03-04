@@ -52,9 +52,8 @@ export default function HeatmapPage() {
               <div className="text-4xl">&#9888;</div>
               <h2 className="text-lg font-bold text-neutral-200">Content Warning</h2>
               <p className="text-sm text-neutral-400 leading-relaxed">
-                This page contains media from active conflict zones. Images and videos
-                may depict graphic content including military strikes, destruction,
-                and their aftermath.
+                This page contains media from active conflict zones. Images and videos may depict
+                graphic content including military strikes, destruction, and their aftermath.
               </p>
               <button
                 onClick={dismissWarning}

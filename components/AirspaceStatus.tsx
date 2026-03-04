@@ -71,7 +71,11 @@ export default memo(function AirspaceStatus() {
       return {
         country,
         code,
-        status: hasClosed ? ("closed" as const) : hasRestricted ? ("restricted" as const) : ("open" as const),
+        status: hasClosed
+          ? ("closed" as const)
+          : hasRestricted
+            ? ("restricted" as const)
+            : ("open" as const),
         activeNotams: totalActive,
         criticalNotams: totalCritical,
         manualOverride: hasManualOverride,
@@ -107,7 +111,8 @@ export default memo(function AirspaceStatus() {
           {showTooltip && (
             <div className="absolute right-0 top-5 z-50 w-48 bg-[#111111] border border-[#2a2a2a] rounded-md p-2 shadow-lg">
               <p className="text-[10px] text-neutral-400 leading-relaxed">
-                NOTAMs (Notices to Air Missions) are official alerts about airspace status. Regional closures often precede or accompany military operations.
+                NOTAMs (Notices to Air Missions) are official alerts about airspace status. Regional
+                closures often precede or accompany military operations.
               </p>
             </div>
           )}

@@ -11,9 +11,7 @@ interface IncidentPanelProps {
 
 function getYouTubeEmbedUrl(url: string): string | null {
   if (!url) return null;
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/
-  );
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
   return match ? `https://www.youtube.com/embed/${match[1]}` : null;
 }
 
@@ -42,8 +40,7 @@ function getVideoStrategy(incident: Incident): {
   }
 
   // 3. Telegram embed (from telegram_post_id or parsed source_url)
-  const telegramPostId =
-    incident.telegram_post_id || parseTelegramPostId(incident.source_url);
+  const telegramPostId = incident.telegram_post_id || parseTelegramPostId(incident.source_url);
   if (telegramPostId) {
     return { type: "telegram_embed", url: getTelegramEmbedUrl(telegramPostId) };
   }
@@ -57,9 +54,9 @@ function getVideoStrategy(incident: Incident): {
 }
 
 const SEVERITY_COLORS: Record<string, { color: string; bg: string; border: string }> = {
-  minor:        { color: "#22c55e", bg: "#22c55e20", border: "#22c55e30" },
-  moderate:     { color: "#eab308", bg: "#eab30820", border: "#eab30830" },
-  severe:       { color: "#f97316", bg: "#f9731620", border: "#f9731630" },
+  minor: { color: "#22c55e", bg: "#22c55e20", border: "#22c55e30" },
+  moderate: { color: "#eab308", bg: "#eab30820", border: "#eab30830" },
+  severe: { color: "#f97316", bg: "#f9731620", border: "#f9731630" },
   catastrophic: { color: "#ef4444", bg: "#ef444420", border: "#ef444430" },
 };
 
@@ -75,10 +72,7 @@ function DamageSeverityBadge({ severity }: { severity?: string }) {
   );
 }
 
-export default function IncidentPanel({
-  incident,
-  onClose,
-}: IncidentPanelProps) {
+export default function IncidentPanel({ incident, onClose }: IncidentPanelProps) {
   const video = getVideoStrategy(incident);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeError, setIframeError] = useState(false);
@@ -173,22 +167,23 @@ export default function IncidentPanel({
           </p>
 
           {/* Damage Assessment */}
-          {incident.damage_assessment && incident.damage_assessment !== "Damage assessment pending" && (
-            <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3
-                  className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
-                >
-                  Damage Assessment
-                </h3>
-                <DamageSeverityBadge severity={incident.damage_severity} />
+          {incident.damage_assessment &&
+            incident.damage_assessment !== "Damage assessment pending" && (
+              <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3
+                    className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    Damage Assessment
+                  </h3>
+                  <DamageSeverityBadge severity={incident.damage_severity} />
+                </div>
+                <p className="text-sm text-neutral-300 leading-relaxed">
+                  {incident.damage_assessment}
+                </p>
               </div>
-              <p className="text-sm text-neutral-300 leading-relaxed">
-                {incident.damage_assessment}
-              </p>
-            </div>
-          )}
+            )}
 
           {/* Casualties */}
           {((incident.casualties_military || 0) > 0 || (incident.casualties_civilian || 0) > 0) && (
@@ -202,7 +197,13 @@ export default function IncidentPanel({
               <div className="flex items-center gap-4 text-sm">
                 {(incident.casualties_military || 0) > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-red-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg
+                      className="w-4 h-4 text-red-400"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
                       <circle cx="8" cy="5" r="3" />
                       <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
                       <path d="M5 2l3-1 3 1" strokeLinecap="round" />
@@ -213,20 +214,29 @@ export default function IncidentPanel({
                 )}
                 {(incident.casualties_civilian || 0) > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-orange-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg
+                      className="w-4 h-4 text-orange-400"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
                       <circle cx="8" cy="5" r="3" />
                       <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
                     </svg>
-                    <span className="text-orange-400 font-medium">{incident.casualties_civilian}</span>
+                    <span className="text-orange-400 font-medium">
+                      {incident.casualties_civilian}
+                    </span>
                     <span className="text-neutral-500">civilian</span>
                   </div>
                 )}
               </div>
-              {incident.casualties_description && incident.casualties_description !== "No casualties reported" && (
-                <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
-                  {incident.casualties_description}
-                </p>
-              )}
+              {incident.casualties_description &&
+                incident.casualties_description !== "No casualties reported" && (
+                  <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+                    {incident.casualties_description}
+                  </p>
+                )}
             </div>
           )}
 
@@ -268,9 +278,7 @@ export default function IncidentPanel({
                 <div className="flex items-center justify-center h-48 bg-[#0e0e0e]">
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-neutral-500 text-xs">
-                      Loading Telegram post...
-                    </span>
+                    <span className="text-neutral-500 text-xs">Loading Telegram post...</span>
                   </div>
                 </div>
               )}

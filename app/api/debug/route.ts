@@ -10,14 +10,19 @@ export async function GET(req: NextRequest) {
   // Trigger casualty re-enrichment if ?enrich=casualties
   if (req.nextUrl.searchParams.get("enrich") === "casualties") {
     const count = await reEnrichCasualties();
-    return NextResponse.json({ enriched: count, timestamp: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { enriched: count, timestamp: new Date().toISOString() },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     storeSize: await getIncidentCount(),
     env: {
-      TELEGRAM_CHANNELS: process.env.TELEGRAM_CHANNELS ? `set (${process.env.TELEGRAM_CHANNELS.split(",").length} channels)` : "MISSING",
+      TELEGRAM_CHANNELS: process.env.TELEGRAM_CHANNELS
+        ? `set (${process.env.TELEGRAM_CHANNELS.split(",").length} channels)`
+        : "MISSING",
       GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "set" : "MISSING",
       UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ? "set" : "MISSING",
       NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? "set" : "MISSING",
@@ -35,7 +40,9 @@ export async function GET(req: NextRequest) {
       // Direct write/read test
       let writeTest = "not run";
       try {
-        await r.hset("incidents_v3_test", { test_key: JSON.stringify({ id: "test", ts: Date.now() }) });
+        await r.hset("incidents_v3_test", {
+          test_key: JSON.stringify({ id: "test", ts: Date.now() }),
+        });
         const readBack = await r.hget("incidents_v3_test", "test_key");
         const testLen = await r.hlen("incidents_v3_test");
         await r.del("incidents_v3_test");

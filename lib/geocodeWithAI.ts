@@ -26,20 +26,59 @@ const cache: Map<string, EnrichmentResult | null> = new Map();
 const responseSchema: ResponseSchema = {
   type: SchemaType.OBJECT,
   properties: {
-    location: { type: SchemaType.STRING, description: "City/landmark with country, e.g. 'Natanz, Iran'" },
+    location: {
+      type: SchemaType.STRING,
+      description: "City/landmark with country, e.g. 'Natanz, Iran'",
+    },
     lat: { type: SchemaType.NUMBER, description: "Latitude as decimal" },
     lng: { type: SchemaType.NUMBER, description: "Longitude as decimal" },
     weapon: { type: SchemaType.STRING, description: "Weapon type if mentioned" },
     target_type: { type: SchemaType.STRING, description: "What was targeted" },
-    side: { type: SchemaType.STRING, description: "iran, us, or israel — use 'us' for US/American/CENTCOM strikes, 'israel' for Israeli/IDF strikes" },
+    side: {
+      type: SchemaType.STRING,
+      description:
+        "iran, us, or israel — use 'us' for US/American/CENTCOM strikes, 'israel' for Israeli/IDF strikes",
+    },
     target_military: { type: SchemaType.BOOLEAN, description: "true if military target" },
-    intercepted_by: { type: SchemaType.STRING, description: "Defense system that intercepted, e.g. 'Iron Dome', 'Arrow-3', 'THAAD', 'David\\'s Sling', or empty string if not intercepted/unknown" },
-    intercept_success: { type: SchemaType.BOOLEAN, description: "true if the projectile was confirmed intercepted by a defense system, false otherwise" },
-    damage_assessment: { type: SchemaType.STRING, description: "Brief 1-2 sentence damage assessment describing physical destruction, casualties if known, and strategic impact" },
-    damage_severity: { type: SchemaType.STRING, description: "One of: minor, moderate, severe, catastrophic" },
-    casualties_description: { type: SchemaType.STRING, description: "Brief description of casualties: who was killed/injured, unit affiliation if known. Use 'No casualties reported' if unknown." },
+    intercepted_by: {
+      type: SchemaType.STRING,
+      description:
+        "Defense system that intercepted, e.g. 'Iron Dome', 'Arrow-3', 'THAAD', 'David\\'s Sling', or empty string if not intercepted/unknown",
+    },
+    intercept_success: {
+      type: SchemaType.BOOLEAN,
+      description:
+        "true if the projectile was confirmed intercepted by a defense system, false otherwise",
+    },
+    damage_assessment: {
+      type: SchemaType.STRING,
+      description:
+        "Brief 1-2 sentence damage assessment describing physical destruction, casualties if known, and strategic impact",
+    },
+    damage_severity: {
+      type: SchemaType.STRING,
+      description: "One of: minor, moderate, severe, catastrophic",
+    },
+    casualties_description: {
+      type: SchemaType.STRING,
+      description:
+        "Brief description of casualties: who was killed/injured, unit affiliation if known. Use 'No casualties reported' if unknown.",
+    },
   },
-  required: ["location", "lat", "lng", "weapon", "target_type", "side", "target_military", "intercepted_by", "intercept_success", "damage_assessment", "damage_severity", "casualties_description"],
+  required: [
+    "location",
+    "lat",
+    "lng",
+    "weapon",
+    "target_type",
+    "side",
+    "target_military",
+    "intercepted_by",
+    "intercept_success",
+    "damage_assessment",
+    "damage_severity",
+    "casualties_description",
+  ],
 };
 
 const SYSTEM_PROMPT = `You are a military intelligence analyst. Extract structured information from this Telegram/news post about military strikes involving Iran.
@@ -97,7 +136,7 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
     // Validate the result
     if (!parsed.location || typeof parsed.lat !== "number" || typeof parsed.lng !== "number") {
       c.set(cacheKey, null);
-        return null;
+      return null;
     }
 
     // Normalize side value
@@ -122,7 +161,9 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
       intercepted_by: parsed.intercepted_by || "",
       intercept_success: !!parsed.intercept_success,
       damage_assessment: parsed.damage_assessment || "Damage assessment pending",
-      damage_severity: validSeverities.includes(parsed.damage_severity) ? parsed.damage_severity : "minor",
+      damage_severity: validSeverities.includes(parsed.damage_severity)
+        ? parsed.damage_severity
+        : "minor",
       casualties_military: 0, // Always 0 — real casualty data sourced from Wikipedia via /api/casualties
       casualties_civilian: 0, // Always 0 — real casualty data sourced from Wikipedia via /api/casualties
       casualties_description: parsed.casualties_description || "No casualties reported",
@@ -143,7 +184,7 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
 export async function enrichBatch<T>(
   items: T[],
   getText: (item: T) => string,
-  batchSize = 5,
+  batchSize = 5
 ): Promise<(EnrichmentResult | null)[]> {
   const results: (EnrichmentResult | null)[] = [];
 

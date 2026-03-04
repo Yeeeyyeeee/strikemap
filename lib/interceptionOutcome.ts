@@ -84,7 +84,8 @@ export async function checkForInterceptionOutcomes(): Promise<void> {
 
   const clearedAlerts: ClearedAlertMeta[] = [];
   for (const [, value] of Object.entries(clearedRaw)) {
-    const meta: ClearedAlertMeta = typeof value === "string" ? JSON.parse(value) : value as ClearedAlertMeta;
+    const meta: ClearedAlertMeta =
+      typeof value === "string" ? JSON.parse(value) : (value as ClearedAlertMeta);
     if (now - meta.clearedAt < INTERCEPTION_TIME_WINDOW_MS) {
       clearedAlerts.push(meta);
     }
@@ -97,7 +98,8 @@ export async function checkForInterceptionOutcomes(): Promise<void> {
   const coveredAlertIds = new Set<string>();
   if (existingOutcomes && typeof existingOutcomes === "object") {
     for (const [, value] of Object.entries(existingOutcomes)) {
-      const outcome: InterceptionOutcome = typeof value === "string" ? JSON.parse(value) : value as InterceptionOutcome;
+      const outcome: InterceptionOutcome =
+        typeof value === "string" ? JSON.parse(value) : (value as InterceptionOutcome);
       for (const aid of outcome.alertIds) coveredAlertIds.add(aid);
     }
   }
@@ -192,7 +194,8 @@ export async function getInterceptionOutcomes(): Promise<InterceptionOutcome[]> 
     const now = Date.now();
 
     for (const [, value] of Object.entries(raw)) {
-      const outcome: InterceptionOutcome = typeof value === "string" ? JSON.parse(value) : value as InterceptionOutcome;
+      const outcome: InterceptionOutcome =
+        typeof value === "string" ? JSON.parse(value) : (value as InterceptionOutcome);
       if (now - outcome.detectedAt < INTERCEPTION_OUTCOME_TTL_S * 1000) {
         outcomes.push(outcome);
       }
@@ -207,7 +210,7 @@ export async function getInterceptionOutcomes(): Promise<InterceptionOutcome[]> 
 
 function buildOutcomeSummary(
   result: ReturnType<typeof detectInterception>,
-  clearedAlerts: ClearedAlertMeta[],
+  clearedAlerts: ClearedAlertMeta[]
 ): string {
   const origins = [...new Set(clearedAlerts.map((a) => a.originName).filter(Boolean))];
   const originText = origins.length > 0 ? origins.join("/") : "Iran";

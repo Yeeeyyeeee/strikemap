@@ -7,9 +7,18 @@ import { isDirectVideoUrl } from "@/lib/videoUtils";
 
 const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "All", keywords: [] },
-  { label: "Iran", keywords: ["iran", "iranian", "tehran", "isfahan", "tabriz", "shiraz", "mashhad", "🇮🇷"] },
-  { label: "Israel", keywords: ["israel", "israeli", "tel aviv", "jerusalem", "haifa", "negev", "idf", "🇮🇱"] },
-  { label: "USA", keywords: ["us ", "u.s.", "usa", "american", "pentagon", "trump", "centcom", "🇺🇸"] },
+  {
+    label: "Iran",
+    keywords: ["iran", "iranian", "tehran", "isfahan", "tabriz", "shiraz", "mashhad", "🇮🇷"],
+  },
+  {
+    label: "Israel",
+    keywords: ["israel", "israeli", "tel aviv", "jerusalem", "haifa", "negev", "idf", "🇮🇱"],
+  },
+  {
+    label: "USA",
+    keywords: ["us ", "u.s.", "usa", "american", "pentagon", "trump", "centcom", "🇺🇸"],
+  },
   { label: "Lebanon", keywords: ["lebanon", "lebanese", "beirut", "hezbollah", "🇱🇧"] },
   { label: "Yemen", keywords: ["yemen", "yemeni", "houthi", "sanaa", "🇾🇪"] },
   { label: "Iraq", keywords: ["iraq", "iraqi", "baghdad", "erbil", "🇮🇶"] },
@@ -41,10 +50,7 @@ interface FeedSidebarProps {
   onSelectIncident: (incident: Incident) => void;
 }
 
-export default memo(function FeedSidebar({
-  incidents,
-  onSelectIncident,
-}: FeedSidebarProps) {
+export default memo(function FeedSidebar({ incidents, onSelectIncident }: FeedSidebarProps) {
   const [posts, setPosts] = useState<ChannelPost[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
@@ -129,7 +135,7 @@ export default memo(function FeedSidebar({
         const msgId = post.id.split("/").pop() || "";
         const media = [];
         if (post.videoUrl) media.push({ type: "video" as const, url: post.videoUrl });
-        for (const url of (post.imageUrls || [])) {
+        for (const url of post.imageUrls || []) {
           media.push({ type: "image" as const, url });
         }
         setExpandedId(null);
@@ -172,7 +178,7 @@ export default memo(function FeedSidebar({
           </div>
         </div>
       ) : (
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Country filter multi-select */}
           <div className="px-2 py-1.5 border-b border-[#2a2a2a]/50 shrink-0" ref={filterRef}>
             <div className="relative">
@@ -185,8 +191,16 @@ export default memo(function FeedSidebar({
                   ? "All Countries"
                   : Array.from(selectedCountries).join(", ")}
               </button>
-              <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              <svg
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-500 pointer-events-none"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
               </svg>
               {filterOpen && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md shadow-lg max-h-[200px] overflow-y-auto">
@@ -218,128 +232,135 @@ export default memo(function FeedSidebar({
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50" style={{ WebkitOverflowScrolling: "touch" }}>
-          {posts.filter((p) => matchesCountryFilter(p.text, selectedCountries)).map((post) => {
-            const isExpanded = expandedId === post.id;
-            const onMap = hasMapPoint(post);
-            const msgId = post.id.split("/").pop() || "";
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {posts
+              .filter((p) => matchesCountryFilter(p.text, selectedCountries))
+              .map((post) => {
+                const isExpanded = expandedId === post.id;
+                const onMap = hasMapPoint(post);
+                const msgId = post.id.split("/").pop() || "";
 
-            const isNew = newPostIds.has(post.id);
+                const isNew = newPostIds.has(post.id);
 
-            return (
-              <div
-                key={post.id}
-                className={`${isNew ? "feed-flash" : ""} ${isExpanded ? "" : "max-h-[68px] overflow-hidden"}`}
-              >
-                {/* Collapsed row — fixed height, uniform size */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    if (onMap) {
-                      handlePostClick(post);
-                    } else {
-                      setExpandedId((prev) => (prev === post.id ? null : post.id));
-                    }
-                  }}
-                  className={`w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors cursor-pointer ${
-                    isExpanded ? "bg-[#1a1a1a]" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1 h-[18px]">
-                    {post.videoUrl && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 shrink-0">
-                        VID
-                      </span>
-                    )}
-                    {(post.imageUrls || []).length > 0 && !post.videoUrl && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
-                        IMG
-                      </span>
-                    )}
-                    {onMap && (
-                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
-                        MAP
-                      </span>
-                    )}
-                    <span className="text-neutral-600 text-[10px] ml-auto shrink-0">
-                      {post.timestamp
-                        ? new Date(post.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : post.date}
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-300 line-clamp-2 leading-tight">
-                    {post.text}
-                  </p>
-                </div>
-
-                {/* Expanded content — full text + media + source (only on click) */}
-                {isExpanded && (
-                  <div className="bg-[#0e0e0e] border-t border-[#2a2a2a]/50">
-                    {/* Full text */}
-                    <div className="px-3 py-2">
-                      <p className="text-xs text-neutral-300 whitespace-pre-line leading-relaxed">
+                return (
+                  <div
+                    key={post.id}
+                    className={`${isNew ? "feed-flash" : ""} ${isExpanded ? "" : "max-h-[68px] overflow-hidden"}`}
+                  >
+                    {/* Collapsed row — fixed height, uniform size */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        if (onMap) {
+                          handlePostClick(post);
+                        } else {
+                          setExpandedId((prev) => (prev === post.id ? null : post.id));
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors cursor-pointer ${
+                        isExpanded ? "bg-[#1a1a1a]" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1 h-[18px]">
+                        {post.videoUrl && (
+                          <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 shrink-0">
+                            VID
+                          </span>
+                        )}
+                        {(post.imageUrls || []).length > 0 && !post.videoUrl && (
+                          <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
+                            IMG
+                          </span>
+                        )}
+                        {onMap && (
+                          <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
+                            MAP
+                          </span>
+                        )}
+                        <span className="text-neutral-600 text-[10px] ml-auto shrink-0">
+                          {post.timestamp
+                            ? new Date(post.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : post.date}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-300 line-clamp-2 leading-tight">
                         {post.text}
                       </p>
                     </div>
 
-                    {/* Video */}
-                    {post.videoUrl && isDirectVideoUrl(post.videoUrl) && (
-                      <video
-                        src={post.videoUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full max-h-[180px] object-contain bg-black"
-                      />
-                    )}
-                    {post.videoUrl && !isDirectVideoUrl(post.videoUrl) && (
-                      <div className="px-3 py-2">
-                        <a
-                          href={post.videoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-red-400 hover:text-red-300 underline underline-offset-2"
-                        >
-                          Watch video ↗
-                        </a>
-                      </div>
-                    )}
+                    {/* Expanded content — full text + media + source (only on click) */}
+                    {isExpanded && (
+                      <div className="bg-[#0e0e0e] border-t border-[#2a2a2a]/50">
+                        {/* Full text */}
+                        <div className="px-3 py-2">
+                          <p className="text-xs text-neutral-300 whitespace-pre-line leading-relaxed">
+                            {post.text}
+                          </p>
+                        </div>
 
-                    {/* Images */}
-                    {(post.imageUrls || []).length > 0 && (
-                      <div className={`${(post.imageUrls || []).length > 1 ? "grid grid-cols-2 gap-px" : ""}`}>
-                        {(post.imageUrls || []).map((url, i) => (
-                          <img
-                            key={i}
-                            src={url}
-                            alt=""
-                            className="w-full max-h-[160px] object-cover"
-                            loading="lazy"
+                        {/* Video */}
+                        {post.videoUrl && isDirectVideoUrl(post.videoUrl) && (
+                          <video
+                            src={post.videoUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full max-h-[180px] object-contain bg-black"
                           />
-                        ))}
+                        )}
+                        {post.videoUrl && !isDirectVideoUrl(post.videoUrl) && (
+                          <div className="px-3 py-2">
+                            <a
+                              href={post.videoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-red-400 hover:text-red-300 underline underline-offset-2"
+                            >
+                              Watch video ↗
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Images */}
+                        {(post.imageUrls || []).length > 0 && (
+                          <div
+                            className={`${(post.imageUrls || []).length > 1 ? "grid grid-cols-2 gap-px" : ""}`}
+                          >
+                            {(post.imageUrls || []).map((url, i) => (
+                              <img
+                                key={i}
+                                src={url}
+                                alt=""
+                                className="w-full max-h-[160px] object-cover"
+                                loading="lazy"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Source link */}
+                        <div className="px-3 py-2 border-t border-[#2a2a2a]/50">
+                          <a
+                            href={`https://t.me/${post.channelUsername}/${msgId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-neutral-500 hover:text-neutral-300 underline underline-offset-2"
+                          >
+                            View on Telegram ↗
+                          </a>
+                        </div>
                       </div>
                     )}
-
-                    {/* Source link */}
-                    <div className="px-3 py-2 border-t border-[#2a2a2a]/50">
-                      <a
-                        href={`https://t.me/${post.channelUsername}/${msgId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-neutral-500 hover:text-neutral-300 underline underline-offset-2"
-                      >
-                        View on Telegram ↗
-                      </a>
-                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
           </div>
         </div>
       )}

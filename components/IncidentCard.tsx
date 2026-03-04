@@ -18,16 +18,15 @@ function getVideoStrategy(incident: Incident): {
 } {
   const ytUrl = getYouTubeEmbedUrl(incident.video_url);
   if (ytUrl) return { type: "youtube", url: ytUrl };
-  if (isDirectVideoUrl(incident.video_url))
-    return { type: "direct", url: incident.video_url };
+  if (isDirectVideoUrl(incident.video_url)) return { type: "direct", url: incident.video_url };
   if (incident.video_url) return { type: "link", url: incident.video_url };
   return { type: "none", url: "" };
 }
 
 const SEVERITY_COLORS: Record<string, { color: string; bg: string; border: string }> = {
-  minor:        { color: "#22c55e", bg: "#22c55e20", border: "#22c55e30" },
-  moderate:     { color: "#eab308", bg: "#eab30820", border: "#eab30830" },
-  severe:       { color: "#f97316", bg: "#f9731620", border: "#f9731630" },
+  minor: { color: "#22c55e", bg: "#22c55e20", border: "#22c55e30" },
+  moderate: { color: "#eab308", bg: "#eab30820", border: "#eab30830" },
+  severe: { color: "#f97316", bg: "#f9731620", border: "#f9731630" },
   catastrophic: { color: "#ef4444", bg: "#ef444420", border: "#ef444430" },
 };
 
@@ -85,9 +84,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
     const cardHeight = cardRef.current.offsetHeight || 300;
     let top = point.y - cardHeight / 2;
     top = Math.max(60, Math.min(top, containerHeight - cardHeight - 20));
-    const left = wouldOverflowRight
-      ? point.x - CARD_OFFSET - CARD_WIDTH
-      : point.x + CARD_OFFSET;
+    const left = wouldOverflowRight ? point.x - CARD_OFFSET - CARD_WIDTH : point.x + CARD_OFFSET;
 
     cardRef.current.style.left = `${left}px`;
     cardRef.current.style.top = `${top}px`;
@@ -123,11 +120,17 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
   const sevColors = SEVERITY_COLORS[incident.damage_severity || "minor"] || SEVERITY_COLORS.minor;
 
   // Collect media: prefer media array, fallback to video_url — only videos (skip standalone images to avoid clutter)
-  const allMedia = incident.media && incident.media.length > 0
-    ? incident.media
-    : video.type !== "none"
-      ? [{ type: "video" as const, url: video.type === "youtube" ? video.url : incident.video_url }]
-      : [];
+  const allMedia =
+    incident.media && incident.media.length > 0
+      ? incident.media
+      : video.type !== "none"
+        ? [
+            {
+              type: "video" as const,
+              url: video.type === "youtube" ? video.url : incident.video_url,
+            },
+          ]
+        : [];
 
   const currentMedia = allMedia[mediaIndex] || null;
 
@@ -192,16 +195,26 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
           {allMedia.length > 1 && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); setMediaIndex((i) => (i - 1 + allMedia.length) % allMedia.length); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMediaIndex((i) => (i - 1 + allMedia.length) % allMedia.length);
+                }}
                 className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M7 1L2 5l5 4V1z" /></svg>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M7 1L2 5l5 4V1z" />
+                </svg>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); setMediaIndex((i) => (i + 1) % allMedia.length); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMediaIndex((i) => (i + 1) % allMedia.length);
+                }}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M3 1l5 4-5 4V1z" /></svg>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M3 1l5 4-5 4V1z" />
+                </svg>
               </button>
               {/* Dots indicator */}
               <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
@@ -242,13 +255,14 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
           <div className="flex items-center gap-2 mt-0.5 text-[11px] text-neutral-500">
             <span>
               {incident.date}
-              {incident.timestamp && (() => {
-                const d = new Date(incident.timestamp);
-                if (!isNaN(d.getTime())) {
-                  return ` ${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")} UTC`;
-                }
-                return "";
-              })()}
+              {incident.timestamp &&
+                (() => {
+                  const d = new Date(incident.timestamp);
+                  if (!isNaN(d.getTime())) {
+                    return ` ${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")} UTC`;
+                  }
+                  return "";
+                })()}
             </span>
             {incident.target_type && (
               <>
@@ -273,33 +287,44 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
           )}
         </div>
 
-        {incident.damage_assessment && incident.damage_assessment !== "Damage assessment pending" && (
-          <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span
-                className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider"
-                style={{ fontFamily: "JetBrains Mono, monospace" }}
-              >
-                Damage Assessment
-              </span>
-              <span
-                className="text-[9px] font-bold uppercase px-1 py-0.5 rounded"
-                style={{ color: sevColors.color, background: sevColors.bg, border: `1px solid ${sevColors.border}` }}
-              >
-                {incident.damage_severity || "unknown"}
-              </span>
+        {incident.damage_assessment &&
+          incident.damage_assessment !== "Damage assessment pending" && (
+            <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span
+                  className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  Damage Assessment
+                </span>
+                <span
+                  className="text-[9px] font-bold uppercase px-1 py-0.5 rounded"
+                  style={{
+                    color: sevColors.color,
+                    background: sevColors.bg,
+                    border: `1px solid ${sevColors.border}`,
+                  }}
+                >
+                  {incident.damage_severity || "unknown"}
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                {incident.damage_assessment}
+              </p>
             </div>
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
-              {incident.damage_assessment}
-            </p>
-          </div>
-        )}
+          )}
 
         {((incident.casualties_military || 0) > 0 || (incident.casualties_civilian || 0) > 0) && (
           <div className="flex items-center gap-3 text-[11px]">
             {(incident.casualties_military || 0) > 0 && (
               <div className="flex items-center gap-1">
-                <svg className="w-3 h-3 text-red-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg
+                  className="w-3 h-3 text-red-400"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
                   <circle cx="8" cy="5" r="3" />
                   <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
                   <path d="M5 2l3-1 3 1" strokeLinecap="round" />
@@ -310,7 +335,13 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             )}
             {(incident.casualties_civilian || 0) > 0 && (
               <div className="flex items-center gap-1">
-                <svg className="w-3 h-3 text-orange-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg
+                  className="w-3 h-3 text-orange-400"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
                   <circle cx="8" cy="5" r="3" />
                   <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
                 </svg>

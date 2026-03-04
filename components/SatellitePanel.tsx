@@ -27,14 +27,22 @@ export default function SatellitePanel({ counts, loading, onClose }: SatellitePa
             onClick={onClose}
             className="text-neutral-500 hover:text-neutral-300 transition-colors"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
         <div className="px-3 py-3 space-y-3">
           <p className="text-[11px] text-neutral-400 leading-relaxed">
-            Real-time thermal anomaly detection via NASA FIRMS satellite data. Orange dots = unconfirmed heat signatures. Red dots = correlated with known strike incidents.
+            Real-time thermal anomaly detection via NASA FIRMS satellite data. Orange dots =
+            unconfirmed heat signatures. Red dots = correlated with known strike incidents.
           </p>
         </div>
       </div>
@@ -55,19 +63,28 @@ export default function SatellitePanel({ counts, loading, onClose }: SatellitePa
         ) : (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center">
-              <div className="text-lg font-bold text-orange-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <div
+                className="text-lg font-bold text-orange-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {counts.total}
               </div>
               <div className="text-[9px] text-neutral-500 uppercase">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <div
+                className="text-lg font-bold text-red-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {counts.correlated}
               </div>
               <div className="text-[9px] text-neutral-500 uppercase">Confirmed</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-neutral-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <div
+                className="text-lg font-bold text-neutral-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {counts.uncorrelated}
               </div>
               <div className="text-[9px] text-neutral-500 uppercase">Unknown</div>
@@ -86,11 +103,17 @@ export default function SatellitePanel({ counts, loading, onClose }: SatellitePa
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.6)]" style={{ backgroundColor: "#ef4444" }} />
+            <span
+              className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_6px_rgba(239,68,68,0.6)]"
+              style={{ backgroundColor: "#ef4444" }}
+            />
             <span className="text-[11px] text-neutral-300">Confirmed strike thermal</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_6px_rgba(249,115,22,0.6)]" style={{ backgroundColor: "#f97316" }} />
+            <span
+              className="w-3 h-3 rounded-full shrink-0 shadow-[0_0_6px_rgba(249,115,22,0.6)]"
+              style={{ backgroundColor: "#f97316" }}
+            />
             <span className="text-[11px] text-neutral-300">Unconfirmed heat anomaly</span>
           </div>
           <div className="flex items-center gap-2">
@@ -111,11 +134,17 @@ export default function SatellitePanel({ counts, loading, onClose }: SatellitePa
         <div className="space-y-1.5 text-[10px] text-neutral-400">
           <div className="flex items-start gap-2">
             <span className="text-orange-400 mt-0.5">1.</span>
-            <span><span className="text-neutral-300 font-medium">NASA FIRMS</span> — VIIRS satellite thermal detection, updated every ~12 min</span>
+            <span>
+              <span className="text-neutral-300 font-medium">NASA FIRMS</span> — VIIRS satellite
+              thermal detection, updated every ~12 min
+            </span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-orange-400 mt-0.5">2.</span>
-            <span><span className="text-neutral-300 font-medium">Sentinel Hub</span> — Before/after satellite photos (click an incident to see)</span>
+            <span>
+              <span className="text-neutral-300 font-medium">Sentinel Hub</span> — Before/after
+              satellite photos (click an incident to see)
+            </span>
           </div>
         </div>
       </div>

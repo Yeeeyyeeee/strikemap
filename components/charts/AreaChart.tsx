@@ -11,11 +11,7 @@ interface AreaChartProps {
   height?: number;
 }
 
-export default function AreaChart({
-  data,
-  color = "#ef4444",
-  height = 120,
-}: AreaChartProps) {
+export default function AreaChart({ data, color = "#ef4444", height = 120 }: AreaChartProps) {
   if (data.length < 2) return null;
 
   const maxVal = Math.max(...data.map((d) => d.value), 1);

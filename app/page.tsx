@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import IncidentCard from "@/components/IncidentCard";
 import BaseCard from "@/components/BaseCard";
 import { MilitaryBase } from "@/lib/militaryBases";
-import Legend from "@/components/Legend";
+import _Legend from "@/components/Legend";
 import AccuracyGauge from "@/components/AccuracyGauge";
 import FeedSidebar from "@/components/FeedSidebar";
 import { Incident, MissileAlert, ViewMode } from "@/lib/types";
@@ -23,7 +23,7 @@ import StrikeCounter from "@/components/StrikeCounter";
 import CyberStatus from "@/components/CyberStatus";
 import ConflictClock from "@/components/ConflictClock";
 import EscalationMeter from "@/components/EscalationMeter";
-import LiveFeedMobile, { LiveFeedDesktop } from "@/components/LiveFeedPlayer";
+import _LiveFeedMobile, { LiveFeedDesktop as _LiveFeedDesktop } from "@/components/LiveFeedPlayer";
 import LiveVideoPanel from "@/components/LiveVideoPanel";
 import CurrentCam from "@/components/CurrentCam";
 import { MAP_STYLES, getStoredStyle, setStoredStyle } from "@/lib/mapStyles";
@@ -70,17 +70,28 @@ export default function Home() {
   const [showProxies, setShowProxies] = useState(false);
   const [showFirms, setShowFirms] = useState(false);
   const [showCountries, setShowCountries] = useState(false);
-  const [rangeWeapon, setRangeWeapon] = useState<{ lat: number; lng: number; radiusKm: number } | null>(null);
+  const [rangeWeapon, setRangeWeapon] = useState<{
+    lat: number;
+    lng: number;
+    radiusKm: number;
+  } | null>(null);
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [speechConfig, setSpeechConfig] = useState<{ id: string; title: string; enabled: boolean } | null>(null);
+  const [speechConfig, setSpeechConfig] = useState<{
+    id: string;
+    title: string;
+    enabled: boolean;
+  } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const [tickerText, setTickerText] = useState<string | null>(null);
-  const [briefingHeadlines, setBriefingHeadlines] = useState<{ headline: string; severity: "low" | "medium" | "high" | "critical" }[]>([]);
+  const [briefingHeadlines, setBriefingHeadlines] = useState<
+    { headline: string; severity: "low" | "medium" | "high" | "critical" }[]
+  >([]);
   const [announcementDismissed, setAnnouncementDismissed] = useState<string | null>(() => {
-    if (typeof window !== "undefined") return sessionStorage.getItem("strikemap-announcement-dismissed");
+    if (typeof window !== "undefined")
+      return sessionStorage.getItem("strikemap-announcement-dismissed");
     return null;
   });
   const [mobileTab, setMobileTab] = useState<MobileTab>("map");
@@ -105,7 +116,9 @@ export default function Home() {
     if (toAdd.length > 0) return [...saved, ...toAdd];
     return saved;
   });
-  const [widgetPositions, setWidgetPositions] = useState<Record<string, { x: number; y: number; w?: number; h?: number }>>(() => {
+  const [widgetPositions, setWidgetPositions] = useState<
+    Record<string, { x: number; y: number; w?: number; h?: number }>
+  >(() => {
     const s = loadSettings();
     return s.widgetPositions ?? {};
   });
@@ -125,7 +138,7 @@ export default function Home() {
   // Initialize audio volume from saved settings
   useEffect(() => {
     setAudioVolume(settings.volume ?? 80);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debug panel keyboard shortcut (Ctrl+Shift+D) — dev only
@@ -234,8 +247,10 @@ export default function Home() {
       for (const inc of newIncs) {
         // A-10 BRRT for US/Israel strikes on Iran
         const side = inc.side;
-        if ((side === "us" || side === "israel" || side === "us_israel") &&
-            inc.location?.toLowerCase().includes("iran")) {
+        if (
+          (side === "us" || side === "israel" || side === "us_israel") &&
+          inc.location?.toLowerCase().includes("iran")
+        ) {
           setA10Trigger(inc);
           setTimeout(() => setA10Trigger(null), 5000);
           hasA10 = true;
@@ -284,7 +299,8 @@ export default function Home() {
 
   // Jordan sirens mirror Israel — whenever Israel has active alerts, inject Jordan siren
   const sirenAlertsWithJordan = useMemo(() => {
-    const israelActive = activeIsraelRegions.length > 0 || alerts.some((a) => a.status === "active");
+    const israelActive =
+      activeIsraelRegions.length > 0 || alerts.some((a) => a.status === "active");
     if (!israelActive) return sirenAlerts;
     // Don't duplicate if Jordan is already in the list
     if (sirenAlerts.some((a) => a.country === "Jordan")) return sirenAlerts;
@@ -321,7 +337,10 @@ export default function Home() {
     return [...new Set(countries)].sort();
   }, [
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    sirenAlertsWithJordan.map((a) => a.country).sort().join(","),
+    sirenAlertsWithJordan
+      .map((a) => a.country)
+      .sort()
+      .join(","),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     testSirenCountries.join(","),
     activeIsraelRegions.length > 0,
@@ -378,10 +397,12 @@ export default function Home() {
         .then((r) => r.json())
         .then((d) => {
           if (d.report?.key_developments?.length > 0) {
-            setBriefingHeadlines(d.report.key_developments.map((dev: { headline: string; severity: string }) => ({
-              headline: dev.headline,
-              severity: dev.severity as "low" | "medium" | "high" | "critical",
-            })));
+            setBriefingHeadlines(
+              d.report.key_developments.map((dev: { headline: string; severity: string }) => ({
+                headline: dev.headline,
+                severity: dev.severity as "low" | "medium" | "high" | "critical",
+              }))
+            );
           }
         })
         .catch(() => {});
@@ -396,17 +417,22 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/youtube-links")
       .then((r) => r.json())
-      .then((d) => { if (d.speech) setSpeechConfig(d.speech); })
+      .then((d) => {
+        if (d.speech) setSpeechConfig(d.speech);
+      })
       .catch(() => {});
   }, []);
 
   // Filter by view mode
   const filteredIncidents = useMemo(() => {
-    let result = viewMode === "all" || !isMapView(viewMode)
-      ? incidents
-      : viewMode === "us_israel"
-        ? incidents.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel")
-        : incidents.filter((i) => i.side === viewMode);
+    let result =
+      viewMode === "all" || !isMapView(viewMode)
+        ? incidents
+        : viewMode === "us_israel"
+          ? incidents.filter(
+              (i) => i.side === "us_israel" || i.side === "us" || i.side === "israel"
+            )
+          : incidents.filter((i) => i.side === viewMode);
     if (settings.dateFrom) {
       result = result.filter((i) => i.date >= settings.dateFrom!);
     }
@@ -528,8 +554,10 @@ export default function Home() {
       crosshairMarkersRef.current = [];
 
       for (const inc of geoIncidents) {
-        const color = (inc.side === "us" || inc.side === "israel" || inc.side === "us_israel")
-          ? "#3b82f6" : "#ef4444";
+        const color =
+          inc.side === "us" || inc.side === "israel" || inc.side === "us_israel"
+            ? "#3b82f6"
+            : "#ef4444";
         const el = document.createElement("div");
         el.className = "timeline-crosshair";
         el.style.setProperty("--crosshair-color", color);
@@ -563,19 +591,23 @@ export default function Home() {
     // Synthesize missile flight animations from incidents
     const syntheticAlerts: MissileAlert[] = geoIncidents.map((inc, idx) => {
       const side = inc.side;
-      const isDrone = inc.weapon?.toLowerCase().includes("drone") ||
-                      inc.weapon?.toLowerCase().includes("uav") ||
-                      inc.weapon?.toLowerCase().includes("shahed");
+      const isDrone =
+        inc.weapon?.toLowerCase().includes("drone") ||
+        inc.weapon?.toLowerCase().includes("uav") ||
+        inc.weapon?.toLowerCase().includes("shahed");
       // Determine origin based on who launched
       let originLat: number, originLng: number;
       if (side === "iran") {
         // Iran launching toward Israel/Gulf
-        originLat = 35.69; originLng = 51.39; // Tehran
+        originLat = 35.69;
+        originLng = 51.39; // Tehran
       } else if (side === "israel") {
-        originLat = 31.77; originLng = 35.22; // Jerusalem
+        originLat = 31.77;
+        originLng = 35.22; // Jerusalem
       } else {
         // US or US/Israel — from Persian Gulf / Diego Garcia area
-        originLat = 25.3; originLng = 51.5; // Qatar/Gulf region
+        originLat = 25.3;
+        originLng = 51.5; // Qatar/Gulf region
       }
       return {
         id: `timeline-${timelineIndex}-${idx}`,
@@ -590,7 +622,7 @@ export default function Home() {
         timeToImpact: isDrone ? 20 : 12,
         status: "active" as const,
         rawText: "",
-        threatType: isDrone ? "drone" as const : "missile" as const,
+        threatType: isDrone ? ("drone" as const) : ("missile" as const),
       };
     });
     setTimelineMissiles(syntheticAlerts);
@@ -646,7 +678,7 @@ export default function Home() {
     }
   }, [timelineActive]);
 
-  const weapons = Array.from(
+  const _weapons = Array.from(
     new Set(timelineFilteredIncidents.map((i) => i.weapon).filter(Boolean))
   );
 
@@ -804,7 +836,16 @@ export default function Home() {
 
   const handleWidgetResize = useCallback((id: string, w: number, h?: number) => {
     setWidgetPositions((prev) => {
-      const next = { ...prev, [id]: { ...prev[id], x: prev[id]?.x ?? 0, y: prev[id]?.y ?? 0, w, ...(h !== undefined ? { h } : {}) } };
+      const next = {
+        ...prev,
+        [id]: {
+          ...prev[id],
+          x: prev[id]?.x ?? 0,
+          y: prev[id]?.y ?? 0,
+          w,
+          ...(h !== undefined ? { h } : {}),
+        },
+      };
       setSettings((s) => {
         const ns = { ...s, widgetPositions: next };
         saveSettings(ns);
@@ -858,7 +899,10 @@ export default function Home() {
         const instanceCount = prev.filter((w) => getBaseWidgetId(w) === baseId).length;
         const offset = instanceCount * 32;
         setWidgetPositions((pp) => {
-          const np = { ...pp, [newId]: { x: def.defaultPosition.x + offset, y: def.defaultPosition.y + offset } };
+          const np = {
+            ...pp,
+            [newId]: { x: def.defaultPosition.x + offset, y: def.defaultPosition.y + offset },
+          };
           setSettings((s) => {
             const ns = { ...s, activeWidgets: next, widgetPositions: np };
             saveSettings(ns);
@@ -879,37 +923,47 @@ export default function Home() {
     });
   }, []);
 
-  const renderWidgetContent = useCallback((widgetId: string) => {
-    switch (getBaseWidgetId(widgetId)) {
-      case "escalation":
-        return <EscalationMeter incidents={incidents} notams={notams} />;
-      case "currentcam":
-        return <CurrentCam />;
-      case "airspace":
-        return <AirspaceStatus />;
-      case "accuracy-iran":
-        return <AccuracyGauge incidents={incidents} side="iran" />;
-      case "accuracy-us":
-        return <AccuracyGauge incidents={incidents} side="us_israel" />;
-      case "casualties":
-        return <CasualtyTracker />;
-      case "clock":
-        return <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />;
-      case "strike-counter":
-        return <StrikeCounter incidents={incidents} />;
-      case "cyber-status":
-        return <CyberStatus />;
-      case "feed":
-        return <FeedSidebar incidents={incidents} onSelectIncident={handleSelectIncident} />;
-      default:
-        return null;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidents, notams, lastIranStrikeAt, lastUSStrikeAt, lastIsraelStrikeAt]);
+  const renderWidgetContent = useCallback(
+    (widgetId: string) => {
+      switch (getBaseWidgetId(widgetId)) {
+        case "escalation":
+          return <EscalationMeter incidents={incidents} notams={notams} />;
+        case "currentcam":
+          return <CurrentCam />;
+        case "airspace":
+          return <AirspaceStatus />;
+        case "accuracy-iran":
+          return <AccuracyGauge incidents={incidents} side="iran" />;
+        case "accuracy-us":
+          return <AccuracyGauge incidents={incidents} side="us_israel" />;
+        case "casualties":
+          return <CasualtyTracker />;
+        case "clock":
+          return (
+            <ConflictClock
+              incidents={incidents}
+              lastIranStrikeAt={lastIranStrikeAt}
+              lastUSStrikeAt={lastUSStrikeAt}
+              lastIsraelStrikeAt={lastIsraelStrikeAt}
+            />
+          );
+        case "strike-counter":
+          return <StrikeCounter incidents={incidents} />;
+        case "cyber-status":
+          return <CyberStatus />;
+        case "feed":
+          return <FeedSidebar incidents={incidents} onSelectIncident={handleSelectIncident} />;
+        default:
+          return null;
+      }
+       
+    },
+    [incidents, notams, lastIranStrikeAt, lastUSStrikeAt, lastIsraelStrikeAt]
+  );
 
   const mapStyleUrl = MAP_STYLES.find((s) => s.id === mapStyle)?.url;
 
-  const { handleShare, copied: shareCopied } = useShare({
+  const { handleShare: _handleShare, copied: _shareCopied } = useShare({
     mapInstance,
     viewMode,
     selectedIncidentId: selectedIncident?.id,
@@ -936,9 +990,30 @@ export default function Home() {
         notificationsEnabled={settings.notificationsEnabled}
         onToggleNotifications={handleToggleNotifications}
         chatOpen={chatOpen}
-        onToggleChat={() => { if (chatOpen && chatTab === "chat") { setChatOpen(false); } else { setChatTab("chat"); setChatOpen(true); } }}
-        onToggleSuggestions={() => { if (chatOpen && chatTab === "suggestions") { setChatOpen(false); } else { setChatTab("suggestions"); setChatOpen(true); } }}
-        onToggleChanges={() => { if (chatOpen && chatTab === "changes") { setChatOpen(false); } else { setChatTab("changes"); setChatOpen(true); } }}
+        onToggleChat={() => {
+          if (chatOpen && chatTab === "chat") {
+            setChatOpen(false);
+          } else {
+            setChatTab("chat");
+            setChatOpen(true);
+          }
+        }}
+        onToggleSuggestions={() => {
+          if (chatOpen && chatTab === "suggestions") {
+            setChatOpen(false);
+          } else {
+            setChatTab("suggestions");
+            setChatOpen(true);
+          }
+        }}
+        onToggleChanges={() => {
+          if (chatOpen && chatTab === "changes") {
+            setChatOpen(false);
+          } else {
+            setChatTab("changes");
+            setChatOpen(true);
+          }
+        }}
         hasUnreadChat={hasUnreadChat}
         activeUsers={activeUsers}
         onToggleWidgetPicker={handleToggleWidgetPicker}
@@ -949,11 +1024,13 @@ export default function Home() {
         onResetWidgets={handleResetWidgets}
       />
 
-      <NewsTicker incidents={incidents} customText={tickerText} briefingHeadlines={briefingHeadlines} />
+      <NewsTicker
+        incidents={incidents}
+        customText={tickerText}
+        briefingHeadlines={briefingHeadlines}
+      />
 
-      {settingsOpen && (
-        <SettingsPanel settings={settings} onChange={handleSettingsChange} />
-      )}
+      {settingsOpen && <SettingsPanel settings={settings} onChange={handleSettingsChange} />}
 
       {/* Announcement banner */}
       {announcement && announcementDismissed !== announcement && (
@@ -976,10 +1053,14 @@ export default function Home() {
 
       {/* Info banner */}
       {!disclaimerAccepted && (
-        <div className={`fixed ${announcement && announcementDismissed !== announcement ? "top-[140px]" : "top-[88px]"} left-1/2 -translate-x-1/2 z-[42] w-[calc(100%-2rem)] max-w-xl transition-all`}>
+        <div
+          className={`fixed ${announcement && announcementDismissed !== announcement ? "top-[140px]" : "top-[88px]"} left-1/2 -translate-x-1/2 z-[42] w-[calc(100%-2rem)] max-w-xl transition-all`}
+        >
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-start gap-3 shadow-lg">
             <p className="text-xs text-neutral-400 leading-relaxed flex-1">
-              All data is aggregated from publicly available OSINT sources and presented for informational purposes only. Content does not reflect the views of the site operator. Use at your own discretion.
+              All data is aggregated from publicly available OSINT sources and presented for
+              informational purposes only. Content does not reflect the views of the site operator.
+              Use at your own discretion.
             </p>
             <button
               onClick={() => {
@@ -1061,17 +1142,21 @@ export default function Home() {
               firmsCount={firmsCounts.total}
               mapStyle={mapStyle}
               onMapStyleChange={handleMapStyleChange}
-              onOpenChat={() => { setChatTab("chat"); setChatOpen(true); }}
+              onOpenChat={() => {
+                setChatTab("chat");
+                setChatOpen(true);
+              }}
               hasUnreadChat={hasUnreadChat}
             />
-            {mapInstance && (alerts.length > 0 || testAlerts.length > 0 || timelineMissiles.length > 0) && (
-              <MissileOverlay
-                alerts={[...alerts, ...testAlerts, ...timelineMissiles]}
-                map={mapInstance}
-                onAlertClick={handleAlertClick}
-                soundEnabled={settings.soundEnabled}
-              />
-            )}
+            {mapInstance &&
+              (alerts.length > 0 || testAlerts.length > 0 || timelineMissiles.length > 0) && (
+                <MissileOverlay
+                  alerts={[...alerts, ...testAlerts, ...timelineMissiles]}
+                  map={mapInstance}
+                  onAlertClick={handleAlertClick}
+                  soundEnabled={settings.soundEnabled}
+                />
+              )}
             {mapInstance && (a10Trigger || timelineA10) && (
               <A10Overlay
                 incident={(a10Trigger || timelineA10)!}
@@ -1106,43 +1191,49 @@ export default function Home() {
         />
       )}
       {/* Floating widgets — desktop only */}
-      {isMapView(viewMode) && viewMode !== "satellite" && activeWidgets.map((widgetId) => {
-        const baseId = getBaseWidgetId(widgetId);
-        const def = WIDGET_MAP[baseId];
-        if (!def) return null;
-        const saved = widgetPositions[widgetId];
-        let pos = saved ? { x: saved.x, y: saved.y } : def.defaultPosition;
-        // anchorRight: default position.x is offset from right edge
-        if (!saved && def.anchorRight && typeof window !== "undefined") {
-          pos = { x: window.innerWidth - def.defaultWidth - def.defaultPosition.x, y: def.defaultPosition.y };
-        }
-        const w = saved?.w ?? def.defaultWidth;
-        const h = saved?.h ?? def.defaultHeight;
-        const zIdx = 40 + (widgetZStack.indexOf(widgetId) >= 0 ? widgetZStack.indexOf(widgetId) : 0);
-        return (
-          <FloatingWidget
-            key={widgetId}
-            id={widgetId}
-            title={def.label}
-            position={pos}
-            width={w}
-            height={h}
-            onPositionChange={handleWidgetPositionChange}
-            onClose={handleRemoveWidget}
-            onResize={def.resizable ? handleWidgetResize : undefined}
-            onFocus={handleWidgetFocus}
-            onDuplicate={def.multiInstance ? () => handleDuplicateWidget(baseId) : undefined}
-            zIndex={zIdx}
-            resizable={def.resizable}
-            minWidth={def.minWidth}
-            maxWidth={def.maxWidth}
-            minHeight={def.minHeight}
-            maxHeight={def.maxHeight}
-          >
-            {renderWidgetContent(widgetId)}
-          </FloatingWidget>
-        );
-      })}
+      {isMapView(viewMode) &&
+        viewMode !== "satellite" &&
+        activeWidgets.map((widgetId) => {
+          const baseId = getBaseWidgetId(widgetId);
+          const def = WIDGET_MAP[baseId];
+          if (!def) return null;
+          const saved = widgetPositions[widgetId];
+          let pos = saved ? { x: saved.x, y: saved.y } : def.defaultPosition;
+          // anchorRight: default position.x is offset from right edge
+          if (!saved && def.anchorRight && typeof window !== "undefined") {
+            pos = {
+              x: window.innerWidth - def.defaultWidth - def.defaultPosition.x,
+              y: def.defaultPosition.y,
+            };
+          }
+          const w = saved?.w ?? def.defaultWidth;
+          const h = saved?.h ?? def.defaultHeight;
+          const zIdx =
+            40 + (widgetZStack.indexOf(widgetId) >= 0 ? widgetZStack.indexOf(widgetId) : 0);
+          return (
+            <FloatingWidget
+              key={widgetId}
+              id={widgetId}
+              title={def.label}
+              position={pos}
+              width={w}
+              height={h}
+              onPositionChange={handleWidgetPositionChange}
+              onClose={handleRemoveWidget}
+              onResize={def.resizable ? handleWidgetResize : undefined}
+              onFocus={handleWidgetFocus}
+              onDuplicate={def.multiInstance ? () => handleDuplicateWidget(baseId) : undefined}
+              zIndex={zIdx}
+              resizable={def.resizable}
+              minWidth={def.minWidth}
+              maxWidth={def.maxWidth}
+              minHeight={def.minHeight}
+              maxHeight={def.maxHeight}
+            >
+              {renderWidgetContent(widgetId)}
+            </FloatingWidget>
+          );
+        })}
 
       {/* Government speech livestream */}
       {isMapView(viewMode) && speechConfig?.enabled && speechConfig.id && (
@@ -1175,8 +1266,15 @@ export default function Home() {
                 onClick={() => setMobileTab("map")}
                 className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
@@ -1201,11 +1299,21 @@ export default function Home() {
               >
                 <option value="all">All Countries</option>
                 {ALERT_FILTER_COUNTRIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
-              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              <svg
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             {filteredAlerts.length === 0 && filteredSirenAlerts.length === 0 ? (
@@ -1214,30 +1322,34 @@ export default function Home() {
               </div>
             ) : (
               <>
-                {filteredAlerts.filter((a) => a.status === "active").map((alert) => (
-                  <button
-                    key={alert.id}
-                    onClick={() => {
-                      setMobileTab("map");
-                      handleAlertClick(alert);
-                    }}
-                    className="w-full bg-[#1a1a1a] border border-red-500/30 rounded-lg p-4 text-left active:bg-[#222]"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-sm font-bold text-red-400 uppercase">
-                        {alert.regions?.length > 0 ? alert.regions.join(", ") : alert.cities.slice(0, 3).join(", ")}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold uppercase ml-auto">
-                        {alert.threatType || "missile"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] text-neutral-500">
-                      <span>TTI: {alert.timeToImpact}s</span>
-                      <span>{alert.timestamp}</span>
-                    </div>
-                  </button>
-                ))}
+                {filteredAlerts
+                  .filter((a) => a.status === "active")
+                  .map((alert) => (
+                    <button
+                      key={alert.id}
+                      onClick={() => {
+                        setMobileTab("map");
+                        handleAlertClick(alert);
+                      }}
+                      className="w-full bg-[#1a1a1a] border border-red-500/30 rounded-lg p-4 text-left active:bg-[#222]"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-sm font-bold text-red-400 uppercase">
+                          {alert.regions?.length > 0
+                            ? alert.regions.join(", ")
+                            : alert.cities.slice(0, 3).join(", ")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold uppercase ml-auto">
+                          {alert.threatType || "missile"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-neutral-500">
+                        <span>TTI: {alert.timeToImpact}s</span>
+                        <span>{alert.timestamp}</span>
+                      </div>
+                    </button>
+                  ))}
                 {filteredSirenAlerts.map((alert) => (
                   <div
                     key={alert.id}
@@ -1250,7 +1362,11 @@ export default function Home() {
                       </span>
                     </div>
                     <span className="text-[10px] text-neutral-600 mt-1 block">
-                      via {alert.sourceChannel} &bull; {new Date(alert.activatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      via {alert.sourceChannel} &bull;{" "}
+                      {new Date(alert.activatedAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                 ))}
@@ -1273,8 +1389,15 @@ export default function Home() {
                 onClick={() => setMobileTab("map")}
                 className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
@@ -1304,13 +1427,14 @@ export default function Home() {
               className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm font-medium text-white active:bg-[#222] transition-colors"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
-              <svg className="w-5 h-5 text-[#29B6F6]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              <svg className="w-5 h-5 text-[#29B6F6]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+              </svg>
               Join Telegram
             </a>
           </div>
         </div>
       )}
-
 
       {/* Alert detail panel */}
       {selectedAlert && (
@@ -1349,7 +1473,8 @@ export default function Home() {
                   </p>
                   <p className="text-sm text-neutral-300">
                     {selectedAlert.cities.slice(0, 15).join(", ")}
-                    {selectedAlert.cities.length > 15 && ` +${selectedAlert.cities.length - 15} more`}
+                    {selectedAlert.cities.length > 15 &&
+                      ` +${selectedAlert.cities.length - 15} more`}
                   </p>
                 </div>
               )}
@@ -1365,16 +1490,35 @@ export default function Home() {
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} defaultTab={chatTab} />
 
       {/* Live video panel */}
-      <LiveVideoPanel open={liveVideoOpen} onToggle={() => setLiveVideoOpen((p) => !p)} hideTrigger={chatOpen} />
+      <LiveVideoPanel
+        open={liveVideoOpen}
+        onToggle={() => setLiveVideoOpen((p) => !p)}
+        hideTrigger={chatOpen}
+      />
 
       {/* Mobile chat FAB — next to Live button */}
       {!chatOpen && !liveVideoOpen && (
         <button
-          onClick={() => { setChatTab("chat"); setChatOpen(true); }}
+          onClick={() => {
+            setChatTab("chat");
+            setChatOpen(true);
+          }}
           className="fixed z-[9999] md:hidden flex items-center gap-1.5 px-4 py-2.5 rounded-full border bg-[#1a1a1a] border-blue-500/40 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)] hover:shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:bg-blue-500/10 backdrop-blur-sm transition-all"
-          style={{ bottom: "5rem", left: "calc(50% + 52px)", fontFamily: "JetBrains Mono, monospace" }}
+          style={{
+            bottom: "5rem",
+            left: "calc(50% + 52px)",
+            fontFamily: "JetBrains Mono, monospace",
+          }}
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
           <span className="text-xs font-bold uppercase tracking-wider">Chat</span>
           {hasUnreadChat && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />

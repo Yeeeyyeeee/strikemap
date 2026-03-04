@@ -7,7 +7,14 @@
 import { Incident } from "./types";
 import { getRedis } from "./redis";
 import { haversineKm } from "./geo";
-import { REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY, DEDUP_RADIUS_KM, DEDUP_WINDOW_MS, TEXT_DEDUP_THRESHOLD } from "./constants";
+import {
+  REDIS_INCIDENTS_KEY,
+  REDIS_BATCH_SIZE,
+  REDIS_REFRESH_KEY,
+  DEDUP_RADIUS_KM,
+  DEDUP_WINDOW_MS,
+  TEXT_DEDUP_THRESHOLD,
+} from "./constants";
 import { trigramSimilarity } from "./textDedup";
 
 const REDIS_KEY = REDIS_INCIDENTS_KEY;
@@ -40,7 +47,7 @@ async function ensureLoaded(): Promise<Map<string, Incident>> {
       let loaded = 0;
       for (const [id, value] of Object.entries(raw)) {
         try {
-          const inc: Incident = typeof value === "string" ? JSON.parse(value) : value as Incident;
+          const inc: Incident = typeof value === "string" ? JSON.parse(value) : (value as Incident);
           if (inc && inc.id) {
             memCache.set(inc.id, inc);
             loaded++;
@@ -113,7 +120,9 @@ async function writeToRedis(incidents: Incident[]): Promise<number> {
   // Verify the write
   try {
     const hashLen = await r.hlen(REDIS_KEY);
-    console.log(`[store] Wrote ${written}/${incidents.length} incidents. Redis hash now has ${hashLen} entries.`);
+    console.log(
+      `[store] Wrote ${written}/${incidents.length} incidents. Redis hash now has ${hashLen} entries.`
+    );
   } catch {
     // Non-critical, just log
   }
@@ -132,7 +141,6 @@ export async function getIncidentCount(): Promise<number> {
   const store = await ensureLoaded();
   return store.size;
 }
-
 
 /** Returns the matching existing incident if duplicate, or null */
 function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | null {
@@ -188,11 +196,17 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
       deduped++;
       // Update existing incident's casualties if the new report has data
       let updated = false;
-      if (inc.casualties_military && inc.casualties_military > (existing.casualties_military || 0)) {
+      if (
+        inc.casualties_military &&
+        inc.casualties_military > (existing.casualties_military || 0)
+      ) {
         existing.casualties_military = inc.casualties_military;
         updated = true;
       }
-      if (inc.casualties_civilian && inc.casualties_civilian > (existing.casualties_civilian || 0)) {
+      if (
+        inc.casualties_civilian &&
+        inc.casualties_civilian > (existing.casualties_civilian || 0)
+      ) {
         existing.casualties_civilian = inc.casualties_civilian;
         updated = true;
       }
@@ -233,7 +247,9 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
   const toPersist = [...newIncidents, ...updatedIncidents];
   if (toPersist.length > 0) {
     const written = await writeToRedis(toPersist);
-    console.log(`[store] Added ${newIncidents.length} new, updated ${updatedIncidents.length} existing (${written} persisted), deduped ${deduped} (total: ${store.size})`);
+    console.log(
+      `[store] Added ${newIncidents.length} new, updated ${updatedIncidents.length} existing (${written} persisted), deduped ${deduped} (total: ${store.size})`
+    );
   } else if (deduped > 0) {
     console.log(`[store] Deduped ${deduped} incidents, 0 new`);
   }
@@ -283,7 +299,9 @@ export async function deduplicateStore(): Promise<number> {
           const batch = removeIds.slice(i, i + BATCH_SIZE);
           await r.hdel(REDIS_KEY, ...batch);
         }
-        console.log(`[store] Deduplicated: removed ${removeIds.length} duplicates (${store.size} remaining)`);
+        console.log(
+          `[store] Deduplicated: removed ${removeIds.length} duplicates (${store.size} remaining)`
+        );
       } catch (err) {
         console.error("[store] Failed to remove duplicates from Redis:", err);
       }
@@ -309,19 +327,48 @@ export async function reAttributeSides(): Promise<number> {
 
     if (loc.includes("iran")) {
       // Strikes IN Iran are by US or Israel
-      newSide = loc.includes("nuclear") || loc.includes("natanz") || loc.includes("fordow") ? "israel" : "us";
+      newSide =
+        loc.includes("nuclear") || loc.includes("natanz") || loc.includes("fordow")
+          ? "israel"
+          : "us";
     } else if (loc.includes("israel") || loc.includes("golan")) {
       newSide = "iran";
-    } else if (loc.includes("lebanon") || loc.includes("syria") || loc.includes("gaza") || loc.includes("beirut") || loc.includes("damascus")) {
+    } else if (
+      loc.includes("lebanon") ||
+      loc.includes("syria") ||
+      loc.includes("gaza") ||
+      loc.includes("beirut") ||
+      loc.includes("damascus")
+    ) {
       newSide = "israel";
-    } else if (loc.includes("yemen") || loc.includes("sanaa") || loc.includes("hodeidah") || loc.includes("houthi")) {
+    } else if (
+      loc.includes("yemen") ||
+      loc.includes("sanaa") ||
+      loc.includes("hodeidah") ||
+      loc.includes("houthi")
+    ) {
       newSide = "us";
-    } else if (loc.includes("uae") || loc.includes("bahrain") || loc.includes("qatar") || loc.includes("kuwait") || loc.includes("saudi") || loc.includes("dubai") || loc.includes("abu dhabi") || loc.includes("doha") || loc.includes("manama")) {
+    } else if (
+      loc.includes("uae") ||
+      loc.includes("bahrain") ||
+      loc.includes("qatar") ||
+      loc.includes("kuwait") ||
+      loc.includes("saudi") ||
+      loc.includes("dubai") ||
+      loc.includes("abu dhabi") ||
+      loc.includes("doha") ||
+      loc.includes("manama")
+    ) {
       newSide = "iran";
     } else if (loc.includes("iraq")) {
       // Iraq strikes are usually Iran/proxies attacking US bases, or US retaliating
       // If it's a US base, Iran is the attacker; otherwise keep existing
-      if (loc.includes("al-asad") || loc.includes("green zone") || loc.includes("erbil") || loc.includes("harir")) {
+      if (
+        loc.includes("al-asad") ||
+        loc.includes("green zone") ||
+        loc.includes("erbil") ||
+        loc.includes("harir")
+      ) {
         newSide = "iran";
       }
     }
@@ -369,7 +416,9 @@ export async function reEnrichCasualties(): Promise<number> {
 
   if (updated.length > 0) {
     const written = await writeToRedis(updated);
-    console.log(`[store] Re-enriched casualties for ${updated.length} incidents (${written} persisted)`);
+    console.log(
+      `[store] Re-enriched casualties for ${updated.length} incidents (${written} persisted)`
+    );
   }
 
   return updated.length;

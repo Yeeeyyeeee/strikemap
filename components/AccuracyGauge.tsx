@@ -17,7 +17,8 @@ const SIDE_CONFIG: Record<string, { label: string; accent: string }> = {
 
 export default memo(function AccuracyGauge({ incidents, side }: AccuracyGaugeProps) {
   const matchesSide = (i: Incident) => {
-    if (side === "us_israel") return i.side === "us_israel" || i.side === "us" || i.side === "israel";
+    if (side === "us_israel")
+      return i.side === "us_israel" || i.side === "us" || i.side === "israel";
     return i.side === side;
   };
   const UNKNOWN_TYPES = ["", "unknown", "undetermined", "unspecified"];
@@ -58,10 +59,8 @@ export default memo(function AccuracyGauge({ incidents, side }: AccuracyGaugePro
         className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2"
         style={{ fontFamily: "JetBrains Mono, monospace" }}
       >
-        <span style={{ color: config.accent }}>
-          {side === "iran" ? "IRAN" : "US/ISR"}
-        </span>{" "}
-        Aim Accuracy
+        <span style={{ color: config.accent }}>{side === "iran" ? "IRAN" : "US/ISR"}</span> Aim
+        Accuracy
       </h3>
 
       {/* Gauge bar */}

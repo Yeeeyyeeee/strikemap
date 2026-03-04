@@ -181,7 +181,9 @@ export default function AnimationTestPanel({
               className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-xs text-neutral-200"
             >
               {FLASH_COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
             <button
@@ -205,7 +207,9 @@ export default function AnimationTestPanel({
               className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-xs text-neutral-200"
             >
               {FLASH_COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
             <button
@@ -220,9 +224,7 @@ export default function AnimationTestPanel({
             </button>
           </div>
           {activeSirenCountries.length > 0 && (
-            <p className="text-[10px] text-orange-400">
-              Active: {activeSirenCountries.join(", ")}
-            </p>
+            <p className="text-[10px] text-orange-400">Active: {activeSirenCountries.join(", ")}</p>
           )}
           <p className="text-[10px] text-neutral-600">
             Pulsing red territory while siren is active

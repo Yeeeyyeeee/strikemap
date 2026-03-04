@@ -23,19 +23,27 @@ const TYPE_LABELS: Record<MilitaryBase["type"], string> = {
 
 const TYPE_DESCRIPTIONS: Record<MilitaryBase["type"], string> = {
   air: "Military airfield used for fighter aircraft operations, aerial refueling, reconnaissance, and strategic airlift capabilities.",
-  naval: "Naval installation supporting maritime operations including fleet basing, patrol craft, coastal defense, and port logistics.",
+  naval:
+    "Naval installation supporting maritime operations including fleet basing, patrol craft, coastal defense, and port logistics.",
   army: "Ground forces installation housing infantry, armored, and mechanized units along with command and logistics infrastructure.",
-  missile: "Strategic or tactical missile launch facility capable of housing ballistic missiles, cruise missiles, or air defense systems.",
-  nuclear: "Facility associated with nuclear research, uranium enrichment, weapons development, or nuclear energy production.",
+  missile:
+    "Strategic or tactical missile launch facility capable of housing ballistic missiles, cruise missiles, or air defense systems.",
+  nuclear:
+    "Facility associated with nuclear research, uranium enrichment, weapons development, or nuclear energy production.",
 };
 
 const OPERATOR_DESCRIPTIONS: Record<MilitaryBase["operator"], string> = {
   iran: "Islamic Republic of Iran Armed Forces (Artesh) or Islamic Revolutionary Guard Corps (IRGC). Iran maintains a large conventional military alongside the IRGC, which operates independently with its own ground, naval, aerospace, and Quds Force branches.",
-  iran_proxy: "Iran-aligned militia or paramilitary group operating under the umbrella of the IRGC Quds Force. These include Hezbollah (Lebanon), Houthi/Ansar Allah (Yemen), Popular Mobilization Forces (Iraq), and various Syrian militias.",
-  us_coalition: "United States Armed Forces or allied coalition partner. The US maintains a significant military presence across the Middle East through CENTCOM, with forward-deployed air, naval, and ground assets across multiple host nations.",
-  israel: "Israel Defense Forces (IDF). Israel maintains one of the most technologically advanced militaries in the region with significant air power, missile defense systems (Iron Dome, David's Sling, Arrow), and intelligence capabilities.",
-  russia: "Russian Armed Forces. Russia maintains a military presence in Syria through agreements with the Assad government, operating air and naval assets from bases in Latakia and Tartus.",
-  regional: "Armed forces of a regional nation-state in the Middle East, North Africa, or Eastern Mediterranean. These forces operate independently but may participate in bilateral or multilateral defense agreements.",
+  iran_proxy:
+    "Iran-aligned militia or paramilitary group operating under the umbrella of the IRGC Quds Force. These include Hezbollah (Lebanon), Houthi/Ansar Allah (Yemen), Popular Mobilization Forces (Iraq), and various Syrian militias.",
+  us_coalition:
+    "United States Armed Forces or allied coalition partner. The US maintains a significant military presence across the Middle East through CENTCOM, with forward-deployed air, naval, and ground assets across multiple host nations.",
+  israel:
+    "Israel Defense Forces (IDF). Israel maintains one of the most technologically advanced militaries in the region with significant air power, missile defense systems (Iron Dome, David's Sling, Arrow), and intelligence capabilities.",
+  russia:
+    "Russian Armed Forces. Russia maintains a military presence in Syria through agreements with the Assad government, operating air and naval assets from bases in Latakia and Tartus.",
+  regional:
+    "Armed forces of a regional nation-state in the Middle East, North Africa, or Eastern Mediterranean. These forces operate independently but may participate in bilateral or multilateral defense agreements.",
 };
 
 function getBaseTypeIcon(type: MilitaryBase["type"]): React.ReactNode {
@@ -48,9 +56,17 @@ function getBaseTypeIcon(type: MilitaryBase["type"]): React.ReactNode {
       );
     case "naval":
       return (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="8" r="3" /><line x1="12" y1="11" x2="12" y2="20" />
-          <path d="M6,17 Q12,23 18,17" /><line x1="8" y1="13" x2="16" y2="13" />
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="8" r="3" />
+          <line x1="12" y1="11" x2="12" y2="20" />
+          <path d="M6,17 Q12,23 18,17" />
+          <line x1="8" y1="13" x2="16" y2="13" />
         </svg>
       );
     case "army":
@@ -61,18 +77,35 @@ function getBaseTypeIcon(type: MilitaryBase["type"]): React.ReactNode {
       );
     case "missile":
       return (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
           <line x1="12" y1="2" x2="12" y2="16" />
           <polygon points="8,16 12,22 16,16" fill="currentColor" />
-          <line x1="8" y1="8" x2="12" y2="12" /><line x1="16" y1="8" x2="12" y2="12" />
+          <line x1="8" y1="8" x2="12" y2="12" />
+          <line x1="16" y1="8" x2="12" y2="12" />
         </svg>
       );
     case "nuclear":
       return (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="9" />
-          <line x1="12" y1="3" x2="12" y2="8" /><line x1="12" y1="16" x2="12" y2="21" />
-          <line x1="3" y1="12" x2="8" y2="12" /><line x1="16" y1="12" x2="21" y2="12" />
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="3" x2="12" y2="8" />
+          <line x1="12" y1="16" x2="12" y2="21" />
+          <line x1="3" y1="12" x2="8" y2="12" />
+          <line x1="16" y1="12" x2="21" y2="12" />
         </svg>
       );
   }
@@ -90,7 +123,13 @@ function useIsMobile() {
   return mobile;
 }
 
-function getSatelliteImageUrl(lat: number, lng: number, zoom: number, width: number, height: number): string {
+function getSatelliteImageUrl(
+  lat: number,
+  lng: number,
+  zoom: number,
+  width: number,
+  height: number
+): string {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng},${lat},${zoom},0/${width}x${height}@2x?access_token=${token}`;
 }
@@ -134,9 +173,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
     const cardHeight = cardRef.current.offsetHeight || 300;
     let top = point.y - cardHeight / 2;
     top = Math.max(60, Math.min(top, containerHeight - cardHeight - 20));
-    const left = wouldOverflowRight
-      ? point.x - CARD_OFFSET - CARD_WIDTH
-      : point.x + CARD_OFFSET;
+    const left = wouldOverflowRight ? point.x - CARD_OFFSET - CARD_WIDTH : point.x + CARD_OFFSET;
 
     cardRef.current.style.left = `${left}px`;
     cardRef.current.style.top = `${top}px`;
@@ -194,10 +231,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider"
-              style={{ color }}
-            >
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>
               {operatorLabel}
             </span>
             <span
@@ -207,9 +241,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
               {typeLabel}
             </span>
           </div>
-          <h2 className="text-sm font-semibold text-neutral-100 leading-tight">
-            {base.name}
-          </h2>
+          <h2 className="text-sm font-semibold text-neutral-100 leading-tight">{base.name}</h2>
         </div>
 
         {/* Base Type Info */}
@@ -223,9 +255,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
               Facility Type
             </span>
           </div>
-          <p className="text-[11px] text-neutral-400 leading-relaxed">
-            {typeDesc}
-          </p>
+          <p className="text-[11px] text-neutral-400 leading-relaxed">{typeDesc}</p>
         </div>
 
         {/* Operator Info */}
@@ -243,7 +273,9 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
             </span>
           </div>
           <p className="text-[11px] text-neutral-400 leading-relaxed">
-            {expanded ? operatorDesc : operatorDesc.slice(0, 160) + (operatorDesc.length > 160 ? "..." : "")}
+            {expanded
+              ? operatorDesc
+              : operatorDesc.slice(0, 160) + (operatorDesc.length > 160 ? "..." : "")}
           </p>
           {operatorDesc.length > 160 && (
             <button

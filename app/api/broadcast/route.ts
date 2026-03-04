@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
-import { scrapeChannel, isIranRelated, getConfiguredChannels, postToIncident } from "@/lib/telegram";
+import {
+  scrapeChannel,
+  isIranRelated,
+  getConfiguredChannels,
+  postToIncident,
+} from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
 import { applyEnrichment } from "@/lib/enrichmentUtils";
 import { sendFeedPost, sendIncident } from "@/lib/telegramBot";
 import { getRedis } from "@/lib/redis";
-import { REDIS_BROADCAST_KEY, BROADCAST_MAX_PER_RUN, BROADCAST_SET_MAX_SIZE } from "@/lib/constants";
+import {
+  REDIS_BROADCAST_KEY,
+  BROADCAST_MAX_PER_RUN,
+  BROADCAST_SET_MAX_SIZE,
+} from "@/lib/constants";
 import { isStrikeBroadcastDuplicate, recordStrikeBroadcast } from "@/lib/broadcastDedup";
 import { sendDiscordStrike, sendDiscordFeed } from "@/lib/discord";
 
@@ -39,10 +48,12 @@ export async function GET(req: Request) {
 
   // Scrape latest posts from all channels
   const results = await Promise.all(
-    channels.map((ch) => scrapeChannel(ch).catch((err) => {
-      console.error(`[broadcast] Scrape ${ch} failed:`, err);
-      return [];
-    }))
+    channels.map((ch) =>
+      scrapeChannel(ch).catch((err) => {
+        console.error(`[broadcast] Scrape ${ch} failed:`, err);
+        return [];
+      })
+    )
   );
 
   const posts = results
@@ -61,7 +72,7 @@ export async function GET(req: Request) {
   const redis = getRedis();
   let sentIds = new Set<string>();
   if (redis) {
-    const stored = await redis.smembers(REDIS_BROADCAST_KEY) as string[];
+    const stored = (await redis.smembers(REDIS_BROADCAST_KEY)) as string[];
     if (stored) sentIds = new Set(stored);
     console.log(`[broadcast] ${sentIds.size} already-sent IDs in Redis`);
   } else {
@@ -70,7 +81,9 @@ export async function GET(req: Request) {
 
   // Filter to only unsent posts
   const newPosts = posts.filter((p) => !sentIds.has(p.id));
-  console.log(`[broadcast] ${newPosts.length} new posts (${posts.length - newPosts.length} already sent)`);
+  console.log(
+    `[broadcast] ${newPosts.length} new posts (${posts.length - newPosts.length} already sent)`
+  );
 
   if (newPosts.length === 0) {
     return NextResponse.json({ sent: 0, total: 0, strikes: 0, feed: 0, message: "No new posts" });
@@ -108,7 +121,9 @@ export async function GET(req: Request) {
       // Spatial dedup: skip if a nearby strike was already broadcast recently
       const isDup = await isStrikeBroadcastDuplicate(post.lat!, post.lng!);
       if (isDup) {
-        console.log(`[broadcast] STRIKE DEDUP: ${post.id} → ${inc.location} (nearby strike already broadcast)`);
+        console.log(
+          `[broadcast] STRIKE DEDUP: ${post.id} → ${inc.location} (nearby strike already broadcast)`
+        );
         newSentIds.push(post.id); // Mark as sent so we don't retry
         continue;
       }
@@ -151,7 +166,7 @@ export async function GET(req: Request) {
     const size = await redis.scard(REDIS_BROADCAST_KEY);
     if (size > BROADCAST_SET_MAX_SIZE) {
       // Trim oldest half instead of nuking the entire set
-      const allMembers = await redis.smembers(REDIS_BROADCAST_KEY) as string[];
+      const allMembers = (await redis.smembers(REDIS_BROADCAST_KEY)) as string[];
       const toRemove = allMembers.slice(0, Math.floor(allMembers.length / 2));
       if (toRemove.length > 0) {
         await redis.srem(REDIS_BROADCAST_KEY, ...(toRemove as [string, ...string[]]));
@@ -159,6 +174,8 @@ export async function GET(req: Request) {
     }
   }
 
-  console.log(`[broadcast] Done: ${sent} sent (${strikes} strikes, ${feed} feed) out of ${newPosts.length} new`);
+  console.log(
+    `[broadcast] Done: ${sent} sent (${strikes} strikes, ${feed} feed) out of ${newPosts.length} new`
+  );
   return NextResponse.json({ sent, total: newPosts.length, strikes, feed });
 }

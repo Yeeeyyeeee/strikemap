@@ -76,14 +76,16 @@ export default function ChangelogPanel() {
             <div className="absolute left-[5px] top-[14px] bottom-[-12px] w-px bg-[#2a2a2a]" />
           )}
           {/* Timeline dot */}
-          <div className={`absolute left-0 top-[6px] w-[11px] h-[11px] rounded-full border-2 ${
-            i === 0
-              ? "border-red-500 bg-red-500/20"
-              : "border-neutral-600 bg-[#0a0a0a]"
-          }`} />
+          <div
+            className={`absolute left-0 top-[6px] w-[11px] h-[11px] rounded-full border-2 ${
+              i === 0 ? "border-red-500 bg-red-500/20" : "border-neutral-600 bg-[#0a0a0a]"
+            }`}
+          />
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] text-neutral-500 font-medium">{formatDate(entry.createdAt)}</span>
+              <span className="text-[10px] text-neutral-500 font-medium">
+                {formatDate(entry.createdAt)}
+              </span>
               <span className="text-[10px] text-neutral-600">{relativeTime(entry.createdAt)}</span>
             </div>
             <p className="text-sm md:text-xs text-neutral-300 leading-relaxed">{entry.text}</p>

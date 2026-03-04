@@ -20,7 +20,7 @@ export function greatCircleArc(
   from: LngLat,
   to: LngLat,
   numPoints = 64,
-  altitudeFactor = 0.15,
+  altitudeFactor = 0.15
 ): LngLat[] {
   const [lng1, lat1] = from;
   const [lng2, lat2] = to;
@@ -79,7 +79,7 @@ export function greatCircleArc(
       // Right perpendicular (dy, -dx) — arcs "above" the straight line
       // for typical east→west Middle East trajectories this means northward
       const perpLen = dist;
-      const perpDxAdj = dy / perpLen;   // in adjusted coords
+      const perpDxAdj = dy / perpLen; // in adjusted coords
       const perpDy = -dx / perpLen;
 
       // Convert perpendicular back to degrees (undo cosLat for longitude)
@@ -93,10 +93,7 @@ export function greatCircleArc(
       for (let i = 1; i < points.length - 1; i++) {
         const t = i / numPoints;
         const offset = maxOffset * Math.sin(Math.PI * t);
-        points[i] = [
-          points[i][0] + perpLng * offset,
-          points[i][1] + perpLat * offset,
-        ];
+        points[i] = [points[i][0] + perpLng * offset, points[i][1] + perpLat * offset];
       }
     }
   }
@@ -114,10 +111,7 @@ export function interpolateArc(arc: LngLat[], fraction: number): LngLat {
   const hi = Math.min(lo + 1, arc.length - 1);
   const t = idx - lo;
 
-  return [
-    arc[lo][0] + t * (arc[hi][0] - arc[lo][0]),
-    arc[lo][1] + t * (arc[hi][1] - arc[lo][1]),
-  ];
+  return [arc[lo][0] + t * (arc[hi][0] - arc[lo][0]), arc[lo][1] + t * (arc[hi][1] - arc[lo][1])];
 }
 
 /**
@@ -138,9 +132,7 @@ export function bearingAtArcPoint(arc: LngLat[], fraction: number): number {
   const phi2 = lat2 * DEG;
 
   const x = Math.sin(dLng) * Math.cos(phi2);
-  const y =
-    Math.cos(phi1) * Math.sin(phi2) -
-    Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
+  const y = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
 
-  return ((Math.atan2(x, y) * RAD) + 360) % 360;
+  return (Math.atan2(x, y) * RAD + 360) % 360;
 }

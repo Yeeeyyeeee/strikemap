@@ -139,7 +139,9 @@ export default memo(function FloatingWidget({
           }
         }
 
-        const contentEl = cardRef.current.querySelector("[data-widget-content]") as HTMLElement | null;
+        const contentEl = cardRef.current.querySelector(
+          "[data-widget-content]"
+        ) as HTMLElement | null;
         if (contentEl) contentEl.style.height = `${nh}px`;
 
         // Adjust top when dragging from top corners
@@ -198,7 +200,9 @@ export default memo(function FloatingWidget({
         document.body.style.userSelect = "";
         document.body.style.cursor = "";
         const w = parseInt(cardRef.current.style.width) || width;
-        const contentEl = cardRef.current.querySelector("[data-widget-content]") as HTMLElement | null;
+        const contentEl = cardRef.current.querySelector(
+          "[data-widget-content]"
+        ) as HTMLElement | null;
         const h = contentEl ? parseInt(contentEl.style.height) || undefined : undefined;
         onResize?.(id, snap(w), h ? snap(h) : undefined);
         // Persist position if origin moved (tl/bl/tr corners)
@@ -222,7 +226,18 @@ export default memo(function FloatingWidget({
       window.removeEventListener("touchend", onUp);
       window.removeEventListener("touchcancel", onUp);
     };
-  }, [id, position, width, height, minWidth, maxWidth, minHeight, maxHeight, onPositionChange, onResize]);
+  }, [
+    id,
+    position,
+    width,
+    height,
+    minWidth,
+    maxWidth,
+    minHeight,
+    maxHeight,
+    onPositionChange,
+    onResize,
+  ]);
 
   if (!mounted) return null;
 
@@ -311,7 +326,13 @@ export default memo(function FloatingWidget({
                 onMouseDown={(e) => e.stopPropagation()}
                 title="Add another instance"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
@@ -338,7 +359,13 @@ export default memo(function FloatingWidget({
               className="text-neutral-600 hover:text-red-400 transition-colors p-0.5"
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -347,7 +374,11 @@ export default memo(function FloatingWidget({
 
         {/* Content */}
         {!minimized && (
-          <div className="relative" data-widget-content style={height ? { height, overflow: "hidden" } : undefined}>
+          <div
+            className="relative"
+            data-widget-content
+            style={height ? { height, overflow: "hidden" } : undefined}
+          >
             {children}
           </div>
         )}

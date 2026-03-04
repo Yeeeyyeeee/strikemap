@@ -19,7 +19,5 @@ export default memo(function StrikeFlash({ active }: StrikeFlashProps) {
 
   if (!visible) return null;
 
-  return (
-    <div className="strike-flash fixed inset-0 z-[100] pointer-events-none" />
-  );
+  return <div className="strike-flash fixed inset-0 z-[100] pointer-events-none" />;
 });

@@ -86,9 +86,7 @@ export default memo(function WidgetPicker({
                     {instanceCount}
                   </span>
                 )}
-                {active && (
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                )}
+                {active && <span className="w-2 h-2 rounded-full bg-red-500" />}
               </div>
             </button>
           );

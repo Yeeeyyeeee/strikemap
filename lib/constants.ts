@@ -89,11 +89,11 @@ export const ALERT_AGE_CUTOFF_MS = 15 * 60 * 1000;
 // --- Interception outcomes ---
 export const REDIS_INTERCEPTION_OUTCOMES_KEY = "interception_outcomes_v1";
 export const REDIS_CLEARED_ALERTS_KEY = "cleared_alerts_v1";
-export const INTERCEPTION_OUTCOME_TTL_S = 600;                    // 10 min
-export const CLEARED_ALERT_TTL_S = 1800;                          // 30 min
-export const IDF_CHECK_INTERVAL_MS = 15_000;                      // 15s throttle
-export const INTERCEPTION_TIME_WINDOW_MS = 30 * 60 * 1000;        // 30 min match window
-export const INTERCEPTION_BANNER_AUTO_DISMISS_MS = 120_000;       // 2 min client auto-dismiss
+export const INTERCEPTION_OUTCOME_TTL_S = 600; // 10 min
+export const CLEARED_ALERT_TTL_S = 1800; // 30 min
+export const IDF_CHECK_INTERVAL_MS = 15_000; // 15s throttle
+export const INTERCEPTION_TIME_WINDOW_MS = 30 * 60 * 1000; // 30 min match window
+export const INTERCEPTION_BANNER_AUTO_DISMISS_MS = 120_000; // 2 min client auto-dismiss
 
 // --- Siren detection ---
 export const SIREN_POLL_MS = 5_000;
@@ -131,7 +131,21 @@ export const REDIS_CYBER_STATUS_KEY = "cyber_status_v1";
 
 // --- Alert country filter ---
 export const ALERT_FILTER_COUNTRIES = [
-  "Israel", "Iran", "Kuwait", "Jordan", "Cyprus", "Saudi Arabia",
-  "Qatar", "Bahrain", "UAE", "Yemen", "Lebanon", "Syria", "Iraq",
-  "Gaza", "Oman", "Turkey", "Pakistan",
+  "Israel",
+  "Iran",
+  "Kuwait",
+  "Jordan",
+  "Cyprus",
+  "Saudi Arabia",
+  "Qatar",
+  "Bahrain",
+  "UAE",
+  "Yemen",
+  "Lebanon",
+  "Syria",
+  "Iraq",
+  "Gaza",
+  "Oman",
+  "Turkey",
+  "Pakistan",
 ];

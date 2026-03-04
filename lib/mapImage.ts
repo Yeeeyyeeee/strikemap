@@ -15,10 +15,7 @@ const H2 = HEIGHT * 2;
 
 const WATERMARK_WIDTH = 240; // px wide in the @2x image
 
-export async function generateStrikeMapImage(
-  lat: number,
-  lng: number,
-): Promise<Buffer | null> {
+export async function generateStrikeMapImage(lat: number, lng: number): Promise<Buffer | null> {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   if (!token) {
     console.error("[mapImage] NEXT_PUBLIC_MAPBOX_TOKEN not set");
@@ -40,9 +37,7 @@ export async function generateStrikeMapImage(
 
     // Resize the twitter banner as a small watermark
     const bannerPath = path.join(process.cwd(), "public", "twitter-banner.png");
-    const watermark = await sharp(bannerPath)
-      .resize(WATERMARK_WIDTH, null)
-      .toBuffer();
+    const watermark = await sharp(bannerPath).resize(WATERMARK_WIDTH, null).toBuffer();
     const wmMeta = await sharp(watermark).metadata();
     const wmHeight = wmMeta.height || 80;
 

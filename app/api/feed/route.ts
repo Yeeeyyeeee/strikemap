@@ -17,15 +17,9 @@ export async function GET() {
 
   try {
     // Scrape latest posts from channels
-    const results = await Promise.all(
-      channels.map((ch) =>
-        scrapeChannel(ch).catch(() => [])
-      )
-    );
+    const results = await Promise.all(channels.map((ch) => scrapeChannel(ch).catch(() => [])));
 
-    const freshPosts = results
-      .flat()
-      .filter((p) => p.text && p.text.trim().length > 0);
+    const freshPosts = results.flat().filter((p) => p.text && p.text.trim().length > 0);
 
     // Load stored history from Redis and merge
     const redis = getRedis();
@@ -61,16 +55,18 @@ export async function GET() {
     const mediaToPostWithText = new Map<string, string>();
     for (const p of merged) {
       if (p.text.trim().length > 20) {
-        for (const url of (p.imageUrls || [])) mediaToPostWithText.set(url, p.id);
+        for (const url of p.imageUrls || []) mediaToPostWithText.set(url, p.id);
         if (p.videoUrl) mediaToPostWithText.set(p.videoUrl, p.id);
       }
     }
-    const posts = merged.filter((p) => {
-      if (p.text.trim().length > 20) return true;
-      const urls = [...(p.imageUrls || []), ...(p.videoUrl ? [p.videoUrl] : [])];
-      if (urls.length > 0 && urls.some((u) => mediaToPostWithText.has(u))) return false;
-      return true;
-    }).slice(0, FEED_MAX_STORED_POSTS);
+    const posts = merged
+      .filter((p) => {
+        if (p.text.trim().length > 20) return true;
+        const urls = [...(p.imageUrls || []), ...(p.videoUrl ? [p.videoUrl] : [])];
+        if (urls.length > 0 && urls.some((u) => mediaToPostWithText.has(u))) return false;
+        return true;
+      })
+      .slice(0, FEED_MAX_STORED_POSTS);
 
     // Deduplicate near-identical posts (same news from multiple channels)
     const dedupedPosts = deduplicatePosts(posts);

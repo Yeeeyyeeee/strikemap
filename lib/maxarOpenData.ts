@@ -37,7 +37,7 @@ export async function checkMaxarCoverage(
   lat: number,
   lng: number,
   dateFrom: string,
-  dateTo: string,
+  dateTo: string
 ): Promise<MaxarScene | null> {
   // Check Redis cache first
   const redis = getRedis();
@@ -66,9 +66,7 @@ export async function checkMaxarCoverage(
     const links: { href: string; title?: string }[] = catalog.links || [];
 
     // Filter for "child" links (event collections)
-    const childLinks = links.filter(
-      (l: any) => l.rel === "child" && l.href,
-    );
+    const childLinks = links.filter((l: any) => l.rel === "child" && l.href);
 
     // Search each event collection for matching imagery
     // Limit to most recent 20 events to avoid excessive requests
@@ -81,9 +79,10 @@ export async function checkMaxarCoverage(
       const batch = recentLinks.slice(i, i + 5);
       const batchResults = await Promise.all(
         batch.map((link) =>
-          searchEventCollection(link.href, link.title || "", lat, lng, dateFrom, dateTo)
-            .catch(() => null),
-        ),
+          searchEventCollection(link.href, link.title || "", lat, lng, dateFrom, dateTo).catch(
+            () => null
+          )
+        )
       );
       for (const r of batchResults) {
         if (r) results.push(r);
@@ -113,7 +112,7 @@ async function searchEventCollection(
   lat: number,
   lng: number,
   dateFrom: string,
-  dateTo: string,
+  dateTo: string
 ): Promise<MaxarScene | null> {
   // Resolve relative URLs against STAC root
   const fullUrl = collectionUrl.startsWith("http")
@@ -147,9 +146,7 @@ async function searchEventCollection(
   }
 
   // Find item links in the collection
-  const itemLinks = (collection.links || []).filter(
-    (l: any) => l.rel === "item" && l.href,
-  );
+  const itemLinks = (collection.links || []).filter((l: any) => l.rel === "item" && l.href);
 
   // Check first few items for actual coverage
   for (const itemLink of itemLinks.slice(0, 5)) {
@@ -172,13 +169,10 @@ async function searchEventCollection(
 
       // Extract image asset URL
       const assets = item.assets || {};
-      const visualAsset =
-        assets.visual || assets.image || assets.data || Object.values(assets)[0];
+      const visualAsset = assets.visual || assets.image || assets.data || Object.values(assets)[0];
       if (!visualAsset || !visualAsset.href) continue;
 
-      const gsd = item.properties?.gsd ||
-        item.properties?.["eo:gsd"] ||
-        0.5; // default 50cm
+      const gsd = item.properties?.gsd || item.properties?.["eo:gsd"] || 0.5; // default 50cm
 
       return {
         id: item.id || "unknown",
@@ -203,9 +197,7 @@ async function searchEventCollection(
  * These are Cloud-Optimized GeoTIFFs (COG); we fetch the full file
  * and convert to PNG with Sharp.
  */
-export async function downloadMaxarImage(
-  scene: MaxarScene,
-): Promise<Buffer | null> {
+export async function downloadMaxarImage(scene: MaxarScene): Promise<Buffer | null> {
   try {
     const res = await fetch(scene.imageUrl, {
       signal: AbortSignal.timeout(30000),
@@ -232,15 +224,11 @@ export async function downloadMaxarImage(
 async function cacheAndReturn(
   redis: ReturnType<typeof getRedis>,
   key: string,
-  result: MaxarScene | null,
+  result: MaxarScene | null
 ): Promise<MaxarScene | null> {
   if (redis) {
     try {
-      await redis.set(
-        key,
-        result ? JSON.stringify(result) : "none",
-        { ex: MAXAR_CACHE_TTL_S },
-      );
+      await redis.set(key, result ? JSON.stringify(result) : "none", { ex: MAXAR_CACHE_TTL_S });
     } catch {}
   }
   return result;

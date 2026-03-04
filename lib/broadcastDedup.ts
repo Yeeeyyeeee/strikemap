@@ -22,9 +22,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -32,10 +30,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
  * Check if a strike at this location was already broadcast recently.
  * Returns true if duplicate (should skip), false if new (should broadcast).
  */
-export async function isStrikeBroadcastDuplicate(
-  lat: number,
-  lng: number,
-): Promise<boolean> {
+export async function isStrikeBroadcastDuplicate(lat: number, lng: number): Promise<boolean> {
   const redis = getRedis();
   if (!redis) return false; // No Redis = can't dedup, allow it
 
@@ -44,12 +39,9 @@ export async function isStrikeBroadcastDuplicate(
 
   try {
     // Get all recent broadcast strike locations (score = timestamp)
-    const entries = await redis.zrange(
-      BROADCAST_STRIKE_DEDUP_KEY,
-      cutoff,
-      "+inf",
-      { byScore: true },
-    ) as string[];
+    const entries = (await redis.zrange(BROADCAST_STRIKE_DEDUP_KEY, cutoff, "+inf", {
+      byScore: true,
+    })) as string[];
 
     if (!entries || entries.length === 0) return false;
 
@@ -74,10 +66,7 @@ export async function isStrikeBroadcastDuplicate(
  * Record that a strike at this location was broadcast.
  * Called after successfully sending a strike alert.
  */
-export async function recordStrikeBroadcast(
-  lat: number,
-  lng: number,
-): Promise<void> {
+export async function recordStrikeBroadcast(lat: number, lng: number): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
 

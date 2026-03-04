@@ -10,7 +10,9 @@ interface AlertPollingOptions {
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   sendNotification?: (title: string, options: NotificationOptions) => void;
-  mapInstance?: { flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void } | null;
+  mapInstance?: {
+    flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void;
+  } | null;
   alertCountries?: string[] | "all";
 }
 

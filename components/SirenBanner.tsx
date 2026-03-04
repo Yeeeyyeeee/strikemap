@@ -40,13 +40,29 @@ export default memo(function SirenBanner({ alerts, israelRegions = [] }: SirenBa
             className="absolute top-1.5 right-1.5 text-white/40 hover:text-white transition-colors p-1"
             aria-label="Dismiss alert"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
           <div className="flex items-center justify-center gap-2">
-            <svg className="w-5 h-5 text-red-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-5 h-5 text-red-400 shrink-0 animate-pulse"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
@@ -56,7 +72,15 @@ export default memo(function SirenBanner({ alerts, israelRegions = [] }: SirenBa
             >
               Sirens going off in: {regionDisplay}
             </span>
-            <svg className="w-5 h-5 text-red-400 shrink-0 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-5 h-5 text-red-400 shrink-0 animate-pulse"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
@@ -75,13 +99,29 @@ export default memo(function SirenBanner({ alerts, israelRegions = [] }: SirenBa
             className="absolute top-1.5 right-1.5 text-white/40 hover:text-white transition-colors p-1"
             aria-label="Dismiss alert"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
           <div className="flex items-center justify-center gap-2">
-            <svg className="w-5 h-5 text-white shrink-0 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-5 h-5 text-white shrink-0 animate-pulse"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
@@ -91,14 +131,25 @@ export default memo(function SirenBanner({ alerts, israelRegions = [] }: SirenBa
             >
               Sirens reported in {countryText} — take shelter
             </span>
-            <svg className="w-5 h-5 text-white shrink-0 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="w-5 h-5 text-white shrink-0 animate-pulse"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
           </div>
           <p className="text-[10px] text-white/50 mt-1 text-center">
             via Telegram{alerts.length > 1 ? ` (${alerts.length} reports)` : ""} &bull;{" "}
-            {new Date(alerts[0].activatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {new Date(alerts[0].activatedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </p>
         </div>
       )}
@@ -144,49 +195,107 @@ function getRegionBucket(area: string): "north" | "central" | "south" | "other" 
 
   // Northern regions
   if (
-    a.includes("galil") || a.includes("golan") || a.includes("haifa") ||
-    a.includes("akko") || a.includes("acre") || a.includes("krayot") ||
-    a.includes("carmel") || a.includes("jezreel") || a.includes("yizrael") ||
-    a.includes("menashe") || a.includes("gilboa") || a.includes("safed") ||
-    a.includes("tzfat") || a.includes("tiberias") || a.includes("tveria") ||
-    a.includes("upper") || a.includes("north") || a.includes("finger") ||
-    a.includes("hula") || a.includes("kineret") || a.includes("kinneret") ||
-    a.includes("beit shean") || a.includes("wadi ara") || a.includes("megido") ||
-    a.includes("nazareth") || a.includes("natzrat") || a.includes("zevulun") ||
-    a === "emek" || a.includes("iron")
+    a.includes("galil") ||
+    a.includes("golan") ||
+    a.includes("haifa") ||
+    a.includes("akko") ||
+    a.includes("acre") ||
+    a.includes("krayot") ||
+    a.includes("carmel") ||
+    a.includes("jezreel") ||
+    a.includes("yizrael") ||
+    a.includes("menashe") ||
+    a.includes("gilboa") ||
+    a.includes("safed") ||
+    a.includes("tzfat") ||
+    a.includes("tiberias") ||
+    a.includes("tveria") ||
+    a.includes("upper") ||
+    a.includes("north") ||
+    a.includes("finger") ||
+    a.includes("hula") ||
+    a.includes("kineret") ||
+    a.includes("kinneret") ||
+    a.includes("beit shean") ||
+    a.includes("wadi ara") ||
+    a.includes("megido") ||
+    a.includes("nazareth") ||
+    a.includes("natzrat") ||
+    a.includes("zevulun") ||
+    a === "emek" ||
+    a.includes("iron")
   ) {
     return "north";
   }
 
   // Southern regions
   if (
-    a.includes("negev") || a.includes("arava") || a.includes("beer sheva") ||
-    a.includes("be'er sheva") || a.includes("dead sea") || a.includes("eilat") ||
-    a.includes("eshkol") || a.includes("sderot") || a.includes("gaza") ||
-    a.includes("otef") || a.includes("lakhish") || a.includes("south") ||
-    a.includes("ashkelon") || a.includes("kiryat gat") || a.includes("arad") ||
-    a.includes("dimona") || a.includes("mitzpe ramon") || a.includes("rahat") ||
-    a.includes("hof ashkelon") || a.includes("sha'ar hanegev") ||
-    a.includes("sdot negev") || a.includes("bnei shimon") || a.includes("merhavim") ||
-    a.includes("tamar") || a.includes("yoav")
+    a.includes("negev") ||
+    a.includes("arava") ||
+    a.includes("beer sheva") ||
+    a.includes("be'er sheva") ||
+    a.includes("dead sea") ||
+    a.includes("eilat") ||
+    a.includes("eshkol") ||
+    a.includes("sderot") ||
+    a.includes("gaza") ||
+    a.includes("otef") ||
+    a.includes("lakhish") ||
+    a.includes("south") ||
+    a.includes("ashkelon") ||
+    a.includes("kiryat gat") ||
+    a.includes("arad") ||
+    a.includes("dimona") ||
+    a.includes("mitzpe ramon") ||
+    a.includes("rahat") ||
+    a.includes("hof ashkelon") ||
+    a.includes("sha'ar hanegev") ||
+    a.includes("sdot negev") ||
+    a.includes("bnei shimon") ||
+    a.includes("merhavim") ||
+    a.includes("tamar") ||
+    a.includes("yoav")
   ) {
     return "south";
   }
 
   // Central regions
   if (
-    a.includes("dan") || a.includes("tel aviv") || a.includes("gush dan") ||
-    a.includes("sharon") || a.includes("shfela") || a.includes("shephelah") ||
-    a.includes("hashfela") || a.includes("jerusalem") || a.includes("yerushalayim") ||
-    a.includes("judea") || a.includes("samaria") || a.includes("shomron") ||
-    a.includes("central") || a.includes("merkaz") || a.includes("netanya") ||
-    a.includes("petah tikva") || a.includes("rehovot") || a.includes("ramla") ||
-    a.includes("lod") || a.includes("rishon") || a.includes("holon") ||
-    a.includes("bat yam") || a.includes("ramat gan") || a.includes("herzliya") ||
-    a.includes("kfar saba") || a.includes("ra'anana") || a.includes("hod hasharon") ||
-    a.includes("modiin") || a.includes("beit shemesh") || a.includes("ashdod") ||
-    a.includes("gedera") || a.includes("yavne") || a.includes("inner") ||
-    a.includes("coastal") || a.includes("emek hefer")
+    a.includes("dan") ||
+    a.includes("tel aviv") ||
+    a.includes("gush dan") ||
+    a.includes("sharon") ||
+    a.includes("shfela") ||
+    a.includes("shephelah") ||
+    a.includes("hashfela") ||
+    a.includes("jerusalem") ||
+    a.includes("yerushalayim") ||
+    a.includes("judea") ||
+    a.includes("samaria") ||
+    a.includes("shomron") ||
+    a.includes("central") ||
+    a.includes("merkaz") ||
+    a.includes("netanya") ||
+    a.includes("petah tikva") ||
+    a.includes("rehovot") ||
+    a.includes("ramla") ||
+    a.includes("lod") ||
+    a.includes("rishon") ||
+    a.includes("holon") ||
+    a.includes("bat yam") ||
+    a.includes("ramat gan") ||
+    a.includes("herzliya") ||
+    a.includes("kfar saba") ||
+    a.includes("ra'anana") ||
+    a.includes("hod hasharon") ||
+    a.includes("modiin") ||
+    a.includes("beit shemesh") ||
+    a.includes("ashdod") ||
+    a.includes("gedera") ||
+    a.includes("yavne") ||
+    a.includes("inner") ||
+    a.includes("coastal") ||
+    a.includes("emek hefer")
   ) {
     return "central";
   }

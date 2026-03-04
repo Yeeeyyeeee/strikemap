@@ -56,7 +56,10 @@ const reportSchema: ResponseSchema = {
       items: {
         type: SchemaType.OBJECT,
         properties: {
-          time: { type: SchemaType.STRING, description: "Timestamp, e.g. '14:30 UTC' or 'Morning'" },
+          time: {
+            type: SchemaType.STRING,
+            description: "Timestamp, e.g. '14:30 UTC' or 'Morning'",
+          },
           event: { type: SchemaType.STRING, description: "What happened" },
           location: { type: SchemaType.STRING, description: "Where it happened" },
         },
@@ -163,9 +166,10 @@ function formatIncident(inc: Incident): string {
 
 function formatPost(post: FeedPost): string {
   const ts = post.timestamp || post.date || "";
-  const text = post.text.length > POST_TRUNCATE_LEN
-    ? post.text.slice(0, POST_TRUNCATE_LEN) + "..."
-    : post.text;
+  const text =
+    post.text.length > POST_TRUNCATE_LEN
+      ? post.text.slice(0, POST_TRUNCATE_LEN) + "..."
+      : post.text;
   return `[${ts}] [${post.channelUsername || post.channel}] ${text}`;
 }
 
@@ -256,7 +260,8 @@ export async function GET(request: NextRequest) {
         locations_affected: [],
         overall_damage_level: "low",
       },
-      threat_assessment: "Insufficient data for threat assessment. Situation remains under observation.",
+      threat_assessment:
+        "Insufficient data for threat assessment. Situation remains under observation.",
       sources_summary: `0 incidents and 0 feed posts analyzed for this ${period}-hour period.`,
       generatedAt: new Date().toISOString(),
       period: parseInt(period),
@@ -286,7 +291,12 @@ ${postLines || "(none)"}`;
     return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
   }
 
-  const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
+  const MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
+  ];
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -357,6 +367,9 @@ ${postLines || "(none)"}`;
         { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
       );
     }
-    return NextResponse.json({ error: "Failed to generate briefing", detail: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate briefing", detail: msg },
+      { status: 500 }
+    );
   }
 }

@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { isAdminRequest } from "@/lib/adminAuth";
-import { REDIS_CHAT_KEY, REDIS_CHAT_BANS_KEY, REDIS_CHAT_NICKNAMES_KEY, REDIS_CHAT_PINNED_KEY, REDIS_CHAT_LIKES_KEY, NICKNAME_RESERVE_TTL_MS, CHAT_MAX_MESSAGES, CHAT_MESSAGE_TTL_MS } from "@/lib/constants";
+import {
+  REDIS_CHAT_KEY,
+  REDIS_CHAT_BANS_KEY,
+  REDIS_CHAT_NICKNAMES_KEY,
+  REDIS_CHAT_PINNED_KEY,
+  REDIS_CHAT_LIKES_KEY,
+  NICKNAME_RESERVE_TTL_MS,
+  CHAT_MAX_MESSAGES,
+  CHAT_MESSAGE_TTL_MS,
+} from "@/lib/constants";
 import { containsProfanity, isOffensiveNickname } from "@/lib/profanityFilter";
 
 interface ChatMessage {
@@ -30,13 +39,13 @@ async function getMessages(since: number): Promise<ChatMessage[]> {
   }
 
   try {
-    const raw = await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1) as string[];
+    const raw = (await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1)) as string[];
     if (!raw || raw.length === 0) return [];
 
     const cutoff = Date.now() - CHAT_MESSAGE_TTL_MS;
     const messages: ChatMessage[] = [];
     for (const item of raw) {
-      const msg: ChatMessage = typeof item === "string" ? JSON.parse(item) : item as ChatMessage;
+      const msg: ChatMessage = typeof item === "string" ? JSON.parse(item) : (item as ChatMessage);
       if (msg.timestamp > cutoff && (since === 0 || msg.timestamp > since)) {
         messages.push(msg);
       }
@@ -75,9 +84,10 @@ async function isNicknameTaken(nickname: string, clientId: string): Promise<bool
   const r = getRedis();
   if (!r) return false;
   try {
-    const raw = await r.hget(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase()) as string | null;
+    const raw = (await r.hget(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase())) as string | null;
     if (!raw) return false;
-    const entry = typeof raw === "string" ? JSON.parse(raw) : raw as { clientId: string; timestamp: number };
+    const entry =
+      typeof raw === "string" ? JSON.parse(raw) : (raw as { clientId: string; timestamp: number });
     // Same client reconnecting — not taken
     if (entry.clientId === clientId) return false;
     // Different client — check if expired
@@ -93,7 +103,11 @@ async function claimNickname(nickname: string, clientId: string, flag?: string):
   const r = getRedis();
   if (!r) return;
   await r.hset(REDIS_CHAT_NICKNAMES_KEY, {
-    [nickname.toLowerCase()]: JSON.stringify({ clientId, timestamp: Date.now(), ...(flag !== undefined ? { flag } : {}) }),
+    [nickname.toLowerCase()]: JSON.stringify({
+      clientId,
+      timestamp: Date.now(),
+      ...(flag !== undefined ? { flag } : {}),
+    }),
   });
 }
 
@@ -102,9 +116,9 @@ async function releaseNickname(nickname: string, clientId: string): Promise<void
   const r = getRedis();
   if (!r) return;
   try {
-    const raw = await r.hget(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase()) as string | null;
+    const raw = (await r.hget(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase())) as string | null;
     if (!raw) return;
-    const entry = typeof raw === "string" ? JSON.parse(raw) : raw as { clientId: string };
+    const entry = typeof raw === "string" ? JSON.parse(raw) : (raw as { clientId: string });
     // Only release if this client owns it
     if (entry.clientId === clientId) {
       await r.hdel(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase());
@@ -119,7 +133,7 @@ async function getPinnedMessage(): Promise<ChatMessage | null> {
   try {
     const raw = await r.get(REDIS_CHAT_PINNED_KEY);
     if (!raw) return null;
-    return typeof raw === "string" ? JSON.parse(raw) : raw as ChatMessage;
+    return typeof raw === "string" ? JSON.parse(raw) : (raw as ChatMessage);
   } catch {
     return null;
   }
@@ -175,13 +189,17 @@ export async function POST(req: NextRequest) {
       if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
 
       if (body.action === "ban") {
-        const target = String(body.nickname || "").trim().toLowerCase();
+        const target = String(body.nickname || "")
+          .trim()
+          .toLowerCase();
         if (!target) return NextResponse.json({ error: "Nickname required" }, { status: 400 });
         await r.sadd(REDIS_CHAT_BANS_KEY, target);
         return NextResponse.json({ ok: true, banned: target });
       }
       if (body.action === "unban") {
-        const target = String(body.nickname || "").trim().toLowerCase();
+        const target = String(body.nickname || "")
+          .trim()
+          .toLowerCase();
         if (!target) return NextResponse.json({ error: "Nickname required" }, { status: 400 });
         await r.srem(REDIS_CHAT_BANS_KEY, target);
         return NextResponse.json({ ok: true, unbanned: target });
@@ -248,10 +266,14 @@ export async function POST(req: NextRequest) {
 
     // Nickname claim/check actions
     if (body.action === "claim-nickname") {
-      const nick = String(body.nickname || "").trim().slice(0, 20);
+      const nick = String(body.nickname || "")
+        .trim()
+        .slice(0, 20);
       const clientId = String(body.clientId || "").trim();
-      if (!nick || !clientId) return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
-      if (isOffensiveNickname(nick)) return NextResponse.json({ error: "That username is not allowed" }, { status: 400 });
+      if (!nick || !clientId)
+        return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
+      if (isOffensiveNickname(nick))
+        return NextResponse.json({ error: "That username is not allowed" }, { status: 400 });
 
       const taken = await isNicknameTaken(nick, clientId);
       if (taken) return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
@@ -271,21 +293,29 @@ export async function POST(req: NextRequest) {
       const clientId = String(body.clientId || "").trim();
       const nickname = String(body.nickname || "").trim();
       const flag = body.flag ? String(body.flag).slice(0, 4) : "";
-      if (!clientId || !nickname) return NextResponse.json({ error: "clientId and nickname required" }, { status: 400 });
+      if (!clientId || !nickname)
+        return NextResponse.json({ error: "clientId and nickname required" }, { status: 400 });
       await claimNickname(nickname, clientId, flag);
       return NextResponse.json({ ok: true, flag });
     }
 
     if (body.action === "check-nickname") {
-      const nick = String(body.nickname || "").trim().slice(0, 20);
+      const nick = String(body.nickname || "")
+        .trim()
+        .slice(0, 20);
       const clientId = String(body.clientId || "").trim();
-      if (!nick || !clientId) return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
+      if (!nick || !clientId)
+        return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
       const taken = await isNicknameTaken(nick, clientId);
       return NextResponse.json({ available: !taken });
     }
 
-    const text = String(body.text || "").trim().slice(0, 500);
-    const nickname = String(body.nickname || "Anon").trim().slice(0, 20);
+    const text = String(body.text || "")
+      .trim()
+      .slice(0, 500);
+    const nickname = String(body.nickname || "Anon")
+      .trim()
+      .slice(0, 20);
     const flag = body.flag ? String(body.flag).slice(0, 4) : undefined;
 
     if (!text) {
@@ -298,7 +328,10 @@ export async function POST(req: NextRequest) {
     }
     const blockedWord = containsProfanity(text);
     if (blockedWord) {
-      return NextResponse.json({ error: "Message contains inappropriate content" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Message contains inappropriate content" },
+        { status: 400 }
+      );
     }
 
     const isDev = isAdminRequest(req);

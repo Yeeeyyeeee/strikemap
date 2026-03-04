@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import {
-  REDIS_WIKIPEDIA_CASUALTIES_KEY,
-  WIKIPEDIA_CASUALTIES_TTL_S,
-} from "@/lib/constants";
+import { REDIS_WIKIPEDIA_CASUALTIES_KEY, WIKIPEDIA_CASUALTIES_TTL_S } from "@/lib/constants";
 
 interface SideCasualties {
   killed: number;
@@ -20,13 +17,9 @@ export interface CasualtyData {
   articles: string[];
 }
 
-const WIKIPEDIA_ARTICLES = [
-  "2026_Iran_conflict",
-];
+const WIKIPEDIA_ARTICLES = ["2026_Iran_conflict"];
 
-const ARTICLE_DISPLAY_NAMES = [
-  "2026 Iran conflict",
-];
+const ARTICLE_DISPLAY_NAMES = ["2026 Iran conflict"];
 
 /**
  * Strip wikitext markup: refs, templates, wiki links, HTML tags.
@@ -79,7 +72,8 @@ function extractKilled(text: string): number {
   if (best > 0) return best;
 
   // Pattern 2: "N word(s) and N word(s) killed" (e.g. "32 civilians and 1 soldier killed")
-  const compoundPattern = /(\d[\d,]*)\+?\s+\w[\w\s-]*?\s+and\s+(\d[\d,]*)\+?\s+\w[\w\s-]*?\s*killed/gi;
+  const compoundPattern =
+    /(\d[\d,]*)\+?\s+\w[\w\s-]*?\s+and\s+(\d[\d,]*)\+?\s+\w[\w\s-]*?\s*killed/gi;
   while ((match = compoundPattern.exec(clean)) !== null) {
     const n1 = parseInt((match[1] || "0").replace(/,/g, ""), 10);
     const n2 = parseInt((match[2] || "0").replace(/,/g, ""), 10);
@@ -114,7 +108,8 @@ function extractMilitary(text: string): number {
   if (!text) return 0;
   const clean = stripWikiMarkup(text);
   // "N soldiers killed" or "N military personnel killed"
-  const milKilledPattern = /(\d[\d,]*)\+?\s*(?:soldiers?|military\s*personnel|military|combatants?|troops?|personnel|servicemen|fighters?)\s*(?:killed|dead)/gi;
+  const milKilledPattern =
+    /(\d[\d,]*)\+?\s*(?:soldiers?|military\s*personnel|military|combatants?|troops?|personnel|servicemen|fighters?)\s*(?:killed|dead)/gi;
   let best = 0;
   let match;
   while ((match = milKilledPattern.exec(clean)) !== null) {
@@ -122,7 +117,8 @@ function extractMilitary(text: string): number {
   }
   if (best > 0) return best;
   // Also handle parenthetical breakdowns: "killed (... N military personnel ...)"
-  const breakdownPattern = /(\d[\d,]*)\+?\s*(?:soldiers?|military\s*personnel|military|combatants?|troops?|personnel|servicemen|fighters?)/gi;
+  const breakdownPattern =
+    /(\d[\d,]*)\+?\s*(?:soldiers?|military\s*personnel|military|combatants?|troops?|personnel|servicemen|fighters?)/gi;
   while ((match = breakdownPattern.exec(clean)) !== null) {
     best = Math.max(best, parseInt((match[1] || "0").replace(/,/g, ""), 10));
   }
@@ -232,9 +228,18 @@ function parseInfoboxCasualties(wikitext: string): CasualtyData {
     // (strip refs/templates first to avoid false matches from citation titles)
     if (!side) {
       const cleanLower = stripWikiMarkup(text).toLowerCase();
-      if (cleanLower.includes("iran") || cleanLower.includes("irgc") || cleanLower.includes("persian")) {
+      if (
+        cleanLower.includes("iran") ||
+        cleanLower.includes("irgc") ||
+        cleanLower.includes("persian")
+      ) {
         side = "iran";
-      } else if (cleanLower.includes("israel") || cleanLower.includes("idf") || cleanLower.includes("united states") || cleanLower.includes("american")) {
+      } else if (
+        cleanLower.includes("israel") ||
+        cleanLower.includes("idf") ||
+        cleanLower.includes("united states") ||
+        cleanLower.includes("american")
+      ) {
         side = "usIsrael";
       }
     }
@@ -266,7 +271,10 @@ const MANUAL_OVERRIDES: Partial<Record<"iran" | "usIsrael", Partial<SideCasualti
 };
 
 function applyOverrides(data: CasualtyData): CasualtyData {
-  for (const [side, overrides] of Object.entries(MANUAL_OVERRIDES) as [keyof typeof MANUAL_OVERRIDES, Partial<SideCasualties>][]) {
+  for (const [side, overrides] of Object.entries(MANUAL_OVERRIDES) as [
+    keyof typeof MANUAL_OVERRIDES,
+    Partial<SideCasualties>,
+  ][]) {
     if (!side || !overrides) continue;
     for (const [field, value] of Object.entries(overrides) as [keyof SideCasualties, number][]) {
       if (value !== undefined) {
@@ -352,11 +360,9 @@ export async function GET(request: Request) {
 
     // Cache in Redis
     if (redis) {
-      await redis.set(
-        REDIS_WIKIPEDIA_CASUALTIES_KEY,
-        JSON.stringify(data),
-        { ex: WIKIPEDIA_CASUALTIES_TTL_S }
-      );
+      await redis.set(REDIS_WIKIPEDIA_CASUALTIES_KEY, JSON.stringify(data), {
+        ex: WIKIPEDIA_CASUALTIES_TTL_S,
+      });
     }
 
     return NextResponse.json(data, {
@@ -366,9 +372,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error("Failed to fetch Wikipedia casualties:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch casualty data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch casualty data" }, { status: 500 });
   }
 }

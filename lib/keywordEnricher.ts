@@ -17,215 +17,841 @@ interface LocationEntry {
 // Ordered by specificity — more specific entries first
 const LOCATIONS: LocationEntry[] = [
   // ---- Israeli military ----
-  { keywords: ["nevatim"], location: "Nevatim Air Base, Israel", lat: 31.21, lng: 34.87, military: true },
-  { keywords: ["ramat david"], location: "Ramat David Air Base, Israel", lat: 32.67, lng: 35.18, military: true },
-  { keywords: ["hatzerim"], location: "Hatzerim Air Base, Israel", lat: 31.23, lng: 34.66, military: true },
-  { keywords: ["palmachim"], location: "Palmachim Air Base, Israel", lat: 31.89, lng: 34.68, military: true },
-  { keywords: ["ramon", "ramon airbase", "ramon air base"], location: "Ramon Air Base, Israel", lat: 30.78, lng: 34.67, military: true },
-  { keywords: ["dimona", "negev nuclear"], location: "Dimona Nuclear Facility, Israel", lat: 31.00, lng: 35.15, military: true },
-  { keywords: ["haifa naval", "haifa port", "haifa base"], location: "Haifa Naval Base, Israel", lat: 32.82, lng: 34.98, military: true },
-  { keywords: ["tel nof"], location: "Tel Nof Air Base, Israel", lat: 31.84, lng: 34.82, military: true },
-  { keywords: ["sdot micha", "jericho missile"], location: "Sdot Micha Base, Israel", lat: 31.73, lng: 34.96, military: true },
-  { keywords: ["iron dome"], location: "Iron Dome Battery, Israel", lat: 31.80, lng: 34.78, military: true },
+  {
+    keywords: ["nevatim"],
+    location: "Nevatim Air Base, Israel",
+    lat: 31.21,
+    lng: 34.87,
+    military: true,
+  },
+  {
+    keywords: ["ramat david"],
+    location: "Ramat David Air Base, Israel",
+    lat: 32.67,
+    lng: 35.18,
+    military: true,
+  },
+  {
+    keywords: ["hatzerim"],
+    location: "Hatzerim Air Base, Israel",
+    lat: 31.23,
+    lng: 34.66,
+    military: true,
+  },
+  {
+    keywords: ["palmachim"],
+    location: "Palmachim Air Base, Israel",
+    lat: 31.89,
+    lng: 34.68,
+    military: true,
+  },
+  {
+    keywords: ["ramon", "ramon airbase", "ramon air base"],
+    location: "Ramon Air Base, Israel",
+    lat: 30.78,
+    lng: 34.67,
+    military: true,
+  },
+  {
+    keywords: ["dimona", "negev nuclear"],
+    location: "Dimona Nuclear Facility, Israel",
+    lat: 31.0,
+    lng: 35.15,
+    military: true,
+  },
+  {
+    keywords: ["haifa naval", "haifa port", "haifa base"],
+    location: "Haifa Naval Base, Israel",
+    lat: 32.82,
+    lng: 34.98,
+    military: true,
+  },
+  {
+    keywords: ["tel nof"],
+    location: "Tel Nof Air Base, Israel",
+    lat: 31.84,
+    lng: 34.82,
+    military: true,
+  },
+  {
+    keywords: ["sdot micha", "jericho missile"],
+    location: "Sdot Micha Base, Israel",
+    lat: 31.73,
+    lng: 34.96,
+    military: true,
+  },
+  {
+    keywords: ["iron dome"],
+    location: "Iron Dome Battery, Israel",
+    lat: 31.8,
+    lng: 34.78,
+    military: true,
+  },
 
   // ---- Israeli cities ----
-  { keywords: ["tel aviv"], location: "Tel Aviv, Israel", lat: 32.085, lng: 34.782, military: false },
-  { keywords: ["jerusalem", "al-quds"], location: "Jerusalem, Israel", lat: 31.769, lng: 35.216, military: false },
-  { keywords: ["haifa"], location: "Haifa, Israel", lat: 32.794, lng: 34.990, military: false },
-  { keywords: ["beer sheva", "be'er sheva", "beersheba"], location: "Beer Sheva, Israel", lat: 31.252, lng: 34.791, military: false },
-  { keywords: ["ashkelon"], location: "Ashkelon, Israel", lat: 31.668, lng: 34.571, military: false },
+  {
+    keywords: ["tel aviv"],
+    location: "Tel Aviv, Israel",
+    lat: 32.085,
+    lng: 34.782,
+    military: false,
+  },
+  {
+    keywords: ["jerusalem", "al-quds"],
+    location: "Jerusalem, Israel",
+    lat: 31.769,
+    lng: 35.216,
+    military: false,
+  },
+  { keywords: ["haifa"], location: "Haifa, Israel", lat: 32.794, lng: 34.99, military: false },
+  {
+    keywords: ["beer sheva", "be'er sheva", "beersheba"],
+    location: "Beer Sheva, Israel",
+    lat: 31.252,
+    lng: 34.791,
+    military: false,
+  },
+  {
+    keywords: ["ashkelon"],
+    location: "Ashkelon, Israel",
+    lat: 31.668,
+    lng: 34.571,
+    military: false,
+  },
   { keywords: ["ashdod"], location: "Ashdod, Israel", lat: 31.804, lng: 34.655, military: false },
   { keywords: ["netanya"], location: "Netanya, Israel", lat: 32.332, lng: 34.857, military: false },
   { keywords: ["eilat"], location: "Eilat, Israel", lat: 29.558, lng: 34.952, military: false },
-  { keywords: ["tiberias"], location: "Tiberias, Israel", lat: 32.796, lng: 35.530, military: false },
-  { keywords: ["herzliya"], location: "Herzliya, Israel", lat: 32.162, lng: 34.779, military: false },
-  { keywords: ["petah tikva"], location: "Petah Tikva, Israel", lat: 32.087, lng: 34.886, military: false },
-  { keywords: ["rishon lezion"], location: "Rishon LeZion, Israel", lat: 31.964, lng: 34.804, military: false },
-  { keywords: ["nazareth"], location: "Nazareth, Israel", lat: 32.699, lng: 35.304, military: false },
-  { keywords: ["golan"], location: "Golan Heights", lat: 33.00, lng: 35.80, military: true },
+  {
+    keywords: ["tiberias"],
+    location: "Tiberias, Israel",
+    lat: 32.796,
+    lng: 35.53,
+    military: false,
+  },
+  {
+    keywords: ["herzliya"],
+    location: "Herzliya, Israel",
+    lat: 32.162,
+    lng: 34.779,
+    military: false,
+  },
+  {
+    keywords: ["petah tikva"],
+    location: "Petah Tikva, Israel",
+    lat: 32.087,
+    lng: 34.886,
+    military: false,
+  },
+  {
+    keywords: ["rishon lezion"],
+    location: "Rishon LeZion, Israel",
+    lat: 31.964,
+    lng: 34.804,
+    military: false,
+  },
+  {
+    keywords: ["nazareth"],
+    location: "Nazareth, Israel",
+    lat: 32.699,
+    lng: 35.304,
+    military: false,
+  },
+  { keywords: ["golan"], location: "Golan Heights", lat: 33.0, lng: 35.8, military: true },
   { keywords: ["sderot"], location: "Sderot, Israel", lat: 31.525, lng: 34.596, military: false },
-  { keywords: ["kiryat shmona"], location: "Kiryat Shmona, Israel", lat: 33.208, lng: 35.573, military: false },
-  { keywords: ["nahariya"], location: "Nahariya, Israel", lat: 33.005, lng: 35.098, military: false },
+  {
+    keywords: ["kiryat shmona"],
+    location: "Kiryat Shmona, Israel",
+    lat: 33.208,
+    lng: 35.573,
+    military: false,
+  },
+  {
+    keywords: ["nahariya"],
+    location: "Nahariya, Israel",
+    lat: 33.005,
+    lng: 35.098,
+    military: false,
+  },
 
   // ---- Gaza ----
-  { keywords: ["gaza city", "gaza strip"], location: "Gaza City, Gaza", lat: 31.502, lng: 34.466, military: false },
+  {
+    keywords: ["gaza city", "gaza strip"],
+    location: "Gaza City, Gaza",
+    lat: 31.502,
+    lng: 34.466,
+    military: false,
+  },
   { keywords: ["rafah"], location: "Rafah, Gaza", lat: 31.297, lng: 34.245, military: false },
-  { keywords: ["khan younis", "khan yunis"], location: "Khan Younis, Gaza", lat: 31.345, lng: 34.303, military: false },
-  { keywords: ["jabalia", "jabaliya"], location: "Jabalia, Gaza", lat: 31.528, lng: 34.483, military: false },
+  {
+    keywords: ["khan younis", "khan yunis"],
+    location: "Khan Younis, Gaza",
+    lat: 31.345,
+    lng: 34.303,
+    military: false,
+  },
+  {
+    keywords: ["jabalia", "jabaliya"],
+    location: "Jabalia, Gaza",
+    lat: 31.528,
+    lng: 34.483,
+    military: false,
+  },
   { keywords: ["nuseirat"], location: "Nuseirat, Gaza", lat: 31.443, lng: 34.393, military: false },
-  { keywords: ["deir al-balah"], location: "Deir al-Balah, Gaza", lat: 31.418, lng: 34.351, military: false },
+  {
+    keywords: ["deir al-balah"],
+    location: "Deir al-Balah, Gaza",
+    lat: 31.418,
+    lng: 34.351,
+    military: false,
+  },
 
   // ---- Lebanon ----
   { keywords: ["beirut"], location: "Beirut, Lebanon", lat: 33.894, lng: 35.503, military: false },
-  { keywords: ["dahieh", "dahiyeh", "southern suburbs"], location: "Dahieh, Beirut, Lebanon", lat: 33.847, lng: 35.520, military: false },
-  { keywords: ["baalbek"], location: "Baalbek, Lebanon", lat: 34.006, lng: 36.211, military: false },
-  { keywords: ["tyre", "sour"], location: "Tyre, Lebanon", lat: 33.272, lng: 35.196, military: false },
-  { keywords: ["sidon", "saida"], location: "Sidon, Lebanon", lat: 33.560, lng: 35.376, military: false },
-  { keywords: ["nabatieh"], location: "Nabatieh, Lebanon", lat: 33.378, lng: 35.484, military: false },
-  { keywords: ["south lebanon", "southern lebanon"], location: "South Lebanon", lat: 33.30, lng: 35.40, military: true },
-  { keywords: ["bekaa", "beqaa"], location: "Bekaa Valley, Lebanon", lat: 33.85, lng: 36.05, military: false },
-  { keywords: ["tripoli, lebanon"], location: "Tripoli, Lebanon", lat: 34.437, lng: 35.832, military: false },
+  {
+    keywords: ["dahieh", "dahiyeh", "southern suburbs"],
+    location: "Dahieh, Beirut, Lebanon",
+    lat: 33.847,
+    lng: 35.52,
+    military: false,
+  },
+  {
+    keywords: ["baalbek"],
+    location: "Baalbek, Lebanon",
+    lat: 34.006,
+    lng: 36.211,
+    military: false,
+  },
+  {
+    keywords: ["tyre", "sour"],
+    location: "Tyre, Lebanon",
+    lat: 33.272,
+    lng: 35.196,
+    military: false,
+  },
+  {
+    keywords: ["sidon", "saida"],
+    location: "Sidon, Lebanon",
+    lat: 33.56,
+    lng: 35.376,
+    military: false,
+  },
+  {
+    keywords: ["nabatieh"],
+    location: "Nabatieh, Lebanon",
+    lat: 33.378,
+    lng: 35.484,
+    military: false,
+  },
+  {
+    keywords: ["south lebanon", "southern lebanon"],
+    location: "South Lebanon",
+    lat: 33.3,
+    lng: 35.4,
+    military: true,
+  },
+  {
+    keywords: ["bekaa", "beqaa"],
+    location: "Bekaa Valley, Lebanon",
+    lat: 33.85,
+    lng: 36.05,
+    military: false,
+  },
+  {
+    keywords: ["tripoli, lebanon"],
+    location: "Tripoli, Lebanon",
+    lat: 34.437,
+    lng: 35.832,
+    military: false,
+  },
 
   // ---- Syria ----
-  { keywords: ["damascus"], location: "Damascus, Syria", lat: 33.513, lng: 36.292, military: false },
+  {
+    keywords: ["damascus"],
+    location: "Damascus, Syria",
+    lat: 33.513,
+    lng: 36.292,
+    military: false,
+  },
   { keywords: ["aleppo"], location: "Aleppo, Syria", lat: 36.202, lng: 37.134, military: false },
-  { keywords: ["homs"], location: "Homs, Syria", lat: 34.730, lng: 36.713, military: false },
+  { keywords: ["homs"], location: "Homs, Syria", lat: 34.73, lng: 36.713, military: false },
   { keywords: ["latakia"], location: "Latakia, Syria", lat: 35.532, lng: 35.791, military: false },
-  { keywords: ["deir ez-zor", "deir ezzor"], location: "Deir ez-Zor, Syria", lat: 35.336, lng: 40.146, military: false },
-  { keywords: ["t4 airbase", "t-4", "tiyas"], location: "T4 Air Base, Syria", lat: 34.522, lng: 37.627, military: true },
-  { keywords: ["mezzeh"], location: "Mezzeh Air Base, Syria", lat: 33.478, lng: 36.223, military: true },
+  {
+    keywords: ["deir ez-zor", "deir ezzor"],
+    location: "Deir ez-Zor, Syria",
+    lat: 35.336,
+    lng: 40.146,
+    military: false,
+  },
+  {
+    keywords: ["t4 airbase", "t-4", "tiyas"],
+    location: "T4 Air Base, Syria",
+    lat: 34.522,
+    lng: 37.627,
+    military: true,
+  },
+  {
+    keywords: ["mezzeh"],
+    location: "Mezzeh Air Base, Syria",
+    lat: 33.478,
+    lng: 36.223,
+    military: true,
+  },
 
   // ---- Iranian military ----
-  { keywords: ["isfahan", "esfahan"], location: "Isfahan, Iran", lat: 32.65, lng: 51.68, military: false },
-  { keywords: ["natanz"], location: "Natanz Nuclear Facility, Iran", lat: 33.73, lng: 51.73, military: true },
-  { keywords: ["fordow"], location: "Fordow Nuclear Facility, Iran", lat: 34.88, lng: 51.59, military: true },
-  { keywords: ["parchin"], location: "Parchin Military Complex, Iran", lat: 35.52, lng: 51.77, military: true },
+  {
+    keywords: ["isfahan", "esfahan"],
+    location: "Isfahan, Iran",
+    lat: 32.65,
+    lng: 51.68,
+    military: false,
+  },
+  {
+    keywords: ["natanz"],
+    location: "Natanz Nuclear Facility, Iran",
+    lat: 33.73,
+    lng: 51.73,
+    military: true,
+  },
+  {
+    keywords: ["fordow"],
+    location: "Fordow Nuclear Facility, Iran",
+    lat: 34.88,
+    lng: 51.59,
+    military: true,
+  },
+  {
+    keywords: ["parchin"],
+    location: "Parchin Military Complex, Iran",
+    lat: 35.52,
+    lng: 51.77,
+    military: true,
+  },
   { keywords: ["bushehr"], location: "Bushehr, Iran", lat: 28.97, lng: 50.84, military: false },
-  { keywords: ["bandar abbas"], location: "Bandar Abbas, Iran", lat: 27.18, lng: 56.27, military: true },
-  { keywords: ["kharg island"], location: "Kharg Island, Iran", lat: 29.24, lng: 50.31, military: true },
+  {
+    keywords: ["bandar abbas"],
+    location: "Bandar Abbas, Iran",
+    lat: 27.18,
+    lng: 56.27,
+    military: true,
+  },
+  {
+    keywords: ["kharg island"],
+    location: "Kharg Island, Iran",
+    lat: 29.24,
+    lng: 50.31,
+    military: true,
+  },
   { keywords: ["tabriz"], location: "Tabriz, Iran", lat: 38.08, lng: 46.28, military: false },
   { keywords: ["shiraz"], location: "Shiraz, Iran", lat: 29.59, lng: 52.58, military: false },
   { keywords: ["tehran"], location: "Tehran, Iran", lat: 35.69, lng: 51.39, military: false },
   { keywords: ["semnan"], location: "Semnan, Iran", lat: 35.58, lng: 53.39, military: true },
-  { keywords: ["kermanshah"], location: "Kermanshah, Iran", lat: 34.35, lng: 47.07, military: true },
-  { keywords: ["dezful"], location: "Dezful, Iran", lat: 32.38, lng: 48.40, military: true },
+  {
+    keywords: ["kermanshah"],
+    location: "Kermanshah, Iran",
+    lat: 34.35,
+    lng: 47.07,
+    military: true,
+  },
+  { keywords: ["dezful"], location: "Dezful, Iran", lat: 32.38, lng: 48.4, military: true },
   { keywords: ["chabahar"], location: "Chabahar, Iran", lat: 25.29, lng: 60.64, military: true },
-  { keywords: ["kish island"], location: "Kish Island, Iran", lat: 26.56, lng: 53.98, military: false },
-  { keywords: ["arak"], location: "Arak, Iran", lat: 34.09, lng: 49.70, military: true },
-  { keywords: ["mashhad"], location: "Mashhad, Iran", lat: 36.30, lng: 59.61, military: false },
+  {
+    keywords: ["kish island"],
+    location: "Kish Island, Iran",
+    lat: 26.56,
+    lng: 53.98,
+    military: false,
+  },
+  { keywords: ["arak"], location: "Arak, Iran", lat: 34.09, lng: 49.7, military: true },
+  { keywords: ["mashhad"], location: "Mashhad, Iran", lat: 36.3, lng: 59.61, military: false },
   { keywords: ["qom"], location: "Qom, Iran", lat: 34.64, lng: 50.88, military: false },
-  { keywords: ["abadan"], location: "Abadan, Iran", lat: 30.34, lng: 48.30, military: false },
-  { keywords: ["khorramabad"], location: "Khorramabad, Iran", lat: 33.49, lng: 48.35, military: true },
-  { keywords: ["ahvaz", "ahwaz"], location: "Ahvaz, Iran", lat: 31.32, lng: 48.67, military: false },
+  { keywords: ["abadan"], location: "Abadan, Iran", lat: 30.34, lng: 48.3, military: false },
+  {
+    keywords: ["khorramabad"],
+    location: "Khorramabad, Iran",
+    lat: 33.49,
+    lng: 48.35,
+    military: true,
+  },
+  {
+    keywords: ["ahvaz", "ahwaz"],
+    location: "Ahvaz, Iran",
+    lat: 31.32,
+    lng: 48.67,
+    military: false,
+  },
   { keywords: ["karaj"], location: "Karaj, Iran", lat: 35.84, lng: 50.97, military: false },
   { keywords: ["rasht"], location: "Rasht, Iran", lat: 37.28, lng: 49.58, military: false },
-  { keywords: ["zahedan"], location: "Zahedan, Iran", lat: 29.50, lng: 60.86, military: false },
-  { keywords: ["hamadan", "hamedan"], location: "Hamadan, Iran", lat: 34.80, lng: 48.51, military: false },
-  { keywords: ["yazd"], location: "Yazd, Iran", lat: 31.90, lng: 54.37, military: false },
+  { keywords: ["zahedan"], location: "Zahedan, Iran", lat: 29.5, lng: 60.86, military: false },
+  {
+    keywords: ["hamadan", "hamedan"],
+    location: "Hamadan, Iran",
+    lat: 34.8,
+    lng: 48.51,
+    military: false,
+  },
+  { keywords: ["yazd"], location: "Yazd, Iran", lat: 31.9, lng: 54.37, military: false },
   { keywords: ["kerman"], location: "Kerman, Iran", lat: 30.28, lng: 57.08, military: false },
   { keywords: ["sanandaj"], location: "Sanandaj, Iran", lat: 35.31, lng: 46.99, military: false },
-  { keywords: ["omidiyeh"], location: "Omidiyeh Air Base, Iran", lat: 30.83, lng: 49.53, military: true },
+  {
+    keywords: ["omidiyeh"],
+    location: "Omidiyeh Air Base, Iran",
+    lat: 30.83,
+    lng: 49.53,
+    military: true,
+  },
   { keywords: ["konarak"], location: "Konarak, Iran", lat: 25.35, lng: 60.39, military: true },
 
   // ---- UAE ----
-  { keywords: ["al dhafra", "dhafra"], location: "Al Dhafra Air Base, UAE", lat: 24.25, lng: 54.55, military: true },
-  { keywords: ["al minhad", "minhad"], location: "Al Minhad Air Base, UAE", lat: 25.03, lng: 55.37, military: true },
-  { keywords: ["jebel ali"], location: "Jebel Ali, Dubai, UAE", lat: 25.02, lng: 55.06, military: false },
-  { keywords: ["dubai airport", "dubai international"], location: "Dubai International Airport, UAE", lat: 25.25, lng: 55.36, military: false },
-  { keywords: ["palm jumeirah"], location: "Palm Jumeirah, Dubai, UAE", lat: 25.11, lng: 55.14, military: false },
-  { keywords: ["burj khalifa"], location: "Burj Khalifa, Dubai, UAE", lat: 25.20, lng: 55.27, military: false },
-  { keywords: ["burj al arab"], location: "Burj Al Arab, Dubai, UAE", lat: 25.14, lng: 55.19, military: false },
-  { keywords: ["dubai marina"], location: "Dubai Marina, UAE", lat: 25.08, lng: 55.14, military: false },
+  {
+    keywords: ["al dhafra", "dhafra"],
+    location: "Al Dhafra Air Base, UAE",
+    lat: 24.25,
+    lng: 54.55,
+    military: true,
+  },
+  {
+    keywords: ["al minhad", "minhad"],
+    location: "Al Minhad Air Base, UAE",
+    lat: 25.03,
+    lng: 55.37,
+    military: true,
+  },
+  {
+    keywords: ["jebel ali"],
+    location: "Jebel Ali, Dubai, UAE",
+    lat: 25.02,
+    lng: 55.06,
+    military: false,
+  },
+  {
+    keywords: ["dubai airport", "dubai international"],
+    location: "Dubai International Airport, UAE",
+    lat: 25.25,
+    lng: 55.36,
+    military: false,
+  },
+  {
+    keywords: ["palm jumeirah"],
+    location: "Palm Jumeirah, Dubai, UAE",
+    lat: 25.11,
+    lng: 55.14,
+    military: false,
+  },
+  {
+    keywords: ["burj khalifa"],
+    location: "Burj Khalifa, Dubai, UAE",
+    lat: 25.2,
+    lng: 55.27,
+    military: false,
+  },
+  {
+    keywords: ["burj al arab"],
+    location: "Burj Al Arab, Dubai, UAE",
+    lat: 25.14,
+    lng: 55.19,
+    military: false,
+  },
+  {
+    keywords: ["dubai marina"],
+    location: "Dubai Marina, UAE",
+    lat: 25.08,
+    lng: 55.14,
+    military: false,
+  },
   { keywords: ["dubai"], location: "Dubai, UAE", lat: 25.276, lng: 55.296, military: false },
-  { keywords: ["abu dhabi airport", "zayed airport"], location: "Zayed International Airport, Abu Dhabi", lat: 24.44, lng: 54.65, military: false },
-  { keywords: ["abu dhabi"], location: "Abu Dhabi, UAE", lat: 24.453, lng: 54.377, military: false },
+  {
+    keywords: ["abu dhabi airport", "zayed airport"],
+    location: "Zayed International Airport, Abu Dhabi",
+    lat: 24.44,
+    lng: 54.65,
+    military: false,
+  },
+  {
+    keywords: ["abu dhabi"],
+    location: "Abu Dhabi, UAE",
+    lat: 24.453,
+    lng: 54.377,
+    military: false,
+  },
   { keywords: ["fujairah"], location: "Fujairah, UAE", lat: 25.13, lng: 56.34, military: false },
   { keywords: ["sharjah"], location: "Sharjah, UAE", lat: 25.35, lng: 55.42, military: false },
 
   // ---- Qatar ----
-  { keywords: ["al udeid"], location: "Al Udeid Air Base, Qatar", lat: 25.12, lng: 51.31, military: true },
-  { keywords: ["hamad airport", "hamad international"], location: "Hamad International Airport, Qatar", lat: 25.26, lng: 51.61, military: false },
+  {
+    keywords: ["al udeid"],
+    location: "Al Udeid Air Base, Qatar",
+    lat: 25.12,
+    lng: 51.31,
+    military: true,
+  },
+  {
+    keywords: ["hamad airport", "hamad international"],
+    location: "Hamad International Airport, Qatar",
+    lat: 25.26,
+    lng: 51.61,
+    military: false,
+  },
   { keywords: ["doha"], location: "Doha, Qatar", lat: 25.29, lng: 51.53, military: false },
-  { keywords: ["ras laffan"], location: "Ras Laffan, Qatar", lat: 25.92, lng: 51.57, military: false },
+  {
+    keywords: ["ras laffan"],
+    location: "Ras Laffan, Qatar",
+    lat: 25.92,
+    lng: 51.57,
+    military: false,
+  },
 
   // ---- Bahrain ----
-  { keywords: ["5th fleet", "nsa bahrain", "fifth fleet"], location: "NSA Bahrain (5th Fleet HQ)", lat: 26.24, lng: 50.58, military: true },
-  { keywords: ["isa air base"], location: "Isa Air Base, Bahrain", lat: 25.92, lng: 50.59, military: true },
+  {
+    keywords: ["5th fleet", "nsa bahrain", "fifth fleet"],
+    location: "NSA Bahrain (5th Fleet HQ)",
+    lat: 26.24,
+    lng: 50.58,
+    military: true,
+  },
+  {
+    keywords: ["isa air base"],
+    location: "Isa Air Base, Bahrain",
+    lat: 25.92,
+    lng: 50.59,
+    military: true,
+  },
   { keywords: ["manama"], location: "Manama, Bahrain", lat: 26.23, lng: 50.59, military: false },
-  { keywords: ["bahrain airport"], location: "Bahrain International Airport", lat: 26.27, lng: 50.63, military: false },
+  {
+    keywords: ["bahrain airport"],
+    location: "Bahrain International Airport",
+    lat: 26.27,
+    lng: 50.63,
+    military: false,
+  },
   { keywords: ["bahrain"], location: "Bahrain", lat: 26.07, lng: 50.56, military: false },
 
   // ---- Kuwait ----
-  { keywords: ["ali al salem"], location: "Ali Al Salem Air Base, Kuwait", lat: 29.35, lng: 47.52, military: true },
-  { keywords: ["camp arifjan"], location: "Camp Arifjan, Kuwait", lat: 29.22, lng: 48.10, military: true },
-  { keywords: ["camp buehring"], location: "Camp Buehring, Kuwait", lat: 29.51, lng: 47.45, military: true },
-  { keywords: ["kuwait city"], location: "Kuwait City, Kuwait", lat: 29.37, lng: 47.98, military: false },
-  { keywords: ["kuwait airport", "kuwait international"], location: "Kuwait International Airport", lat: 29.23, lng: 47.97, military: false },
+  {
+    keywords: ["ali al salem"],
+    location: "Ali Al Salem Air Base, Kuwait",
+    lat: 29.35,
+    lng: 47.52,
+    military: true,
+  },
+  {
+    keywords: ["camp arifjan"],
+    location: "Camp Arifjan, Kuwait",
+    lat: 29.22,
+    lng: 48.1,
+    military: true,
+  },
+  {
+    keywords: ["camp buehring"],
+    location: "Camp Buehring, Kuwait",
+    lat: 29.51,
+    lng: 47.45,
+    military: true,
+  },
+  {
+    keywords: ["kuwait city"],
+    location: "Kuwait City, Kuwait",
+    lat: 29.37,
+    lng: 47.98,
+    military: false,
+  },
+  {
+    keywords: ["kuwait airport", "kuwait international"],
+    location: "Kuwait International Airport",
+    lat: 29.23,
+    lng: 47.97,
+    military: false,
+  },
   { keywords: ["kuwait"], location: "Kuwait", lat: 29.31, lng: 47.48, military: false },
 
   // ---- Oman ----
   { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
   { keywords: ["salalah"], location: "Salalah, Oman", lat: 17.02, lng: 54.09, military: false },
-  { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.70, military: true },
+  { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.7, military: true },
   { keywords: ["oman"], location: "Oman", lat: 23.59, lng: 58.14, military: false },
 
   // ---- Saudi Arabia ----
-  { keywords: ["prince sultan", "psab"], location: "Prince Sultan Air Base, Saudi Arabia", lat: 24.06, lng: 47.58, military: true },
-  { keywords: ["king khalid military"], location: "King Khalid Military City, Saudi Arabia", lat: 27.90, lng: 45.54, military: true },
-  { keywords: ["abqaiq"], location: "Abqaiq, Saudi Arabia", lat: 25.94, lng: 49.68, military: false },
-  { keywords: ["ras tanura"], location: "Ras Tanura, Saudi Arabia", lat: 26.64, lng: 50.17, military: false },
-  { keywords: ["aramco"], location: "Aramco Facility, Saudi Arabia", lat: 26.30, lng: 50.14, military: false },
-  { keywords: ["dhahran"], location: "Dhahran, Saudi Arabia", lat: 26.27, lng: 50.15, military: false },
-  { keywords: ["riyadh"], location: "Riyadh, Saudi Arabia", lat: 24.71, lng: 46.68, military: false },
-  { keywords: ["jeddah"], location: "Jeddah, Saudi Arabia", lat: 21.49, lng: 39.18, military: false },
-  { keywords: ["dammam"], location: "Dammam, Saudi Arabia", lat: 26.43, lng: 50.10, military: false },
-  { keywords: ["neom"], location: "NEOM, Saudi Arabia", lat: 28.00, lng: 35.20, military: false },
+  {
+    keywords: ["prince sultan", "psab"],
+    location: "Prince Sultan Air Base, Saudi Arabia",
+    lat: 24.06,
+    lng: 47.58,
+    military: true,
+  },
+  {
+    keywords: ["king khalid military"],
+    location: "King Khalid Military City, Saudi Arabia",
+    lat: 27.9,
+    lng: 45.54,
+    military: true,
+  },
+  {
+    keywords: ["abqaiq"],
+    location: "Abqaiq, Saudi Arabia",
+    lat: 25.94,
+    lng: 49.68,
+    military: false,
+  },
+  {
+    keywords: ["ras tanura"],
+    location: "Ras Tanura, Saudi Arabia",
+    lat: 26.64,
+    lng: 50.17,
+    military: false,
+  },
+  {
+    keywords: ["aramco"],
+    location: "Aramco Facility, Saudi Arabia",
+    lat: 26.3,
+    lng: 50.14,
+    military: false,
+  },
+  {
+    keywords: ["dhahran"],
+    location: "Dhahran, Saudi Arabia",
+    lat: 26.27,
+    lng: 50.15,
+    military: false,
+  },
+  {
+    keywords: ["riyadh"],
+    location: "Riyadh, Saudi Arabia",
+    lat: 24.71,
+    lng: 46.68,
+    military: false,
+  },
+  {
+    keywords: ["jeddah"],
+    location: "Jeddah, Saudi Arabia",
+    lat: 21.49,
+    lng: 39.18,
+    military: false,
+  },
+  {
+    keywords: ["dammam"],
+    location: "Dammam, Saudi Arabia",
+    lat: 26.43,
+    lng: 50.1,
+    military: false,
+  },
+  { keywords: ["neom"], location: "NEOM, Saudi Arabia", lat: 28.0, lng: 35.2, military: false },
 
   // ---- Jordan ----
-  { keywords: ["muwaffaq", "salti air base"], location: "Muwaffaq Salti Air Base, Jordan", lat: 32.36, lng: 36.78, military: true },
+  {
+    keywords: ["muwaffaq", "salti air base"],
+    location: "Muwaffaq Salti Air Base, Jordan",
+    lat: 32.36,
+    lng: 36.78,
+    military: true,
+  },
   { keywords: ["amman"], location: "Amman, Jordan", lat: 31.96, lng: 35.95, military: false },
 
   // ---- Iraq ----
-  { keywords: ["ain al-asad", "ain al asad", "al-asad"], location: "Ain Al-Asad Air Base, Iraq", lat: 33.80, lng: 42.44, military: true },
-  { keywords: ["green zone", "baghdad embassy"], location: "Baghdad Green Zone, Iraq", lat: 33.31, lng: 44.37, military: true },
+  {
+    keywords: ["ain al-asad", "ain al asad", "al-asad"],
+    location: "Ain Al-Asad Air Base, Iraq",
+    lat: 33.8,
+    lng: 42.44,
+    military: true,
+  },
+  {
+    keywords: ["green zone", "baghdad embassy"],
+    location: "Baghdad Green Zone, Iraq",
+    lat: 33.31,
+    lng: 44.37,
+    military: true,
+  },
   { keywords: ["erbil"], location: "Erbil, Iraq", lat: 36.19, lng: 44.01, military: false },
-  { keywords: ["harir air base"], location: "Harir Air Base, Iraq", lat: 36.54, lng: 44.38, military: true },
+  {
+    keywords: ["harir air base"],
+    location: "Harir Air Base, Iraq",
+    lat: 36.54,
+    lng: 44.38,
+    military: true,
+  },
   { keywords: ["baghdad"], location: "Baghdad, Iraq", lat: 33.31, lng: 44.37, military: false },
 
   // ---- Yemen ----
-  { keywords: ["sanaa", "sana'a"], location: "Sanaa, Yemen", lat: 15.37, lng: 44.19, military: false },
-  { keywords: ["hodeidah", "hudaydah"], location: "Hodeidah, Yemen", lat: 14.80, lng: 42.95, military: false },
+  {
+    keywords: ["sanaa", "sana'a"],
+    location: "Sanaa, Yemen",
+    lat: 15.37,
+    lng: 44.19,
+    military: false,
+  },
+  {
+    keywords: ["hodeidah", "hudaydah"],
+    location: "Hodeidah, Yemen",
+    lat: 14.8,
+    lng: 42.95,
+    military: false,
+  },
   { keywords: ["aden"], location: "Aden, Yemen", lat: 12.79, lng: 45.04, military: false },
   { keywords: ["marib"], location: "Marib, Yemen", lat: 15.46, lng: 45.33, military: false },
 
   // ---- Maritime ----
-  { keywords: ["strait of hormuz", "hormuz"], location: "Strait of Hormuz", lat: 26.56, lng: 56.15, military: false },
-  { keywords: ["bab al-mandab", "bab el-mandeb"], location: "Bab al-Mandab Strait", lat: 12.58, lng: 43.33, military: false },
-  { keywords: ["red sea"], location: "Red Sea", lat: 20.00, lng: 38.50, military: false },
-  { keywords: ["persian gulf", "arabian gulf"], location: "Persian Gulf", lat: 26.50, lng: 52.00, military: false },
-  { keywords: ["gulf of oman"], location: "Gulf of Oman", lat: 24.50, lng: 58.50, military: false },
+  {
+    keywords: ["strait of hormuz", "hormuz"],
+    location: "Strait of Hormuz",
+    lat: 26.56,
+    lng: 56.15,
+    military: false,
+  },
+  {
+    keywords: ["bab al-mandab", "bab el-mandeb"],
+    location: "Bab al-Mandab Strait",
+    lat: 12.58,
+    lng: 43.33,
+    military: false,
+  },
+  { keywords: ["red sea"], location: "Red Sea", lat: 20.0, lng: 38.5, military: false },
+  {
+    keywords: ["persian gulf", "arabian gulf"],
+    location: "Persian Gulf",
+    lat: 26.5,
+    lng: 52.0,
+    military: false,
+  },
+  { keywords: ["gulf of oman"], location: "Gulf of Oman", lat: 24.5, lng: 58.5, military: false },
 
   // ---- Djibouti ----
-  { keywords: ["camp lemonnier", "djibouti"], location: "Camp Lemonnier, Djibouti", lat: 11.55, lng: 43.15, military: true },
+  {
+    keywords: ["camp lemonnier", "djibouti"],
+    location: "Camp Lemonnier, Djibouti",
+    lat: 11.55,
+    lng: 43.15,
+    military: true,
+  },
 
   // ---- Oman ----
   { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.71, military: false },
   { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
-  { keywords: ["musandam"], location: "Musandam, Oman", lat: 26.20, lng: 56.25, military: false },
+  { keywords: ["musandam"], location: "Musandam, Oman", lat: 26.2, lng: 56.25, military: false },
 
   // ---- Region-level fallbacks (AFTER specific cities so "Tel Aviv" matches before "central Israel") ----
 
   // Israeli regions
-  { keywords: ["central israel", "center of israel", "center israel", "gush dan"], location: "Central Israel", lat: 32.05, lng: 34.80, military: false },
-  { keywords: ["northern israel", "north of israel", "north israel", "the north", "galilee", "upper galilee", "lower galilee"], location: "Northern Israel", lat: 32.90, lng: 35.30, military: false },
-  { keywords: ["southern israel", "south of israel", "south israel", "negev"], location: "Southern Israel", lat: 31.25, lng: 34.79, military: false },
-  { keywords: ["gaza envelope", "gaza border", "otef aza", "western negev"], location: "Gaza Envelope, Israel", lat: 31.45, lng: 34.50, military: false },
-  { keywords: ["judea and samaria", "west bank"], location: "West Bank", lat: 32.00, lng: 35.30, military: false },
-  { keywords: ["sharon", "sharon plain", "hasharon"], location: "Sharon Plain, Israel", lat: 32.30, lng: 34.85, military: false },
+  {
+    keywords: ["central israel", "center of israel", "center israel", "gush dan"],
+    location: "Central Israel",
+    lat: 32.05,
+    lng: 34.8,
+    military: false,
+  },
+  {
+    keywords: [
+      "northern israel",
+      "north of israel",
+      "north israel",
+      "the north",
+      "galilee",
+      "upper galilee",
+      "lower galilee",
+    ],
+    location: "Northern Israel",
+    lat: 32.9,
+    lng: 35.3,
+    military: false,
+  },
+  {
+    keywords: ["southern israel", "south of israel", "south israel", "negev"],
+    location: "Southern Israel",
+    lat: 31.25,
+    lng: 34.79,
+    military: false,
+  },
+  {
+    keywords: ["gaza envelope", "gaza border", "otef aza", "western negev"],
+    location: "Gaza Envelope, Israel",
+    lat: 31.45,
+    lng: 34.5,
+    military: false,
+  },
+  {
+    keywords: ["judea and samaria", "west bank"],
+    location: "West Bank",
+    lat: 32.0,
+    lng: 35.3,
+    military: false,
+  },
+  {
+    keywords: ["sharon", "sharon plain", "hasharon"],
+    location: "Sharon Plain, Israel",
+    lat: 32.3,
+    lng: 34.85,
+    military: false,
+  },
 
   // Gaza regions
-  { keywords: ["northern gaza", "north gaza"], location: "Northern Gaza", lat: 31.52, lng: 34.47, military: false },
-  { keywords: ["southern gaza", "south gaza"], location: "Southern Gaza", lat: 31.30, lng: 34.28, military: false },
+  {
+    keywords: ["northern gaza", "north gaza"],
+    location: "Northern Gaza",
+    lat: 31.52,
+    lng: 34.47,
+    military: false,
+  },
+  {
+    keywords: ["southern gaza", "south gaza"],
+    location: "Southern Gaza",
+    lat: 31.3,
+    lng: 34.28,
+    military: false,
+  },
   { keywords: ["central gaza"], location: "Central Gaza", lat: 31.42, lng: 34.38, military: false },
-  { keywords: ["gaza"], location: "Gaza", lat: 31.50, lng: 34.47, military: false },
+  { keywords: ["gaza"], location: "Gaza", lat: 31.5, lng: 34.47, military: false },
 
   // Lebanese regions
-  { keywords: ["northern lebanon", "north lebanon"], location: "Northern Lebanon", lat: 34.30, lng: 35.85, military: false },
-  { keywords: ["mount lebanon"], location: "Mount Lebanon", lat: 33.85, lng: 35.65, military: false },
-  { keywords: ["south beirut", "southern beirut"], location: "Southern Beirut, Lebanon", lat: 33.85, lng: 35.50, military: false },
-  { keywords: ["lebanon"], location: "Lebanon", lat: 33.89, lng: 35.50, military: false },
+  {
+    keywords: ["northern lebanon", "north lebanon"],
+    location: "Northern Lebanon",
+    lat: 34.3,
+    lng: 35.85,
+    military: false,
+  },
+  {
+    keywords: ["mount lebanon"],
+    location: "Mount Lebanon",
+    lat: 33.85,
+    lng: 35.65,
+    military: false,
+  },
+  {
+    keywords: ["south beirut", "southern beirut"],
+    location: "Southern Beirut, Lebanon",
+    lat: 33.85,
+    lng: 35.5,
+    military: false,
+  },
+  { keywords: ["lebanon"], location: "Lebanon", lat: 33.89, lng: 35.5, military: false },
 
   // Iranian regions
-  { keywords: ["western iran", "west iran"], location: "Western Iran", lat: 34.00, lng: 48.00, military: false },
-  { keywords: ["southern iran", "south iran"], location: "Southern Iran", lat: 29.00, lng: 53.00, military: false },
-  { keywords: ["northern iran", "north iran"], location: "Northern Iran", lat: 37.00, lng: 50.00, military: false },
-  { keywords: ["central iran"], location: "Central Iran", lat: 33.50, lng: 52.00, military: false },
+  {
+    keywords: ["western iran", "west iran"],
+    location: "Western Iran",
+    lat: 34.0,
+    lng: 48.0,
+    military: false,
+  },
+  {
+    keywords: ["southern iran", "south iran"],
+    location: "Southern Iran",
+    lat: 29.0,
+    lng: 53.0,
+    military: false,
+  },
+  {
+    keywords: ["northern iran", "north iran"],
+    location: "Northern Iran",
+    lat: 37.0,
+    lng: 50.0,
+    military: false,
+  },
+  { keywords: ["central iran"], location: "Central Iran", lat: 33.5, lng: 52.0, military: false },
   { keywords: ["iran"], location: "Iran", lat: 32.43, lng: 53.69, military: false },
 
   // Country-level fallbacks
-  { keywords: ["syria"], location: "Syria", lat: 35.00, lng: 38.00, military: false },
-  { keywords: ["iraq"], location: "Iraq", lat: 33.30, lng: 44.37, military: false },
-  { keywords: ["yemen"], location: "Yemen", lat: 15.55, lng: 44.20, military: false },
+  { keywords: ["syria"], location: "Syria", lat: 35.0, lng: 38.0, military: false },
+  { keywords: ["iraq"], location: "Iraq", lat: 33.3, lng: 44.37, military: false },
+  { keywords: ["yemen"], location: "Yemen", lat: 15.55, lng: 44.2, military: false },
   { keywords: ["israel"], location: "Israel", lat: 31.77, lng: 35.22, military: false },
 ];
 
@@ -274,50 +900,104 @@ const WEAPONS: WeaponEntry[] = [
 ];
 
 const IRAN_ATTACKER_KEYWORDS = [
-  "iran", "irgc", "iranian", "islamic republic",
-  "houthi", "ansar allah",
-  "hezbollah", "hizballah",
-  "hashd", "pmf", "popular mobilization",
-  "pij", "islamic jihad",
+  "iran",
+  "irgc",
+  "iranian",
+  "islamic republic",
+  "houthi",
+  "ansar allah",
+  "hezbollah",
+  "hizballah",
+  "hashd",
+  "pmf",
+  "popular mobilization",
+  "pij",
+  "islamic jihad",
   "hamas",
   "axis of resistance",
-  "tehran launched", "iran launched", "iran struck", "iran attacked",
-  "iran fires", "iran fired",
+  "tehran launched",
+  "iran launched",
+  "iran struck",
+  "iran attacked",
+  "iran fires",
+  "iran fired",
 ];
 
 const US_ISRAEL_ATTACKER_KEYWORDS = [
-  "idf", "israeli", "israel struck", "israel attacked", "israel hit",
-  "us struck", "us attacked", "usaf", "us air force", "pentagon",
-  "coalition struck", "coalition forces",
-  "f-35", "f-15", "b-2", "b-52",
-  "centcom", "us central command",
-  "israel fires", "israel fired", "israel launches",
-  "us-israeli", "u.s.-israeli", "american airstrikes", "american strikes",
-  "western airstrikes", "nato",
-  "strikes on iran", "strikes against iran", "strikes in iran",
-  "bombing iran", "hit iran", "attacked iran",
-  "airstrikes in tehran", "airstrikes in isfahan", "airstrikes in tabriz",
-  "airstrikes in shiraz", "airstrikes in ahvaz", "airstrikes in iran",
-  "\ud83c\uddfa\ud83c\uddf8", "\ud83c\uddee\ud83c\uddf1",
+  "idf",
+  "israeli",
+  "israel struck",
+  "israel attacked",
+  "israel hit",
+  "us struck",
+  "us attacked",
+  "usaf",
+  "us air force",
+  "pentagon",
+  "coalition struck",
+  "coalition forces",
+  "f-35",
+  "f-15",
+  "b-2",
+  "b-52",
+  "centcom",
+  "us central command",
+  "israel fires",
+  "israel fired",
+  "israel launches",
+  "us-israeli",
+  "u.s.-israeli",
+  "american airstrikes",
+  "american strikes",
+  "western airstrikes",
+  "nato",
+  "strikes on iran",
+  "strikes against iran",
+  "strikes in iran",
+  "bombing iran",
+  "hit iran",
+  "attacked iran",
+  "airstrikes in tehran",
+  "airstrikes in isfahan",
+  "airstrikes in tabriz",
+  "airstrikes in shiraz",
+  "airstrikes in ahvaz",
+  "airstrikes in iran",
+  "\ud83c\uddfa\ud83c\uddf8",
+  "\ud83c\uddee\ud83c\uddf1",
 ];
 
 const US_ONLY_KEYWORDS = [
-  "us struck", "us attacked", "usaf", "us air force", "pentagon",
-  "coalition struck", "coalition forces",
-  "b-2", "b-52", "centcom", "us central command",
-  "american", "united states",
+  "us struck",
+  "us attacked",
+  "usaf",
+  "us air force",
+  "pentagon",
+  "coalition struck",
+  "coalition forces",
+  "b-2",
+  "b-52",
+  "centcom",
+  "us central command",
+  "american",
+  "united states",
 ];
 
 const ISRAEL_ONLY_KEYWORDS = [
-  "idf", "israeli", "israel struck", "israel attacked", "israel hit",
-  "israel fires", "israel fired", "israel launches",
-  "iaf", "israel defense", "mossad",
+  "idf",
+  "israeli",
+  "israel struck",
+  "israel attacked",
+  "israel hit",
+  "israel fires",
+  "israel fired",
+  "israel launches",
+  "iaf",
+  "israel defense",
+  "mossad",
 ];
 
-function matchFirst<T extends { keywords: string[] }>(
-  text: string,
-  entries: T[]
-): T | null {
+function matchFirst<T extends { keywords: string[] }>(text: string, entries: T[]): T | null {
   const lower = text.toLowerCase();
   for (const entry of entries) {
     if (entry.keywords.some((kw) => lower.includes(kw))) {
@@ -342,25 +1022,40 @@ const DEFENSE_SYSTEMS: DefenseSystemEntry[] = [
   { keywords: ["david's sling", "davids sling", "שריון דוד"], name: "David's Sling" },
   { keywords: ["s-300", "s300", "اس-۳۰۰"], name: "S-300" },
   { keywords: ["bavar-373", "bavar 373", "باور-۳۷۳", "باور ۳۷۳"], name: "Bavar-373" },
-  { keywords: ["khordad-15", "khordad 15", "خرداد-۱۵", "خرداد ۱۵", "third khordad", "سوم خرداد"], name: "Khordad-15" },
+  {
+    keywords: ["khordad-15", "khordad 15", "خرداد-۱۵", "خرداد ۱۵", "third khordad", "سوم خرداد"],
+    name: "Khordad-15",
+  },
 ];
 
 const INTERCEPT_SUCCESS_KEYWORDS = [
   // English
-  "intercepted", "shot down", "engaged successfully", "neutralized", "destroyed in mid-air",
-  "defense system activated", "air defense engaged",
+  "intercepted",
+  "shot down",
+  "engaged successfully",
+  "neutralized",
+  "destroyed in mid-air",
+  "defense system activated",
+  "air defense engaged",
   // Hebrew
   "יורט",
   // Persian
-  "رهگیری شد", "ساقط شد",
+  "رهگیری شد",
+  "ساقط شد",
   // Arabic
   "اعتراض",
 ];
 
 const INTERCEPT_FAILURE_KEYWORDS = [
   // English
-  "leaked through", "hit target", "failed to intercept", "penetrated defenses",
-  "evaded", "overwhelmed defenses", "got through", "struck despite",
+  "leaked through",
+  "hit target",
+  "failed to intercept",
+  "penetrated defenses",
+  "evaded",
+  "overwhelmed defenses",
+  "got through",
+  "struck despite",
   // Persian
   "نفوذ کرد",
 ];
@@ -384,17 +1079,31 @@ export function detectInterception(text: string): {
 
   // Also detect generic interception language without specific system
   const hasInterceptKeywords = [
-    "intercepted by", "shot down by", "engaged by", "defense system activated",
-    "air defense", "missile defense", "سامانه دفاعی", "سپر دفاعی",
-    "יורט", "כיפת ברזל", "חץ", "שריון דוד",
-    "اعتراض", "القبة الحديدية",
+    "intercepted by",
+    "shot down by",
+    "engaged by",
+    "defense system activated",
+    "air defense",
+    "missile defense",
+    "سامانه دفاعی",
+    "سپر دفاعی",
+    "יורט",
+    "כיפת ברזל",
+    "חץ",
+    "שריון דוד",
+    "اعتراض",
+    "القبة الحديدية",
     "رهگیری شد",
   ].some((kw) => lower.includes(kw) || text.includes(kw));
 
   // Determine outcome
   let interceptSuccess: boolean | null = null;
-  const hasSuccess = INTERCEPT_SUCCESS_KEYWORDS.some((kw) => lower.includes(kw) || text.includes(kw));
-  const hasFailure = INTERCEPT_FAILURE_KEYWORDS.some((kw) => lower.includes(kw) || text.includes(kw));
+  const hasSuccess = INTERCEPT_SUCCESS_KEYWORDS.some(
+    (kw) => lower.includes(kw) || text.includes(kw)
+  );
+  const hasFailure = INTERCEPT_FAILURE_KEYWORDS.some(
+    (kw) => lower.includes(kw) || text.includes(kw)
+  );
 
   if (hasSuccess && !hasFailure) {
     interceptSuccess = true;
@@ -413,7 +1122,9 @@ export function detectInterception(text: string): {
   let missilesIntercepted: number | undefined;
 
   // Pattern: "X out of Y intercepted" or "X of Y intercepted"
-  const outOfMatch = text.match(/(\d+)\s*(?:out\s+)?of\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:intercepted|shot down|engaged|neutralized)/i);
+  const outOfMatch = text.match(
+    /(\d+)\s*(?:out\s+)?of\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:intercepted|shot down|engaged|neutralized)/i
+  );
   if (outOfMatch) {
     missilesIntercepted = parseInt(outOfMatch[1], 10);
     missilesFired = parseInt(outOfMatch[2], 10);
@@ -430,8 +1141,11 @@ export function detectInterception(text: string): {
 
   // Pattern: "X missiles fired" or "fired X missiles"
   if (!missilesFired) {
-    const firedMatch = text.match(/(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)\s*(?:fired|launched|sent)/i)
-      || text.match(/(?:fired|launched|sent)\s*(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
+    const firedMatch =
+      text.match(
+        /(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)\s*(?:fired|launched|sent)/i
+      ) ||
+      text.match(/(?:fired|launched|sent)\s*(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
     if (firedMatch) {
       missilesFired = parseInt(firedMatch[1], 10);
     }
@@ -439,8 +1153,10 @@ export function detectInterception(text: string): {
 
   // Pattern: "X intercepted" or "intercepted X missiles"
   if (!missilesIntercepted) {
-    const interceptedCountMatch = text.match(/(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:were\s+)?intercepted/i)
-      || text.match(/intercepted\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
+    const interceptedCountMatch =
+      text.match(
+        /(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)?\s*(?:were\s+)?intercepted/i
+      ) || text.match(/intercepted\s+(\d+)\s*(?:missiles?|rockets?|projectiles?|drones?)/i);
     if (interceptedCountMatch) {
       missilesIntercepted = parseInt(interceptedCountMatch[1], 10);
     }
@@ -453,7 +1169,7 @@ export function detectInterception(text: string): {
 
   return {
     intercepted_by: interceptedBy,
-    intercept_success: (interceptedBy || hasInterceptKeywords) ? interceptSuccess : null,
+    intercept_success: interceptedBy || hasInterceptKeywords ? interceptSuccess : null,
     missiles_fired: missilesFired,
     missiles_intercepted: missilesIntercepted,
   };
@@ -469,29 +1185,85 @@ interface CasualtyResult {
 
 const CIVILIAN_CONTEXT = [
   // English
-  "civilian", "civilians", "resident", "residents", "women", "children", "child",
-  "non-combatant", "bystander", "family", "families", "citizen", "citizens",
-  "innocent", "displaced", "refugee",
+  "civilian",
+  "civilians",
+  "resident",
+  "residents",
+  "women",
+  "children",
+  "child",
+  "non-combatant",
+  "bystander",
+  "family",
+  "families",
+  "citizen",
+  "citizens",
+  "innocent",
+  "displaced",
+  "refugee",
   // Persian
-  "غیرنظامی", "مردم", "زنان", "کودکان", "شهروند",
+  "غیرنظامی",
+  "مردم",
+  "زنان",
+  "کودکان",
+  "شهروند",
   // Hebrew
-  "אזרח", "אזרחים", "ילדים", "נשים",
+  "אזרח",
+  "אזרחים",
+  "ילדים",
+  "נשים",
   // Arabic
-  "مدني", "مدنيين", "نساء", "أطفال", "مواطن",
+  "مدني",
+  "مدنيين",
+  "نساء",
+  "أطفال",
+  "مواطن",
 ];
 
 const MILITARY_CONTEXT = [
   // English
-  "soldier", "soldiers", "troop", "troops", "fighter", "fighters", "militant",
-  "militants", "combatant", "combatants", "officer", "officers", "commander",
-  "operative", "operatives", "guard", "guards", "serviceman", "servicemen",
-  "personnel", "member", "members",
+  "soldier",
+  "soldiers",
+  "troop",
+  "troops",
+  "fighter",
+  "fighters",
+  "militant",
+  "militants",
+  "combatant",
+  "combatants",
+  "officer",
+  "officers",
+  "commander",
+  "operative",
+  "operatives",
+  "guard",
+  "guards",
+  "serviceman",
+  "servicemen",
+  "personnel",
+  "member",
+  "members",
   // Persian
-  "نظامی", "سرباز", "نیروی", "فرمانده", "جنگجو", "پاسدار",
+  "نظامی",
+  "سرباز",
+  "نیروی",
+  "فرمانده",
+  "جنگجو",
+  "پاسدار",
   // Hebrew
-  "חייל", "חיילים", "לוחם", "לוחמים", "קצין",
+  "חייל",
+  "חיילים",
+  "לוחם",
+  "לוחמים",
+  "קצין",
   // Arabic
-  "جندي", "جنود", "مقاتل", "مقاتلين", "ضابط", "عسكري",
+  "جندي",
+  "جنود",
+  "مقاتل",
+  "مقاتلين",
+  "ضابط",
+  "عسكري",
 ];
 
 const CASUALTY_PATTERNS: { regex: RegExp; group: number }[] = [
@@ -501,7 +1273,10 @@ const CASUALTY_PATTERNS: { regex: RegExp; group: number }[] = [
   { regex: /death\s+toll\s*(?:of\s+|:\s*|reaches?\s+|rises?\s+to\s+)?(\d+)/gi, group: 1 },
   { regex: /(\d+)\s*(?:people\s+)?(?:casualties|fatalities)/gi, group: 1 },
   { regex: /(?:at\s+least\s+)(\d+)\s*(?:killed|dead|died)/gi, group: 1 },
-  { regex: /(\d+)\s*(?:soldiers?|troops?|fighters?|militants?|combatants?)\s*(?:killed|dead)/gi, group: 1 },
+  {
+    regex: /(\d+)\s*(?:soldiers?|troops?|fighters?|militants?|combatants?)\s*(?:killed|dead)/gi,
+    group: 1,
+  },
   { regex: /(\d+)\s*(?:civilians?|residents?)\s*(?:killed|dead)/gi, group: 1 },
   // Persian
   { regex: /(\d+)\s*(?:نفر\s+)?(?:کشته|شهید)/gi, group: 1 },
@@ -523,7 +1298,8 @@ function detectCasualties(text: string): CasualtyResult {
     let match;
     while ((match = regex.exec(text)) !== null) {
       const num = parseInt(match[group], 10);
-      if (num > 0 && num < 10000) { // sanity check
+      if (num > 0 && num < 10000) {
+        // sanity check
         totalCount = Math.max(totalCount, num);
       }
     }
@@ -553,7 +1329,10 @@ function detectCasualties(text: string): CasualtyResult {
     civCount = totalCount;
   }
 
-  const desc = `${totalCount} ${hasCivilian && !hasMilitary ? "civilian" : hasMilitary && !hasCivilian ? "military" : ""} casualties reported`.trim().replace(/\s+/g, " ");
+  const desc =
+    `${totalCount} ${hasCivilian && !hasMilitary ? "civilian" : hasMilitary && !hasCivilian ? "military" : ""} casualties reported`
+      .trim()
+      .replace(/\s+/g, " ");
 
   return {
     casualties_military: milCount,
@@ -565,26 +1344,91 @@ function detectCasualties(text: string): CasualtyResult {
 // At least one of these must appear for a post to be considered an actual military event
 const STRIKE_INDICATORS = [
   // English action words
-  "strike", "struck", "attack", "attacked", "bomb", "bombed", "bombing",
-  "shell", "shelled", "shelling", "launch", "launched", "fire", "fired",
-  "missile", "rocket", "drone", "airstrike", "air strike",
-  "intercept", "intercepted", "shoot down", "shot down",
-  "explod", "explosion", "blast", "detonate", "detonation",
-  "target", "targeted", "destroy", "destroyed",
-  "raid", "assault", "offensive",
-  "casualties", "killed", "dead", "wounded", "injured",
-  "damage", "crater", "impact",
-  "escalation", "retaliation", "retaliate",
-  "shahed", "fateh", "fattah", "emad", "ghadr", "sejjil", "tomahawk", "jdam",
-  "iron dome", "arrow-3", "thaad", "david's sling",
-  "war ", "warplane", "warship",
+  "strike",
+  "struck",
+  "attack",
+  "attacked",
+  "bomb",
+  "bombed",
+  "bombing",
+  "shell",
+  "shelled",
+  "shelling",
+  "launch",
+  "launched",
+  "fire",
+  "fired",
+  "missile",
+  "rocket",
+  "drone",
+  "airstrike",
+  "air strike",
+  "intercept",
+  "intercepted",
+  "shoot down",
+  "shot down",
+  "explod",
+  "explosion",
+  "blast",
+  "detonate",
+  "detonation",
+  "target",
+  "targeted",
+  "destroy",
+  "destroyed",
+  "raid",
+  "assault",
+  "offensive",
+  "casualties",
+  "killed",
+  "dead",
+  "wounded",
+  "injured",
+  "damage",
+  "crater",
+  "impact",
+  "escalation",
+  "retaliation",
+  "retaliate",
+  "shahed",
+  "fateh",
+  "fattah",
+  "emad",
+  "ghadr",
+  "sejjil",
+  "tomahawk",
+  "jdam",
+  "iron dome",
+  "arrow-3",
+  "thaad",
+  "david's sling",
+  "war ",
+  "warplane",
+  "warship",
   // Persian
-  "حمله", "موشک", "پهپاد", "بمباران", "شلیک", "اصابت", "انفجار",
-  "شهید", "کشته", "مجروح",
+  "حمله",
+  "موشک",
+  "پهپاد",
+  "بمباران",
+  "شلیک",
+  "اصابت",
+  "انفجار",
+  "شهید",
+  "کشته",
+  "مجروح",
   // Hebrew
-  "תקיפה", "ירי", "רקטה", "טיל", "פיצוץ",
+  "תקיפה",
+  "ירי",
+  "רקטה",
+  "טיל",
+  "פיצוץ",
   // Arabic
-  "ضربة", "صاروخ", "قصف", "هجوم", "استهداف", "انفجار",
+  "ضربة",
+  "صاروخ",
+  "قصف",
+  "هجوم",
+  "استهداف",
+  "انفجار",
 ];
 
 export function enrichWithKeywords(text: string): EnrichmentResult | null {
@@ -594,15 +1438,39 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
 
   // Require at least one military/strike indicator — filters out political announcements,
   // press conferences, speeches, sanctions, negotiations, etc.
-  const hasStrikeIndicator = STRIKE_INDICATORS.some((kw) => lower.includes(kw) || text.includes(kw));
+  const hasStrikeIndicator = STRIKE_INDICATORS.some(
+    (kw) => lower.includes(kw) || text.includes(kw)
+  );
   if (!hasStrikeIndicator) return null;
 
   // Filter out siren-only posts — these are tracked by sirenDetector, not as strikes
-  const SIREN_ONLY = ["siren", "sirens", "alarm", "alarms", "alert sounded", "red alert", "tzeva adom", "אזעקה", "צבע אדום"];
+  const SIREN_ONLY = [
+    "siren",
+    "sirens",
+    "alarm",
+    "alarms",
+    "alert sounded",
+    "red alert",
+    "tzeva adom",
+    "אזעקה",
+    "צבע אדום",
+  ];
   const isSirenPost = SIREN_ONLY.some((kw) => lower.includes(kw));
   if (isSirenPost) {
     // Only exclude if there's no actual strike/impact language alongside the siren
-    const STRIKE_CONFIRMATION = ["struck", "hit", "impact", "explod", "explosion", "damage", "crater", "casualties", "killed", "destroyed", "intercepted"];
+    const STRIKE_CONFIRMATION = [
+      "struck",
+      "hit",
+      "impact",
+      "explod",
+      "explosion",
+      "damage",
+      "crater",
+      "casualties",
+      "killed",
+      "destroyed",
+      "intercepted",
+    ];
     const hasStrikeConfirmation = STRIKE_CONFIRMATION.some((kw) => lower.includes(kw));
     if (!hasStrikeConfirmation) return null;
   }
@@ -622,9 +1490,13 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   const targetInYemen = loc.location.includes("Yemen");
   const targetInSyria = loc.location.includes("Syria");
   const targetInGaza = loc.location.includes("Gaza");
-  const targetInGulf = loc.location.includes("UAE") || loc.location.includes("Bahrain")
-    || loc.location.includes("Qatar") || loc.location.includes("Kuwait")
-    || loc.location.includes("Saudi") || loc.location.includes("Oman");
+  const targetInGulf =
+    loc.location.includes("UAE") ||
+    loc.location.includes("Bahrain") ||
+    loc.location.includes("Qatar") ||
+    loc.location.includes("Kuwait") ||
+    loc.location.includes("Saudi") ||
+    loc.location.includes("Oman");
 
   if (targetInIran) {
     // Strikes IN Iran are by US or Israel, not by Iran on itself
@@ -658,12 +1530,14 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   else if (lower.includes("air base") || lower.includes("airbase")) targetType = "Air base";
   else if (lower.includes("naval base") || lower.includes("navy")) targetType = "Naval base";
   else if (lower.includes("port")) targetType = "Port";
-  else if (lower.includes("refinery") || lower.includes("oil")) targetType = "Oil/energy infrastructure";
+  else if (lower.includes("refinery") || lower.includes("oil"))
+    targetType = "Oil/energy infrastructure";
   else if (lower.includes("nuclear")) targetType = "Nuclear facility";
   else if (lower.includes("embassy")) targetType = "Embassy/diplomatic";
   else if (lower.includes("hospital")) targetType = "Hospital";
   else if (lower.includes("school") || lower.includes("university")) targetType = "Educational";
-  else if (lower.includes("residential") || lower.includes("apartment")) targetType = "Residential area";
+  else if (lower.includes("residential") || lower.includes("apartment"))
+    targetType = "Residential area";
   else if (lower.includes("hotel")) targetType = "Hotel";
   else if (loc.military) targetType = "Military facility";
   else targetType = "Urban area";
@@ -679,21 +1553,62 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
   // incidentally (e.g. "Secretary of War", "leaders are dead") should still appear
   // on the map but not count as actual strikes.
   const STATEMENT_PATTERNS = [
-    "secretary of", "minister of", "spokesperson", "press conference",
-    "announced", "announces", "announcement", "says ", " said ",
-    "warned", "warns", "warning:", "threatened", "threatens",
-    "we will ", "will be using", "going to ", "plans to ", "pledged",
-    "told reporters", "told media", "statement:", "statement from",
-    "according to", "breaking:", "update:", "developing:",
-    "confirmed that", "sources say", "reports say",
-    "declared", "declares", "vowed", "vows",
+    "secretary of",
+    "minister of",
+    "spokesperson",
+    "press conference",
+    "announced",
+    "announces",
+    "announcement",
+    "says ",
+    " said ",
+    "warned",
+    "warns",
+    "warning:",
+    "threatened",
+    "threatens",
+    "we will ",
+    "will be using",
+    "going to ",
+    "plans to ",
+    "pledged",
+    "told reporters",
+    "told media",
+    "statement:",
+    "statement from",
+    "according to",
+    "breaking:",
+    "update:",
+    "developing:",
+    "confirmed that",
+    "sources say",
+    "reports say",
+    "declared",
+    "declares",
+    "vowed",
+    "vows",
   ];
   // Strong action words that confirm an actual military event happened
   const ACTION_CONFIRMATION = [
-    "struck", "bombed", "shelled", "launched at", "fired at", "fired on",
-    "intercepted", "shot down", "exploded", "detonated", "hit by",
-    "impact", "crater", "damage to", "destroyed",
-    "under attack", "came under", "barrage of", "salvo of",
+    "struck",
+    "bombed",
+    "shelled",
+    "launched at",
+    "fired at",
+    "fired on",
+    "intercepted",
+    "shot down",
+    "exploded",
+    "detonated",
+    "hit by",
+    "impact",
+    "crater",
+    "damage to",
+    "destroyed",
+    "under attack",
+    "came under",
+    "barrage of",
+    "salvo of",
   ];
   const isStatementPost = STATEMENT_PATTERNS.some((kw) => lower.includes(kw));
   const hasActionConfirmation = ACTION_CONFIRMATION.some((kw) => lower.includes(kw));

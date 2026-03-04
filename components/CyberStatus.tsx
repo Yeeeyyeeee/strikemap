@@ -59,7 +59,8 @@ export default memo(function CyberStatus() {
       </h3>
 
       <div className="space-y-1">
-        {!data && !error && (
+        {!data &&
+          !error &&
           // Skeleton loading
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-0.5">
@@ -69,8 +70,7 @@ export default memo(function CyberStatus() {
               </div>
               <span className="w-14 h-3 rounded bg-neutral-800 animate-pulse" />
             </div>
-          ))
-        )}
+          ))}
 
         {error && !data && (
           <div className="text-[10px] text-neutral-600 text-center py-2">Offline</div>
@@ -111,9 +111,7 @@ export default memo(function CyberStatus() {
       {/* Footer */}
       {data && (
         <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[#2a2a2a]/50">
-          <span className="text-[9px] text-neutral-600">
-            {relativeTime(data.timestamp)}
-          </span>
+          <span className="text-[9px] text-neutral-600">{relativeTime(data.timestamp)}</span>
           <span
             className="text-[8px] text-neutral-600 uppercase tracking-widest"
             style={{ fontFamily: "JetBrains Mono, monospace" }}

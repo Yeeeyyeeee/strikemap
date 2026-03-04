@@ -24,9 +24,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error("[satellite/cron] Error:", err);
-    return NextResponse.json(
-      { error: "FIRMS refresh failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "FIRMS refresh failed" }, { status: 500 });
   }
 }

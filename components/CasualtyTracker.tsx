@@ -27,7 +27,9 @@ export default memo(function CasualtyTracker() {
         if (!cancelled && d && !d.error) setData(d);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!data) return null;
@@ -73,7 +75,9 @@ export default memo(function CasualtyTracker() {
         {/* Grand total */}
         <div className="flex justify-between border-t border-[#2a2a2a] pt-2">
           <span className="text-neutral-500 text-[11px]">Total killed</span>
-          <span className="text-neutral-300 font-semibold font-mono text-[11px]">{grandTotal.toLocaleString()}</span>
+          <span className="text-neutral-300 font-semibold font-mono text-[11px]">
+            {grandTotal.toLocaleString()}
+          </span>
         </div>
 
         {/* Source attribution */}
@@ -109,7 +113,10 @@ function CasualtyGroup({
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[10px] font-medium text-neutral-400 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: accent }} />
+          <span
+            className="w-1.5 h-1.5 rounded-full inline-block"
+            style={{ backgroundColor: accent }}
+          />
           {label}
         </span>
         <span className="text-[11px] font-semibold font-mono" style={{ color: accent }}>
@@ -119,28 +126,46 @@ function CasualtyGroup({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
         {military > 0 && (
           <span className="flex items-center gap-1 text-neutral-500 shrink-0">
-            <svg className="w-3 h-3 text-red-400/70 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              className="w-3 h-3 text-red-400/70 shrink-0"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <circle cx="8" cy="5" r="3" />
               <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
               <path d="M5 2l3-1 3 1" strokeLinecap="round" />
             </svg>
-            <span className="text-red-400/80 font-mono whitespace-nowrap">{military.toLocaleString()}</span>
+            <span className="text-red-400/80 font-mono whitespace-nowrap">
+              {military.toLocaleString()}
+            </span>
             <span>military</span>
           </span>
         )}
         {civilian > 0 && (
           <span className="flex items-center gap-1 text-neutral-500 shrink-0">
-            <svg className="w-3 h-3 text-orange-400/70 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              className="w-3 h-3 text-orange-400/70 shrink-0"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <circle cx="8" cy="5" r="3" />
               <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
             </svg>
-            <span className="text-orange-400/80 font-mono whitespace-nowrap">{civilian.toLocaleString()}</span>
+            <span className="text-orange-400/80 font-mono whitespace-nowrap">
+              {civilian.toLocaleString()}
+            </span>
             <span>civilian</span>
           </span>
         )}
         {injured > 0 && (
           <span className="flex items-center gap-1 text-neutral-500 shrink-0">
-            <span className="text-yellow-400/80 font-mono whitespace-nowrap">{injured.toLocaleString()}</span>
+            <span className="text-yellow-400/80 font-mono whitespace-nowrap">
+              {injured.toLocaleString()}
+            </span>
             <span>injured</span>
           </span>
         )}

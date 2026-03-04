@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { authenticateSource, makeSourceToken, isSourceRequest, COOKIE_NAME } from "@/lib/sourceAuth";
+import {
+  authenticateSource,
+  makeSourceToken,
+  isSourceRequest,
+  COOKIE_NAME,
+} from "@/lib/sourceAuth";
 
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 

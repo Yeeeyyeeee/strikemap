@@ -41,7 +41,9 @@ export async function POST(req: Request) {
     // Read current overrides
     const raw = await r.get(REDIS_AIRSPACE_OVERRIDES_KEY);
     const overrides: AirspaceOverrides = raw
-      ? typeof raw === "string" ? JSON.parse(raw) : raw
+      ? typeof raw === "string"
+        ? JSON.parse(raw)
+        : raw
       : {};
 
     if (action === "set") {

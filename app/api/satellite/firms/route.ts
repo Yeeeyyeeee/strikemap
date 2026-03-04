@@ -29,13 +29,10 @@ export async function GET() {
         headers: {
           "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
-      },
+      }
     );
   } catch (err) {
     console.error("[api/satellite/firms] Error:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch FIRMS data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch FIRMS data" }, { status: 500 });
   }
 }

@@ -57,7 +57,7 @@ const DRONE_SVG = `<svg viewBox="0 0 28 28" width="28" height="28" xmlns="http:/
 </svg>`;
 
 // Tehran fallback
-const IRAN_DEFAULT_ORIGIN = { lat: 35.6892, lng: 51.3890 };
+const IRAN_DEFAULT_ORIGIN = { lat: 35.6892, lng: 51.389 };
 
 /**
  * Get the current UTC offset for Israel (IST +02:00 / IDT +03:00).
@@ -122,7 +122,12 @@ function createImpactMarkerEl(isDrone: boolean, onClick: () => void): HTMLDivEle
   return el;
 }
 
-export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled = true }: MissileOverlayProps) {
+export default function MissileOverlay({
+  alerts,
+  map,
+  onAlertClick,
+  soundEnabled = true,
+}: MissileOverlayProps) {
   const statesRef = useRef<Map<string, MissileState>>(new Map());
   const rafRef = useRef<number>(0);
   const alertsRef = useRef(alerts);
@@ -164,9 +169,14 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
       const isDrone = alert.threatType === "drone";
       const isTest = alert.id.startsWith("test-");
       const isTimeline = alert.id.startsWith("timeline-");
-      const duration = (isTest || isTimeline)
-        ? (isDrone ? 20_000 : 12_000)
-        : (isDrone ? DRONE_FLIGHT_MS : MISSILE_FLIGHT_MS);
+      const duration =
+        isTest || isTimeline
+          ? isDrone
+            ? 20_000
+            : 12_000
+          : isDrone
+            ? DRONE_FLIGHT_MS
+            : MISSILE_FLIGHT_MS;
 
       let startTime: number;
       if (isTest || isTimeline) {
@@ -185,11 +195,10 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
       const originLng = alert.originLng || IRAN_DEFAULT_ORIGIN.lng;
 
       // Compute great-circle arc
-      const arc = greatCircleArc(
-        [originLng, originLat],
-        [alert.lng, alert.lat],
-        ARC_POINTS,
-      ) as [number, number][];
+      const arc = greatCircleArc([originLng, originLat], [alert.lng, alert.lat], ARC_POINTS) as [
+        number,
+        number,
+      ][];
 
       const alertId = alert.id;
       const handleClick = () => {
@@ -203,7 +212,11 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
 
       // Create markers
       const headEl = createHeadMarkerEl(isDrone, title, handleClick);
-      const headMarker = new mapboxgl.Marker({ element: headEl, anchor: "center", rotationAlignment: "map" })
+      const headMarker = new mapboxgl.Marker({
+        element: headEl,
+        anchor: "center",
+        rotationAlignment: "map",
+      })
         .setLngLat([originLng, originLat])
         .addTo(currentMap);
 
@@ -213,8 +226,10 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
         .addTo(currentMap);
 
       const impactEl = createImpactMarkerEl(isDrone, handleClick);
-      const impactMarker = new mapboxgl.Marker({ element: impactEl, anchor: "center" })
-        .setLngLat([alert.lng, alert.lat]);
+      const impactMarker = new mapboxgl.Marker({ element: impactEl, anchor: "center" }).setLngLat([
+        alert.lng,
+        alert.lat,
+      ]);
       // Don't add to map yet — only shown on arrival
 
       // Create Mapbox source + layers for the trail
@@ -245,10 +260,15 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
           "line-blur": 8,
           "line-opacity": 0.25,
           "line-gradient": [
-            "interpolate", ["linear"], ["line-progress"],
-            0, "transparent",
-            0.3, color,
-            1, color,
+            "interpolate",
+            ["linear"],
+            ["line-progress"],
+            0,
+            "transparent",
+            0.3,
+            color,
+            1,
+            color,
           ],
         },
         layout: { "line-cap": "round", "line-join": "round" },
@@ -262,18 +282,29 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
         paint: {
           "line-color": color,
           "line-width": [
-            "interpolate", ["linear"], ["line-progress"],
-            0, 1.5,
-            0.35, 3.5,
-            0.65, 3.5,
-            1, 1.5,
+            "interpolate",
+            ["linear"],
+            ["line-progress"],
+            0,
+            1.5,
+            0.35,
+            3.5,
+            0.65,
+            3.5,
+            1,
+            1.5,
           ],
           "line-opacity": 0.85,
           "line-gradient": [
-            "interpolate", ["linear"], ["line-progress"],
-            0, "transparent",
-            0.15, color,
-            1, color,
+            "interpolate",
+            ["linear"],
+            ["line-progress"],
+            0,
+            "transparent",
+            0.15,
+            color,
+            1,
+            color,
           ],
         },
         layout: {
@@ -354,7 +385,9 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
             const trailCoords = state.arc.slice(0, currentArcIndex + 1);
             // Append current head position for smooth tip
             trailCoords.push(headPos);
-            const source = currentMap.getSource(state.sourceId) as mapboxgl.GeoJSONSource | undefined;
+            const source = currentMap.getSource(state.sourceId) as
+              | mapboxgl.GeoJSONSource
+              | undefined;
             if (source) {
               source.setData({
                 type: "Feature",
@@ -375,14 +408,19 @@ export default function MissileOverlay({ alerts, map, onAlertClick, soundEnabled
               state.headMarker.getElement().style.display = "none";
             } else {
               // Park drone at target
-              state.headMarker.setLngLat([state.arc[state.arc.length - 1][0], state.arc[state.arc.length - 1][1]]);
+              state.headMarker.setLngLat([
+                state.arc[state.arc.length - 1][0],
+                state.arc[state.arc.length - 1][1],
+              ]);
             }
 
             // Show impact/pulse marker
             state.impactMarker.addTo(currentMap);
 
             // Set full trail
-            const source = currentMap.getSource(state.sourceId) as mapboxgl.GeoJSONSource | undefined;
+            const source = currentMap.getSource(state.sourceId) as
+              | mapboxgl.GeoJSONSource
+              | undefined;
             if (source) {
               source.setData({
                 type: "Feature",

@@ -135,8 +135,6 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
 ];
 
-export const WIDGET_MAP = Object.fromEntries(
-  WIDGET_REGISTRY.map((w) => [w.id, w])
-);
+export const WIDGET_MAP = Object.fromEntries(WIDGET_REGISTRY.map((w) => [w.id, w]));
 
 export const DEFAULT_ACTIVE_WIDGETS = WIDGET_REGISTRY.map((w) => w.id);
