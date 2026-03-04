@@ -37,9 +37,7 @@ export default function BarChart({
               }}
             />
           </div>
-          <span className="text-xs text-neutral-500 w-8 text-right font-mono">
-            {item.value}
-          </span>
+          <span className="text-xs text-neutral-500 w-8 text-right font-mono">{item.value}</span>
         </div>
       ))}
     </div>

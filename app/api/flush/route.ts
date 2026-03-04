@@ -32,9 +32,6 @@ export async function GET(request: Request) {
     });
   } catch (err) {
     console.error("[flush] Failed:", err);
-    return NextResponse.json(
-      { ok: false, error: String(err) },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

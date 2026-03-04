@@ -62,7 +62,10 @@ export default function WeaponCard({ weapon, onShowRange }: WeaponCardProps) {
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-3">
         <SpecRow label="Range" value={`${weapon.range_km} km`} />
         <SpecRow label="Speed" value={weapon.speed} />
-        <SpecRow label="Warhead" value={weapon.warhead_kg > 0 ? `${weapon.warhead_kg} kg` : "KKV"} />
+        <SpecRow
+          label="Warhead"
+          value={weapon.warhead_kg > 0 ? `${weapon.warhead_kg} kg` : "KKV"}
+        />
         <SpecRow label="CEP" value={weapon.cep_m > 0 ? `${weapon.cep_m} m` : "N/A"} />
       </div>
 

@@ -300,10 +300,5 @@ export default function A10Overlay({ incident, map, soundEnabled = true }: A10Ov
     };
   }, [incident, map, soundEnabled]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="a10-overlay"
-    />
-  );
+  return <div ref={containerRef} className="a10-overlay" />;
 }

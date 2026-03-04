@@ -37,7 +37,10 @@ export async function PUT(req: Request) {
       return NextResponse.json({ ok: true, text: null });
     }
 
-    await r.set(REDIS_TICKER_TEXT_KEY, JSON.stringify({ text, updatedAt: new Date().toISOString() }));
+    await r.set(
+      REDIS_TICKER_TEXT_KEY,
+      JSON.stringify({ text, updatedAt: new Date().toISOString() })
+    );
     return NextResponse.json({ ok: true, text });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

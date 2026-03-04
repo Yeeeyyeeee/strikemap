@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 // ─── Login Screen ───────────────────────────────────────────────
 function LoginScreen({ onAuth }: { onAuth: (name: string) => void }) {
@@ -49,9 +50,7 @@ function LoginScreen({ onAuth }: { onAuth: (name: string) => void }) {
             autoFocus
             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
           />
-          {error && (
-            <p className="text-red-400 text-xs text-center">{error}</p>
-          )}
+          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
           <button
             onClick={submit}
             disabled={loading || !password}
@@ -100,7 +99,9 @@ export default function SourcePage() {
       const res = await fetch("/api/siren-alerts");
       const data = await res.json();
       setSirenAlerts(data.sirenAlerts || []);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -119,7 +120,9 @@ export default function SourcePage() {
         body: JSON.stringify({ action: "clear", country }),
       });
       await loadSirens();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setSirenLoading(false);
   };
 
@@ -132,7 +135,9 @@ export default function SourcePage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadSirens();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setSirenLoading(false);
   };
 
@@ -168,12 +173,12 @@ export default function SourcePage() {
       <header className="border-b border-[#2a2a2a] bg-[#111]/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a
+            <Link
               href="/"
               className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
             >
               &larr; Back
-            </a>
+            </Link>
             <h1
               className="text-sm font-bold uppercase tracking-wider text-neutral-300"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -182,9 +187,7 @@ export default function SourcePage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-neutral-500">
-              {sourceName}
-            </span>
+            <span className="text-xs text-neutral-500">{sourceName}</span>
             <button
               onClick={logout}
               className="text-neutral-600 hover:text-neutral-400 text-xs transition-colors"
@@ -243,10 +246,18 @@ export default function SourcePage() {
                     <p className="text-xs text-neutral-400 line-clamp-2">{alert.sourceText}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-[10px] text-neutral-600">
                       <span>
-                        Activated: {new Date(alert.activatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Activated:{" "}
+                        {new Date(alert.activatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                       <span>
-                        Last seen: {new Date(alert.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Last seen:{" "}
+                        {new Date(alert.lastSeenAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                   </div>

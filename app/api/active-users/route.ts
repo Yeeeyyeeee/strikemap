@@ -53,10 +53,7 @@ export async function GET() {
     await redis.zremrangebyscore(REDIS_ACTIVE_USERS_KEY, 0, cutoff);
 
     const count = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
-    return NextResponse.json(
-      { count },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return NextResponse.json({ count }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ count: 0 });
   }

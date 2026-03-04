@@ -15,10 +15,7 @@ export default memo(function CurrentCam() {
     try {
       const res = await fetch("/api/youtube-links");
       const data = await res.json();
-      const all: LiveStream[] = [
-        ...(data.liveNews || []),
-        ...(data.liveCams || []),
-      ];
+      const all: LiveStream[] = [...(data.liveNews || []), ...(data.liveCams || [])];
       setStreams(all);
     } catch {}
   }, []);

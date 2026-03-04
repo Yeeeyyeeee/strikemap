@@ -10,7 +10,11 @@ interface MobileTabBarProps {
   alertCount?: number;
 }
 
-export default memo(function MobileTabBar({ activeTab, onTabChange, alertCount = 0 }: MobileTabBarProps) {
+export default memo(function MobileTabBar({
+  activeTab,
+  onTabChange,
+  alertCount = 0,
+}: MobileTabBarProps) {
   const toggle = (tab: MobileTab) => {
     // Tapping the active tab returns to map
     onTabChange(activeTab === tab ? "map" : tab);
@@ -95,7 +99,13 @@ function TabButton({
 
 function MapIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z" strokeLinejoin="round" />
       <path d="M8 2v16M16 6v16" />
     </svg>
@@ -104,8 +114,18 @@ function MapIcon() {
 
 function FeedIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="M7 8h6M7 12h4" strokeLinecap="round" />
     </svg>
   );
@@ -113,7 +133,13 @@ function FeedIcon() {
 
 function StatsIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -121,8 +147,18 @@ function StatsIcon() {
 
 function AlertIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="M13.73 21a2 2 0 01-3.46 0" />
     </svg>
   );
@@ -130,7 +166,13 @@ function AlertIcon() {
 
 function MenuIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
       <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />

@@ -70,45 +70,47 @@ export const LiveFeedDesktop = memo(function LiveFeedDesktop() {
       {open && (
         <div className="border-t border-[#2a2a2a]">
           <div className="max-h-64 overflow-y-auto divide-y divide-[#2a2a2a]/50">
-              {posts.length === 0 ? (
-                <div className="flex items-center justify-center py-6">
-                  <span className="text-neutral-600 text-[10px]">Loading feed...</span>
-                </div>
-              ) : (
-                posts.map((post) => {
-                  const isExp = expandedId === post.id;
-                  return (
-                    <button
-                      key={post.id}
-                      onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
-                      className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+            {posts.length === 0 ? (
+              <div className="flex items-center justify-center py-6">
+                <span className="text-neutral-600 text-[10px]">Loading feed...</span>
+              </div>
+            ) : (
+              posts.map((post) => {
+                const isExp = expandedId === post.id;
+                return (
+                  <button
+                    key={post.id}
+                    onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
+                    className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                        {post.channelUsername}
+                      </span>
+                      {post.videoUrl && (
+                        <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                          VID
+                        </span>
+                      )}
+                      <span className="text-neutral-600 text-[9px]">
+                        {post.timestamp
+                          ? new Date(post.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : post.date}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-[10px] text-neutral-300 leading-tight ${isExp ? "whitespace-pre-line" : "line-clamp-2"}`}
                     >
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400">
-                          {post.channelUsername}
-                        </span>
-                        {post.videoUrl && (
-                          <span className="text-[8px] font-bold uppercase px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                            VID
-                          </span>
-                        )}
-                        <span className="text-neutral-600 text-[9px]">
-                          {post.timestamp
-                            ? new Date(post.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : post.date}
-                        </span>
-                      </div>
-                      <p className={`text-[10px] text-neutral-300 leading-tight ${isExp ? "whitespace-pre-line" : "line-clamp-2"}`}>
-                        {post.text}
-                      </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                      {post.text}
+                    </p>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>

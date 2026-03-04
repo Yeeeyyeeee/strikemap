@@ -9,18 +9,23 @@
  * collapse whitespace.
  */
 function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    // Strip URLs
-    .replace(/https?:\/\/\S+/g, "")
-    // Strip emoji and symbols
-    // eslint-disable-next-line no-control-regex
-    .replace(/[^\x00-\x7F\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\u0400-\u04FF\u4E00-\u9FFF\uAC00-\uD7AF]/g, "")
-    // Strip punctuation but keep letters/digits/spaces from all scripts
-    .replace(/[^\w\s\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\u0400-\u04FF]/g, " ")
-    // Collapse whitespace
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    text
+      .toLowerCase()
+      // Strip URLs
+      .replace(/https?:\/\/\S+/g, "")
+      // Strip emoji and symbols
+
+      .replace(
+        /[^\x00-\x7F\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\u0400-\u04FF\u4E00-\u9FFF\uAC00-\uD7AF]/g,
+        ""
+      )
+      // Strip punctuation but keep letters/digits/spaces from all scripts
+      .replace(/[^\w\s\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\u0400-\u04FF]/g, " ")
+      // Collapse whitespace
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 /**
@@ -88,10 +93,7 @@ interface FeedPost {
  * @param posts - Pre-sorted by timestamp descending
  * @param threshold - Similarity threshold (0–1), default 0.55
  */
-export function deduplicatePosts<T extends FeedPost>(
-  posts: T[],
-  threshold = 0.55,
-): T[] {
+export function deduplicatePosts<T extends FeedPost>(posts: T[], threshold = 0.55): T[] {
   if (posts.length <= 1) return posts;
 
   // Track which posts are suppressed (index → true)

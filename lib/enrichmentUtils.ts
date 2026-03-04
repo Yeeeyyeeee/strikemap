@@ -40,10 +40,14 @@ export function applyEnrichment(inc: Incident, kwResult: KeywordResult): void {
   if (kwResult.missiles_intercepted) inc.missiles_intercepted = kwResult.missiles_intercepted;
   if (kwResult.casualties_military) inc.casualties_military = kwResult.casualties_military;
   if (kwResult.casualties_civilian) inc.casualties_civilian = kwResult.casualties_civilian;
-  if (kwResult.casualties_description && kwResult.casualties_description !== "No casualties reported") {
+  if (
+    kwResult.casualties_description &&
+    kwResult.casualties_description !== "No casualties reported"
+  ) {
     inc.casualties_description = kwResult.casualties_description;
   }
   if (kwResult.damage_assessment) inc.damage_assessment = kwResult.damage_assessment;
-  if (kwResult.damage_severity) inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
+  if (kwResult.damage_severity)
+    inc.damage_severity = kwResult.damage_severity as Incident["damage_severity"];
   if (kwResult.isStatement) inc.isStatement = true;
 }

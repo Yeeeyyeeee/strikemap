@@ -17,7 +17,6 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
     <div className="fixed top-14 left-0 right-0 z-45 settings-panel">
       <div className="bg-[#111] border-b border-[#2a2a2a] px-4 md:px-6 py-4">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
           {/* Date Filter */}
           <div>
             <h3
@@ -100,11 +99,27 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
               Display Options
             </h3>
             <div className="space-y-2">
-              <ToggleRow label="Gauges" checked={settings.showGauges} onChange={(v) => update({ showGauges: v })} />
+              <ToggleRow
+                label="Gauges"
+                checked={settings.showGauges}
+                onChange={(v) => update({ showGauges: v })}
+              />
 
-              <ToggleRow label="Legend" checked={settings.showLegend} onChange={(v) => update({ showLegend: v })} />
-              <ToggleRow label="Sound Effects" checked={settings.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
-              <ToggleRow label="Notifications" checked={settings.notificationsEnabled} onChange={(v) => update({ notificationsEnabled: v })} />
+              <ToggleRow
+                label="Legend"
+                checked={settings.showLegend}
+                onChange={(v) => update({ showLegend: v })}
+              />
+              <ToggleRow
+                label="Sound Effects"
+                checked={settings.soundEnabled}
+                onChange={(v) => update({ soundEnabled: v })}
+              />
+              <ToggleRow
+                label="Notifications"
+                checked={settings.notificationsEnabled}
+                onChange={(v) => update({ notificationsEnabled: v })}
+              />
             </div>
           </div>
 
@@ -137,11 +152,21 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
               >
                 <option value="all">All Countries</option>
                 {SIREN_COUNTRIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
-              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              <svg
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
           </div>
@@ -151,11 +176,20 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
   );
 });
 
-
-function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <label className="flex items-center justify-between cursor-pointer group">
-      <span className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors">{label}</span>
+      <span className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors">
+        {label}
+      </span>
       <button
         type="button"
         role="switch"

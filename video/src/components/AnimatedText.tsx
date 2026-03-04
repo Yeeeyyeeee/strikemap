@@ -1,20 +1,8 @@
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  spring,
-  interpolate,
-  Easing,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
 import { COLOR_TEXT, FONT_BOLD } from "../brand";
 
-type Animation =
-  | "pop"
-  | "slideLeft"
-  | "slideRight"
-  | "slideUp"
-  | "fadeIn"
-  | "typewriter";
+type Animation = "pop" | "slideLeft" | "slideRight" | "slideUp" | "fadeIn" | "typewriter";
 
 interface Props {
   text: string;
@@ -148,22 +136,13 @@ export const AnimatedText: React.FC<Props> = ({
   }
 
   if (animation === "typewriter") {
-    const charsVisible = Math.min(
-      text.length,
-      Math.floor(localFrame / 2) + 1
-    );
-    return (
-      <div style={baseStyle}>{text.slice(0, charsVisible)}</div>
-    );
+    const charsVisible = Math.min(text.length, Math.floor(localFrame / 2) + 1);
+    return <div style={baseStyle}>{text.slice(0, charsVisible)}</div>;
   }
 
   // fadeIn
   const opacity = interpolate(localFrame, [0, durationFrames], [0, 1], {
     extrapolateRight: "clamp",
   });
-  return (
-    <div style={{ ...baseStyle, opacity }}>
-      {text}
-    </div>
-  );
+  return <div style={{ ...baseStyle, opacity }}>{text}</div>;
 };

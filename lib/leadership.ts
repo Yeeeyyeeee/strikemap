@@ -472,10 +472,23 @@ const leadershipSchema: ResponseSchema = {
         type: SchemaType.OBJECT,
         properties: {
           name: { type: SchemaType.STRING, description: "Full name of the person killed" },
-          role: { type: SchemaType.STRING, description: "Their role/title in the Iranian regime, IRGC, or allied proxy group" },
-          tier: { type: SchemaType.NUMBER, description: "Importance: 1=supreme leader level, 2=senior official (president, minister, force commander), 3=commander/operative/adviser" },
-          deathDate: { type: SchemaType.STRING, description: "Date of death if mentioned, e.g. '15 Mar 2025'" },
-          deathCause: { type: SchemaType.STRING, description: "How they died, e.g. 'Israeli airstrike, Damascus'" },
+          role: {
+            type: SchemaType.STRING,
+            description: "Their role/title in the Iranian regime, IRGC, or allied proxy group",
+          },
+          tier: {
+            type: SchemaType.NUMBER,
+            description:
+              "Importance: 1=supreme leader level, 2=senior official (president, minister, force commander), 3=commander/operative/adviser",
+          },
+          deathDate: {
+            type: SchemaType.STRING,
+            description: "Date of death if mentioned, e.g. '15 Mar 2025'",
+          },
+          deathCause: {
+            type: SchemaType.STRING,
+            description: "How they died, e.g. 'Israeli airstrike, Damascus'",
+          },
           confidence: { type: SchemaType.STRING, description: "confirmed or unconfirmed" },
         },
         required: ["name", "role", "tier", "deathDate", "deathCause", "confidence"],
@@ -516,14 +529,19 @@ Posts to analyze:
 // In-memory cache for AI results (refreshes with server restart)
 const aiCache = new Map<string, LeadershipUpdate[]>();
 
-export async function analyzePostsForDeaths(posts: { text: string; date: string }[]): Promise<LeadershipUpdate[]> {
+export async function analyzePostsForDeaths(
+  posts: { text: string; date: string }[]
+): Promise<LeadershipUpdate[]> {
   if (posts.length === 0) return [];
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return [];
 
   // Create cache key from post content
-  const cacheKey = posts.map((p) => p.text.slice(0, 100)).join("|").slice(0, 500);
+  const cacheKey = posts
+    .map((p) => p.text.slice(0, 100))
+    .join("|")
+    .slice(0, 500);
   if (aiCache.has(cacheKey)) {
     return aiCache.get(cacheKey)!;
   }
@@ -547,15 +565,23 @@ export async function analyzePostsForDeaths(posts: { text: string; date: string 
 
     const updates: LeadershipUpdate[] = (parsed.reports || [])
       .filter((r: { confidence: string }) => r.confidence === "confirmed")
-      .map((r: { name: string; role: string; tier: number; deathDate: string; deathCause: string }) => ({
-        name: r.name,
-        role: r.role,
-        tier: Math.min(Math.max(r.tier, 1), 3) as 1 | 2 | 3,
-        dead: true,
-        deathDate: r.deathDate,
-        deathCause: r.deathCause,
-        imageSearchQuery: r.name,
-      }));
+      .map(
+        (r: {
+          name: string;
+          role: string;
+          tier: number;
+          deathDate: string;
+          deathCause: string;
+        }) => ({
+          name: r.name,
+          role: r.role,
+          tier: Math.min(Math.max(r.tier, 1), 3) as 1 | 2 | 3,
+          dead: true,
+          deathDate: r.deathDate,
+          deathCause: r.deathCause,
+          imageSearchQuery: r.name,
+        })
+      );
 
     aiCache.set(cacheKey, updates);
     return updates;
@@ -594,10 +620,23 @@ export async function fetchWikipediaImage(name: string): Promise<string | null> 
 
 // Death-related keywords to filter telegram posts
 const DEATH_KEYWORDS = [
-  "killed", "dead", "eliminated", "assassinated", "assassination",
-  "martyred", "martyr", "dies", "died", "death", "struck down",
-  "taken out", "neutralized", "confirmed dead", "airstrike kill",
-  "targeted killing", "liquidated",
+  "killed",
+  "dead",
+  "eliminated",
+  "assassinated",
+  "assassination",
+  "martyred",
+  "martyr",
+  "dies",
+  "died",
+  "death",
+  "struck down",
+  "taken out",
+  "neutralized",
+  "confirmed dead",
+  "airstrike kill",
+  "targeted killing",
+  "liquidated",
 ];
 
 function isDeathRelated(text: string): boolean {
@@ -636,9 +675,10 @@ export async function getLeadership(): Promise<Leader[]> {
     for (const update of updates) {
       // Check if this person is already in our list
       const normalizedName = update.name.toLowerCase().trim();
-      const existing = leaders.find((l) =>
-        l.name.toLowerCase().trim() === normalizedName ||
-        normalizedName.includes(l.name.toLowerCase().split(" ").pop() || "___")
+      const existing = leaders.find(
+        (l) =>
+          l.name.toLowerCase().trim() === normalizedName ||
+          normalizedName.includes(l.name.toLowerCase().split(" ").pop() || "___")
       );
 
       if (existing) {
@@ -650,7 +690,10 @@ export async function getLeadership(): Promise<Leader[]> {
         }
       } else {
         // New person — add to the list
-        const id = update.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+        const id = update.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "");
 
         // Try to get their image from Wikipedia
         const imageUrl = await fetchWikipediaImage(update.name);

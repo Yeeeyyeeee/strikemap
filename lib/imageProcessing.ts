@@ -56,10 +56,7 @@ function buildLookupTable(srcCDF: Float64Array, refCDF: Float64Array): Uint8Arra
  *
  * Both inputs should be PNG or JPEG buffers. Returns PNG buffer.
  */
-export async function histogramMatch(
-  target: Buffer,
-  reference: Buffer,
-): Promise<Buffer> {
+export async function histogramMatch(target: Buffer, reference: Buffer): Promise<Buffer> {
   // Decode both images to raw RGB pixels
   const [tgtRaw, refRaw] = await Promise.all([
     sharp(target).removeAlpha().raw().toBuffer({ resolveWithObject: true }),

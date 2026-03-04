@@ -21,7 +21,9 @@ async function postToDiscord(webhookUrl: string, payload: object): Promise<boole
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      console.error(`[discord] Webhook failed (${res.status}): ${await res.text().catch(() => "")}`);
+      console.error(
+        `[discord] Webhook failed (${res.status}): ${await res.text().catch(() => "")}`
+      );
       return false;
     }
     return true;
@@ -37,7 +39,7 @@ export async function sendDiscordStrike(inc: Incident): Promise<boolean> {
   const url = process.env.DISCORD_WEBHOOK_STRIKES;
   if (!url) return false;
 
-  const color = inc.side === "iran" ? 0xEF4444 : 0x3B82F6;
+  const color = inc.side === "iran" ? 0xef4444 : 0x3b82f6;
   const sideLabel = inc.side === "iran" ? "Iran" : "US / Israel";
 
   const fields: Array<{ name: string; value: string; inline?: boolean }> = [
@@ -46,7 +48,8 @@ export async function sendDiscordStrike(inc: Incident): Promise<boolean> {
 
   if (inc.weapon) fields.push({ name: "Weapon", value: inc.weapon, inline: true });
   if (inc.target_type) fields.push({ name: "Target", value: inc.target_type, inline: true });
-  if (inc.damage_severity) fields.push({ name: "Damage", value: inc.damage_severity, inline: true });
+  if (inc.damage_severity)
+    fields.push({ name: "Damage", value: inc.damage_severity, inline: true });
 
   const casualties: string[] = [];
   if (inc.casualties_military) casualties.push(`${inc.casualties_military} military`);
@@ -56,15 +59,17 @@ export async function sendDiscordStrike(inc: Incident): Promise<boolean> {
   }
 
   return postToDiscord(url, {
-    embeds: [{
-      color,
-      title: `\u{1F6A8} STRIKE ALERT \u2014 ${inc.location || "Unknown Location"}`,
-      url: SITE_URL,
-      description: inc.description?.slice(0, 2048) || undefined,
-      fields,
-      footer: { text: `strikemap.live \u2022 ${inc.date}` },
-      timestamp: inc.timestamp || new Date().toISOString(),
-    }],
+    embeds: [
+      {
+        color,
+        title: `\u{1F6A8} STRIKE ALERT \u2014 ${inc.location || "Unknown Location"}`,
+        url: SITE_URL,
+        description: inc.description?.slice(0, 2048) || undefined,
+        fields,
+        footer: { text: `strikemap.live \u2022 ${inc.date}` },
+        timestamp: inc.timestamp || new Date().toISOString(),
+      },
+    ],
   });
 }
 
@@ -75,17 +80,23 @@ export async function sendDiscordSiren(alert: SirenAlert): Promise<boolean> {
   if (!url) return false;
 
   return postToDiscord(url, {
-    embeds: [{
-      color: 0xF97316,
-      title: `\u26A0\uFE0F SIREN ALERT \u2014 ${alert.country}`,
-      url: SITE_URL,
-      description: alert.sourceText?.slice(0, 2048) || undefined,
-      fields: [
-        { name: "Activated", value: `<t:${Math.floor(alert.activatedAt / 1000)}:R>`, inline: true },
-      ],
-      footer: { text: "strikemap.live" },
-      timestamp: new Date(alert.activatedAt).toISOString(),
-    }],
+    embeds: [
+      {
+        color: 0xf97316,
+        title: `\u26A0\uFE0F SIREN ALERT \u2014 ${alert.country}`,
+        url: SITE_URL,
+        description: alert.sourceText?.slice(0, 2048) || undefined,
+        fields: [
+          {
+            name: "Activated",
+            value: `<t:${Math.floor(alert.activatedAt / 1000)}:R>`,
+            inline: true,
+          },
+        ],
+        footer: { text: "strikemap.live" },
+        timestamp: new Date(alert.activatedAt).toISOString(),
+      },
+    ],
   });
 }
 

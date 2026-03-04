@@ -37,11 +37,13 @@ function LeaderCard({ leader }: { leader: Leader }) {
 
   return (
     <div className="flex flex-col items-center gap-2 group">
-      <div className={`relative ${tierSize} rounded-lg overflow-hidden border-2 ${
-        leader.dead
-          ? "border-red-600/80 shadow-[0_0_20px_rgba(239,68,68,0.3)]"
-          : "border-neutral-700 group-hover:border-neutral-500"
-      } transition-all`}>
+      <div
+        className={`relative ${tierSize} rounded-lg overflow-hidden border-2 ${
+          leader.dead
+            ? "border-red-600/80 shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+            : "border-neutral-700 group-hover:border-neutral-500"
+        } transition-all`}
+      >
         {leader.imageUrl ? (
           <img
             src={leader.imageUrl}
@@ -63,8 +65,24 @@ function LeaderCard({ leader }: { leader: Leader }) {
               viewBox="0 0 100 100"
               className="w-[90%] h-[90%] drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]"
             >
-              <line x1="10" y1="10" x2="90" y2="90" stroke="#dc2626" strokeWidth="10" strokeLinecap="round" />
-              <line x1="90" y1="10" x2="10" y2="90" stroke="#dc2626" strokeWidth="10" strokeLinecap="round" />
+              <line
+                x1="10"
+                y1="10"
+                x2="90"
+                y2="90"
+                stroke="#dc2626"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              <line
+                x1="90"
+                y1="10"
+                x2="10"
+                y2="90"
+                stroke="#dc2626"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
             </svg>
           </div>
         )}
@@ -77,21 +95,17 @@ function LeaderCard({ leader }: { leader: Leader }) {
       </div>
 
       <div className="text-center max-w-[180px]">
-        <p className={`font-semibold text-sm ${leader.dead ? "text-red-400 line-through decoration-red-600/60" : "text-neutral-200"}`}>
+        <p
+          className={`font-semibold text-sm ${leader.dead ? "text-red-400 line-through decoration-red-600/60" : "text-neutral-200"}`}
+        >
           {leader.name}
         </p>
-        <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">
-          {leader.role}
-        </p>
+        <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">{leader.role}</p>
         {leader.dead && leader.deathDate && (
-          <p className="text-[10px] text-red-500/70 mt-1">
-            {leader.deathDate}
-          </p>
+          <p className="text-[10px] text-red-500/70 mt-1">{leader.deathDate}</p>
         )}
         {leader.dead && leader.deathCause && (
-          <p className="text-[10px] text-neutral-600 italic">
-            {leader.deathCause}
-          </p>
+          <p className="text-[10px] text-neutral-600 italic">{leader.deathCause}</p>
         )}
       </div>
     </div>
@@ -142,13 +156,7 @@ const FACTIONS: FactionConfig[] = [
   },
 ];
 
-function FactionSection({
-  config,
-  leaders,
-}: {
-  config: FactionConfig;
-  leaders: Leader[];
-}) {
+function FactionSection({ config, leaders }: { config: FactionConfig; leaders: Leader[] }) {
   if (leaders.length === 0) return null;
   const deadCount = leaders.filter((l) => l.dead).length;
   const tier1 = leaders.filter((l) => l.tier === 1);
@@ -170,9 +178,7 @@ function FactionSection({
             >
               {config.label}
             </h3>
-            <p className="text-[10px] text-neutral-500 tracking-wider mt-0.5">
-              {config.subtitle}
-            </p>
+            <p className="text-[10px] text-neutral-500 tracking-wider mt-0.5">{config.subtitle}</p>
           </div>
           <div className="flex items-center gap-3 text-[10px] tracking-wider">
             <span className="text-neutral-500">{leaders.length} figures</span>
@@ -281,11 +287,21 @@ export default function LeadershipBoard() {
         {FILTER_OPTIONS.map((opt) => {
           const active = filter === opt.key;
           const colorMap: Record<string, string> = {
-            neutral: active ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300",
-            red: active ? "bg-red-500/20 text-red-400 border border-red-500/30" : "text-neutral-500 hover:text-neutral-300",
-            green: active ? "bg-green-500/20 text-green-400 border border-green-500/30" : "text-neutral-500 hover:text-neutral-300",
-            blue: active ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "text-neutral-500 hover:text-neutral-300",
-            purple: active ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "text-neutral-500 hover:text-neutral-300",
+            neutral: active
+              ? "bg-neutral-700 text-white"
+              : "text-neutral-500 hover:text-neutral-300",
+            red: active
+              ? "bg-red-500/20 text-red-400 border border-red-500/30"
+              : "text-neutral-500 hover:text-neutral-300",
+            green: active
+              ? "bg-green-500/20 text-green-400 border border-green-500/30"
+              : "text-neutral-500 hover:text-neutral-300",
+            blue: active
+              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+              : "text-neutral-500 hover:text-neutral-300",
+            purple: active
+              ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+              : "text-neutral-500 hover:text-neutral-300",
           };
           return (
             <button

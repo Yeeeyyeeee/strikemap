@@ -18,10 +18,7 @@ export const Watermark: React.FC<Props> = ({ logo = "icon.png" }) => {
         zIndex: 90,
       }}
     >
-      <Img
-        src={staticFile(logo)}
-        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-      />
+      <Img src={staticFile(logo)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
     </div>
   );
 };

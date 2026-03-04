@@ -45,9 +45,7 @@ export async function fetchRSSIncidents(): Promise<Incident[]> {
     const xml = await res.text();
     const items = parseRSSXml(xml);
 
-    const filtered = items.filter((item) =>
-      isIranRelated(item.title + " " + item.description)
-    );
+    const filtered = items.filter((item) => isIranRelated(item.title + " " + item.description));
 
     const incidents: Incident[] = filtered.map((item) => ({
       id: `rss-${createHash("md5").update(`${item.title}|${item.link}`).digest("hex").slice(0, 10)}`,
@@ -71,7 +69,7 @@ export async function fetchRSSIncidents(): Promise<Incident[]> {
     const enrichments = await enrichBatch(
       filtered,
       (item) => `${item.title} ${item.description}`,
-      5,
+      5
     );
 
     for (let i = 0; i < incidents.length; i++) {

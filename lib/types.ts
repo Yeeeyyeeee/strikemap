@@ -1,6 +1,17 @@
 export type StrikeSide = "iran" | "us_israel" | "us" | "israel";
 
-export type ViewMode = "all" | "iran" | "us_israel" | "leadership" | "stats" | "weapons" | "killchain" | "intercept" | "airspace" | "heatmap" | "satellite";
+export type ViewMode =
+  | "all"
+  | "iran"
+  | "us_israel"
+  | "leadership"
+  | "stats"
+  | "weapons"
+  | "killchain"
+  | "intercept"
+  | "airspace"
+  | "heatmap"
+  | "satellite";
 
 export interface MediaItem {
   type: "image" | "video";
@@ -57,20 +68,25 @@ export interface MissileAlert {
 }
 
 export interface InterceptionOutcome {
-  id: string;                    // "outcome-{epoch}"
-  alertIds: string[];            // cleared alert IDs this relates to
-  intercepted: boolean | null;   // true=intercepted, false=hit, null=unknown
-  interceptedBy: string;         // "Arrow-3", "Iron Dome", etc.
+  id: string; // "outcome-{epoch}"
+  alertIds: string[]; // cleared alert IDs this relates to
+  intercepted: boolean | null; // true=intercepted, false=hit, null=unknown
+  interceptedBy: string; // "Arrow-3", "Iron Dome", etc.
   missilesFired?: number;
   missilesIntercepted?: number;
-  summary: string;               // human-readable banner text
-  sourcePostId: string;          // IDF Telegram post ID
-  detectedAt: number;            // epoch ms
-  alertClearedAt: number;        // epoch ms
+  summary: string; // human-readable banner text
+  sourcePostId: string; // IDF Telegram post ID
+  detectedAt: number; // epoch ms
+  alertClearedAt: number; // epoch ms
 }
 
 // NOTAM / Airspace types
-export type NOTAMType = "closure" | "restriction" | "military_activity" | "gps_interference" | "tfr";
+export type NOTAMType =
+  | "closure"
+  | "restriction"
+  | "military_activity"
+  | "gps_interference"
+  | "tfr";
 export type NOTAMSeverity = "info" | "warning" | "critical";
 export type AirspaceStatus = "open" | "restricted" | "closed";
 
@@ -158,10 +174,10 @@ export interface SatelliteImagery {
   lat: number;
   lng: number;
   beforeDateFrom: string; // start of before search window
-  beforeDateTo: string;   // end of before search window
-  afterDateFrom: string;  // start of after search window
-  afterDateTo: string;    // end of after search window
-  beforeDate: string;     // best date from catalog (or window end as fallback)
+  beforeDateTo: string; // end of before search window
+  afterDateFrom: string; // start of after search window
+  afterDateTo: string; // end of after search window
+  beforeDate: string; // best date from catalog (or window end as fallback)
   afterDate: string;
   beforeCloudCover?: number;
   afterCloudCover?: number;

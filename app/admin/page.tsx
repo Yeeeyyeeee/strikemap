@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { extractYouTubeId } from "@/lib/videoUtils";
 
 interface LiveCam {
@@ -70,9 +71,7 @@ function LoginScreen({ onAuth }: { onAuth: () => void }) {
             autoFocus
             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
           />
-          {error && (
-            <p className="text-red-400 text-xs text-center">{error}</p>
-          )}
+          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
           <button
             onClick={submit}
             disabled={loading || !password}
@@ -148,7 +147,9 @@ export default function AdminPage() {
   const [tickerTextLoading, setTickerTextLoading] = useState(false);
 
   // Changelog state
-  const [changelogEntries, setChangelogEntries] = useState<{ id: string; text: string; createdAt: number }[]>([]);
+  const [changelogEntries, setChangelogEntries] = useState<
+    { id: string; text: string; createdAt: number }[]
+  >([]);
   const [changelogText, setChangelogText] = useState("");
   const [changelogLoading, setChangelogLoading] = useState(false);
 
@@ -158,11 +159,24 @@ export default function AdminPage() {
   const [bansLoading, setBansLoading] = useState(false);
 
   // Suggestions state
-  const [suggestions, setSuggestions] = useState<{ id: string; title: string; device: string; description: string; status: string; votes: number; nickname: string; createdAt: number }[]>([]);
+  const [suggestions, setSuggestions] = useState<
+    {
+      id: string;
+      title: string;
+      device: string;
+      description: string;
+      status: string;
+      votes: number;
+      nickname: string;
+      createdAt: number;
+    }[]
+  >([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   // Airspace override state
-  const [airspaceOverrides, setAirspaceOverrides] = useState<Record<string, { status: string; setAt: string }>>({});
+  const [airspaceOverrides, setAirspaceOverrides] = useState<
+    Record<string, { status: string; setAt: string }>
+  >({});
   const [airspaceLoading, setAirspaceLoading] = useState(false);
 
   // Check existing session on mount
@@ -208,7 +222,9 @@ export default function AdminPage() {
       const res = await fetch("/api/siren-alerts");
       const data = await res.json();
       setSirenAlerts(data.sirenAlerts || []);
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -227,7 +243,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear", country }),
       });
       await loadSirens();
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
     setSirenLoading(false);
   };
 
@@ -240,7 +258,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadSirens();
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
     setSirenLoading(false);
   };
 
@@ -273,7 +293,9 @@ export default function AdminPage() {
       const res = await fetch("/api/airspace-status");
       const data = await res.json();
       setAirspaceOverrides(data.overrides || {});
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -290,7 +312,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "set", fir, status }),
       });
       await loadAirspaceOverrides();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setAirspaceLoading(false);
   };
 
@@ -303,7 +327,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear", fir }),
       });
       await loadAirspaceOverrides();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setAirspaceLoading(false);
   };
 
@@ -316,7 +342,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadAirspaceOverrides();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setAirspaceLoading(false);
   };
 
@@ -326,7 +354,9 @@ export default function AdminPage() {
       const res = await fetch("/api/announcement");
       const data = await res.json();
       setCurrentAnnouncement(data.announcement?.text || null);
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -367,7 +397,9 @@ export default function AdminPage() {
       });
       setCurrentAnnouncement(null);
       setAnnouncementText("");
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
     setAnnouncementLoading(false);
   };
 
@@ -377,7 +409,9 @@ export default function AdminPage() {
       const res = await fetch("/api/ticker-text");
       const data = await res.json();
       setCurrentTickerText(data.text || null);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -418,7 +452,9 @@ export default function AdminPage() {
       });
       setCurrentTickerText(null);
       setTickerTextInput("");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setTickerTextLoading(false);
   };
 
@@ -524,7 +560,7 @@ export default function AdminPage() {
       const res = await fetch("/api/suggestions");
       const data = await res.json();
       setSuggestions(data.suggestions || []);
-    } catch (e) {}
+    } catch (_e) {}
   }, []);
 
   useEffect(() => {
@@ -540,10 +576,14 @@ export default function AdminPage() {
       await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "status", id, status: currentStatus === "wip" ? "completed" : "wip" }),
+        body: JSON.stringify({
+          action: "status",
+          id,
+          status: currentStatus === "wip" ? "completed" : "wip",
+        }),
       });
       await loadSuggestions();
-    } catch (e) {}
+    } catch (_e) {}
     setSuggestionsLoading(false);
   };
 
@@ -551,8 +591,12 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/alerts");
       const data = await res.json();
-      setMissileAlerts((data.alerts || []).filter((a: MissileAlertInfo) => a.id.startsWith("manual-")));
-    } catch (e) { /* ignore */ }
+      setMissileAlerts(
+        (data.alerts || []).filter((a: MissileAlertInfo) => a.id.startsWith("manual-"))
+      );
+    } catch (_e) {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -600,7 +644,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear", id }),
       });
       await loadMissileAlerts();
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
     setMissileLoading(false);
   };
 
@@ -613,7 +659,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: "clear-all" }),
       });
       await loadMissileAlerts();
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
     setMissileLoading(false);
   };
 
@@ -733,7 +781,13 @@ export default function AdminPage() {
   }
 
   if (!authed) {
-    return <LoginScreen onAuth={() => { setAuthed(true); }} />;
+    return (
+      <LoginScreen
+        onAuth={() => {
+          setAuthed(true);
+        }}
+      />
+    );
   }
 
   // ─── Dashboard ────────────────────────────────────────────────
@@ -743,12 +797,12 @@ export default function AdminPage() {
       <header className="border-b border-[#2a2a2a] bg-[#111]/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a
+            <Link
               href="/"
               className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
             >
               &larr; Back
-            </a>
+            </Link>
             <h1
               className="text-sm font-bold uppercase tracking-wider text-neutral-300"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -757,12 +811,8 @@ export default function AdminPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            {saved && (
-              <span className="text-green-400 text-xs font-medium">Saved</span>
-            )}
-            {error && (
-              <span className="text-red-400 text-xs font-medium">{error}</span>
-            )}
+            {saved && <span className="text-green-400 text-xs font-medium">Saved</span>}
+            {error && <span className="text-red-400 text-xs font-medium">{error}</span>}
             {saving && (
               <div className="w-3 h-3 border border-neutral-500 border-t-transparent rounded-full animate-spin" />
             )}
@@ -780,7 +830,12 @@ export default function AdminPage() {
         {alertError && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex items-center justify-between">
             <p className="text-red-400 text-sm">{alertError}</p>
-            <button onClick={() => setAlertError("")} className="text-red-400/60 hover:text-red-400 text-xs ml-4">dismiss</button>
+            <button
+              onClick={() => setAlertError("")}
+              className="text-red-400/60 hover:text-red-400 text-xs ml-4"
+            >
+              dismiss
+            </button>
           </div>
         )}
         {/* ── Announcement ── */}
@@ -1046,10 +1101,18 @@ export default function AdminPage() {
                     <p className="text-xs text-neutral-400 line-clamp-2">{alert.sourceText}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-[10px] text-neutral-600">
                       <span>
-                        Activated: {new Date(alert.activatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Activated:{" "}
+                        {new Date(alert.activatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                       <span>
-                        Last seen: {new Date(alert.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Last seen:{" "}
+                        {new Date(alert.lastSeenAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                   </div>
@@ -1141,15 +1204,27 @@ export default function AdminPage() {
                         style={{
                           backgroundColor:
                             currentStatus === s
-                              ? s === "open" ? "rgba(34,197,94,0.25)" : s === "restricted" ? "rgba(234,179,8,0.25)" : "rgba(239,68,68,0.25)"
+                              ? s === "open"
+                                ? "rgba(34,197,94,0.25)"
+                                : s === "restricted"
+                                  ? "rgba(234,179,8,0.25)"
+                                  : "rgba(239,68,68,0.25)"
                               : "rgba(255,255,255,0.03)",
                           color:
                             currentStatus === s
-                              ? s === "open" ? "#22c55e" : s === "restricted" ? "#eab308" : "#ef4444"
+                              ? s === "open"
+                                ? "#22c55e"
+                                : s === "restricted"
+                                  ? "#eab308"
+                                  : "#ef4444"
                               : "#666",
                           border: `1px solid ${
                             currentStatus === s
-                              ? s === "open" ? "rgba(34,197,94,0.4)" : s === "restricted" ? "rgba(234,179,8,0.4)" : "rgba(239,68,68,0.4)"
+                              ? s === "open"
+                                ? "rgba(34,197,94,0.4)"
+                                : s === "restricted"
+                                  ? "rgba(234,179,8,0.4)"
+                                  : "rgba(239,68,68,0.4)"
                               : "rgba(255,255,255,0.06)"
                           }`,
                           fontFamily: "JetBrains Mono, monospace",
@@ -1278,7 +1353,9 @@ export default function AdminPage() {
           {/* Active missile alerts list */}
           {missileAlerts.length === 0 ? (
             <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <p className="text-neutral-600 text-sm text-center">No active manual missile alerts</p>
+              <p className="text-neutral-600 text-sm text-center">
+                No active manual missile alerts
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1292,11 +1369,13 @@ export default function AdminPage() {
                       <span className="text-sm font-bold text-orange-400 uppercase">
                         {alert.cities.join(", ") || "Unknown"}
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                        alert.threatType === "drone"
-                          ? "bg-yellow-500/20 text-yellow-400"
-                          : "bg-orange-500/20 text-orange-400"
-                      }`}>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                          alert.threatType === "drone"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-orange-500/20 text-orange-400"
+                        }`}
+                      >
                         {alert.threatType || "missile"}
                       </span>
                     </div>
@@ -1359,7 +1438,9 @@ export default function AdminPage() {
                 Ban
               </button>
             </div>
-            <p className="text-[10px] text-neutral-600 mt-2">User can still send messages but they won&apos;t appear for anyone else.</p>
+            <p className="text-[10px] text-neutral-600 mt-2">
+              User can still send messages but they won&apos;t appear for anyone else.
+            </p>
           </div>
 
           {chatBans.length === 0 ? (
@@ -1373,7 +1454,12 @@ export default function AdminPage() {
                   key={nick}
                   className="bg-[#151515] border border-red-500/20 rounded-lg p-4 flex items-center justify-between"
                 >
-                  <span className="text-sm font-semibold text-neutral-200 uppercase" style={{ fontFamily: "JetBrains Mono, monospace" }}>{nick}</span>
+                  <span
+                    className="text-sm font-semibold text-neutral-200 uppercase"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    {nick}
+                  </span>
                   <button
                     onClick={() => unbanUser(nick)}
                     disabled={bansLoading}
@@ -1420,21 +1506,29 @@ export default function AdminPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`text-sm font-semibold ${isDone ? "text-neutral-500 line-through" : "text-neutral-200"}`}>
+                        <span
+                          className={`text-sm font-semibold ${isDone ? "text-neutral-500 line-through" : "text-neutral-200"}`}
+                        >
                           {sug.title}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          sug.device === "desktop"
-                            ? "bg-purple-500/20 text-purple-400"
-                            : sug.device === "mobile"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-neutral-700 text-neutral-400"
-                        }`}>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            sug.device === "desktop"
+                              ? "bg-purple-500/20 text-purple-400"
+                              : sug.device === "mobile"
+                                ? "bg-green-500/20 text-green-400"
+                                : "bg-neutral-700 text-neutral-400"
+                          }`}
+                        >
                           {sug.device === "all" ? "Both" : sug.device}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          isDone ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
-                        }`}>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            isDone
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-amber-500/20 text-amber-400"
+                          }`}
+                        >
                           {isDone ? "Done" : "WIP"}
                         </span>
                         <span className="text-[10px] text-neutral-600 font-medium">
@@ -1486,297 +1580,347 @@ export default function AdminPage() {
         </section>
 
         {/* ── Live News ── */}
-        {config && <section>
-          <h2
-            className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
-          >
-            Live News Streams
-          </h2>
-
-          {(config.liveNews || []).length === 0 && (
-            <p className="text-neutral-600 text-sm mb-4">No live news streams added yet.</p>
-          )}
-
-          <div className="space-y-2">
-            {(config.liveNews || []).map((stream, i) => (
-              <div
-                key={`${stream.id}-${i}`}
-                className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-3 group"
-              >
-                <img
-                  src={`https://img.youtube.com/vi/${stream.id}/mqdefault.jpg`}
-                  alt=""
-                  className="w-28 h-16 object-cover rounded bg-[#222] flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <input
-                    type="text"
-                    value={stream.label}
-                    onChange={(e) => updateNewsLabel(i, e.target.value)}
-                    onBlur={saveNewsLabel}
-                    onKeyDown={(e) => e.key === "Enter" && saveNewsLabel()}
-                    className="bg-transparent text-sm text-neutral-200 font-medium w-full outline-none border-b border-transparent focus:border-neutral-600 transition-colors"
-                  />
-                  <p className="text-[10px] text-neutral-600 mt-0.5 font-mono truncate">
-                    {stream.id}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button
-                    onClick={() => moveNews(i, -1)}
-                    disabled={i === 0}
-                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
-                    title="Move up"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => moveNews(i, 1)}
-                    disabled={i === (config.liveNews || []).length - 1}
-                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
-                    title="Move down"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => removeNews(i)}
-                    className="p-1.5 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-colors"
-                    title="Remove"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Add new */}
-          <div className="mt-4 bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
-            <p
-              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+        {config && (
+          <section>
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
-              Add News Stream
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="YouTube URL or video ID"
-                value={newNewsUrl}
-                onChange={(e) => setNewNewsUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addNews()}
-                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <input
-                type="text"
-                placeholder="Label (optional)"
-                value={newNewsLabel}
-                onChange={(e) => setNewNewsLabel(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addNews()}
-                className="sm:w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <button
-                onClick={addNews}
-                disabled={!newNewsUrl.trim()}
-                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Add
-              </button>
+              Live News Streams
+            </h2>
+
+            {(config.liveNews || []).length === 0 && (
+              <p className="text-neutral-600 text-sm mb-4">No live news streams added yet.</p>
+            )}
+
+            <div className="space-y-2">
+              {(config.liveNews || []).map((stream, i) => (
+                <div
+                  key={`${stream.id}-${i}`}
+                  className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-3 group"
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${stream.id}/mqdefault.jpg`}
+                    alt=""
+                    className="w-28 h-16 object-cover rounded bg-[#222] flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={stream.label}
+                      onChange={(e) => updateNewsLabel(i, e.target.value)}
+                      onBlur={saveNewsLabel}
+                      onKeyDown={(e) => e.key === "Enter" && saveNewsLabel()}
+                      className="bg-transparent text-sm text-neutral-200 font-medium w-full outline-none border-b border-transparent focus:border-neutral-600 transition-colors"
+                    />
+                    <p className="text-[10px] text-neutral-600 mt-0.5 font-mono truncate">
+                      {stream.id}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button
+                      onClick={() => moveNews(i, -1)}
+                      disabled={i === 0}
+                      className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                      title="Move up"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => moveNews(i, 1)}
+                      disabled={i === (config.liveNews || []).length - 1}
+                      className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                      title="Move down"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => removeNews(i)}
+                      className="p-1.5 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Remove"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </section>}
+
+            {/* Add new */}
+            <div className="mt-4 bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
+              <p
+                className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Add News Stream
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="YouTube URL or video ID"
+                  value={newNewsUrl}
+                  onChange={(e) => setNewNewsUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addNews()}
+                  className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                />
+                <input
+                  type="text"
+                  placeholder="Label (optional)"
+                  value={newNewsLabel}
+                  onChange={(e) => setNewNewsLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addNews()}
+                  className="sm:w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                />
+                <button
+                  onClick={addNews}
+                  disabled={!newNewsUrl.trim()}
+                  className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Live Cams ── */}
-        {config && <section>
-          <h2
-            className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
-          >
-            Live Cam Streams
-          </h2>
-
-          {config.liveCams.length === 0 && (
-            <p className="text-neutral-600 text-sm mb-4">No live cams added yet.</p>
-          )}
-
-          <div className="space-y-2">
-            {config.liveCams.map((cam, i) => (
-              <div
-                key={`${cam.id}-${i}`}
-                className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-3 group"
-              >
-                <img
-                  src={`https://img.youtube.com/vi/${cam.id}/mqdefault.jpg`}
-                  alt=""
-                  className="w-28 h-16 object-cover rounded bg-[#222] flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <input
-                    type="text"
-                    value={cam.label}
-                    onChange={(e) => updateCamLabel(i, e.target.value)}
-                    onBlur={saveCamLabel}
-                    onKeyDown={(e) => e.key === "Enter" && saveCamLabel()}
-                    className="bg-transparent text-sm text-neutral-200 font-medium w-full outline-none border-b border-transparent focus:border-neutral-600 transition-colors"
-                  />
-                  <p className="text-[10px] text-neutral-600 mt-0.5 font-mono truncate">
-                    {cam.id}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button
-                    onClick={() => moveCam(i, -1)}
-                    disabled={i === 0}
-                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
-                    title="Move up"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => moveCam(i, 1)}
-                    disabled={i === config.liveCams.length - 1}
-                    className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
-                    title="Move down"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => removeCam(i)}
-                    className="p-1.5 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-colors"
-                    title="Remove"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Add new */}
-          <div className="mt-4 bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
-            <p
-              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+        {config && (
+          <section>
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
-              Add Stream
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="YouTube URL or video ID"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCam()}
-                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <input
-                type="text"
-                placeholder="Label (optional)"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCam()}
-                className="sm:w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <button
-                onClick={addCam}
-                disabled={!newUrl.trim()}
-                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Add
-              </button>
+              Live Cam Streams
+            </h2>
+
+            {config.liveCams.length === 0 && (
+              <p className="text-neutral-600 text-sm mb-4">No live cams added yet.</p>
+            )}
+
+            <div className="space-y-2">
+              {config.liveCams.map((cam, i) => (
+                <div
+                  key={`${cam.id}-${i}`}
+                  className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-3 group"
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${cam.id}/mqdefault.jpg`}
+                    alt=""
+                    className="w-28 h-16 object-cover rounded bg-[#222] flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={cam.label}
+                      onChange={(e) => updateCamLabel(i, e.target.value)}
+                      onBlur={saveCamLabel}
+                      onKeyDown={(e) => e.key === "Enter" && saveCamLabel()}
+                      className="bg-transparent text-sm text-neutral-200 font-medium w-full outline-none border-b border-transparent focus:border-neutral-600 transition-colors"
+                    />
+                    <p className="text-[10px] text-neutral-600 mt-0.5 font-mono truncate">
+                      {cam.id}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button
+                      onClick={() => moveCam(i, -1)}
+                      disabled={i === 0}
+                      className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                      title="Move up"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => moveCam(i, 1)}
+                      disabled={i === config.liveCams.length - 1}
+                      className="p-1.5 rounded hover:bg-[#222] disabled:opacity-20 transition-colors"
+                      title="Move down"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => removeCam(i)}
+                      className="p-1.5 rounded hover:bg-red-500/20 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Remove"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </section>}
+
+            {/* Add new */}
+            <div className="mt-4 bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4">
+              <p
+                className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Add Stream
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="YouTube URL or video ID"
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCam()}
+                  className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                />
+                <input
+                  type="text"
+                  placeholder="Label (optional)"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCam()}
+                  className="sm:w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                />
+                <button
+                  onClick={addCam}
+                  disabled={!newUrl.trim()}
+                  className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Government Speech ── */}
-        {config && <section>
-          <h2
-            className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
-          >
-            Government Address
-          </h2>
+        {config && (
+          <section>
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Government Address
+            </h2>
 
-          <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-neutral-400">Enabled</label>
-              <button
-                onClick={() => {
-                  const next = {
-                    ...config,
-                    speech: { ...config.speech, enabled: !config.speech.enabled },
-                  };
-                  setConfig(next);
-                  save(next);
-                }}
-                className={`w-10 h-5 rounded-full transition-colors relative ${
-                  config.speech.enabled ? "bg-red-500/60" : "bg-[#2a2a2a]"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                    config.speech.enabled ? "left-5" : "left-0.5"
+            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-neutral-400">Enabled</label>
+                <button
+                  onClick={() => {
+                    const next = {
+                      ...config,
+                      speech: { ...config.speech, enabled: !config.speech.enabled },
+                    };
+                    setConfig(next);
+                    save(next);
+                  }}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    config.speech.enabled ? "bg-red-500/60" : "bg-[#2a2a2a]"
                   }`}
-                />
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs text-neutral-400 block mb-1">Title</label>
-              <input
-                type="text"
-                value={config.speech.title}
-                onChange={(e) => updateSpeech("title", e.target.value)}
-                onBlur={saveSpeech}
-                onKeyDown={(e) => e.key === "Enter" && saveSpeech()}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-500 transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-neutral-400 block mb-1">
-                YouTube URL or Video ID
-              </label>
-              <input
-                type="text"
-                value={config.speech.id}
-                onChange={(e) => updateSpeech("id", e.target.value)}
-                onBlur={saveSpeech}
-                onKeyDown={(e) => e.key === "Enter" && saveSpeech()}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-500 transition-colors"
-              />
-            </div>
-
-            {config.speech.id && (
-              <div>
-                <p
-                  className="text-[10px] uppercase tracking-wider text-neutral-600 mb-2 font-bold"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
                 >
-                  Preview
-                </p>
-                <img
-                  src={`https://img.youtube.com/vi/${extractVideoId(config.speech.id)}/mqdefault.jpg`}
-                  alt=""
-                  className="w-48 h-auto rounded bg-[#222]"
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      config.speech.enabled ? "left-5" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1">Title</label>
+                <input
+                  type="text"
+                  value={config.speech.title}
+                  onChange={(e) => updateSpeech("title", e.target.value)}
+                  onBlur={saveSpeech}
+                  onKeyDown={(e) => e.key === "Enter" && saveSpeech()}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-500 transition-colors"
                 />
               </div>
-            )}
-          </div>
-        </section>}
+
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1">
+                  YouTube URL or Video ID
+                </label>
+                <input
+                  type="text"
+                  value={config.speech.id}
+                  onChange={(e) => updateSpeech("id", e.target.value)}
+                  onBlur={saveSpeech}
+                  onKeyDown={(e) => e.key === "Enter" && saveSpeech()}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-500 transition-colors"
+                />
+              </div>
+
+              {config.speech.id && (
+                <div>
+                  <p
+                    className="text-[10px] uppercase tracking-wider text-neutral-600 mb-2 font-bold"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    Preview
+                  </p>
+                  <img
+                    src={`https://img.youtube.com/vi/${extractVideoId(config.speech.id)}/mqdefault.jpg`}
+                    alt=""
+                    className="w-48 h-auto rounded bg-[#222]"
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

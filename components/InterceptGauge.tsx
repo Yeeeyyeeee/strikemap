@@ -34,17 +34,30 @@ function getColor(pct: number): string {
 }
 
 export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) {
-  const withIntercept = incidents.filter(
-    (i) => i.intercepted_by && i.intercepted_by.length > 0
-  );
+  const withIntercept = incidents.filter((i) => i.intercepted_by && i.intercepted_by.length > 0);
 
   if (withIntercept.length === 0) return null;
 
   // Group by defense system
-  const systemMap = new Map<string, { intercepted: number; missed: number; unknown: number; projectilesFired: number; projectilesIntercepted: number }>();
+  const systemMap = new Map<
+    string,
+    {
+      intercepted: number;
+      missed: number;
+      unknown: number;
+      projectilesFired: number;
+      projectilesIntercepted: number;
+    }
+  >();
   for (const inc of withIntercept) {
     const sys = inc.intercepted_by!;
-    const entry = systemMap.get(sys) || { intercepted: 0, missed: 0, unknown: 0, projectilesFired: 0, projectilesIntercepted: 0 };
+    const entry = systemMap.get(sys) || {
+      intercepted: 0,
+      missed: 0,
+      unknown: 0,
+      projectilesFired: 0,
+      projectilesIntercepted: 0,
+    };
     if (inc.intercept_success === true) {
       entry.intercepted++;
     } else if (inc.intercept_success === false) {
@@ -73,15 +86,18 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
 
   // Use missiles_fired/missiles_intercepted when available, otherwise count incidents
   let totalProjectiles = 0;
-  let totalIntercepted = 0;
+  let _totalIntercepted = 0;
   for (const inc of withIntercept) {
     totalProjectiles += inc.missiles_fired || 1;
-    totalIntercepted += inc.missiles_intercepted || (inc.intercept_success === true ? 1 : 0);
+    _totalIntercepted += inc.missiles_intercepted || (inc.intercept_success === true ? 1 : 0);
   }
   const totalConfirmedIncidents = systems.reduce((s, sys) => s + sys.intercepted + sys.missed, 0);
   const totalInterceptedIncidents = systems.reduce((s, sys) => s + sys.intercepted, 0);
   const totalUnknown = systems.reduce((s, sys) => s + sys.unknown, 0);
-  const overallRate = totalConfirmedIncidents > 0 ? Math.round((totalInterceptedIncidents / totalConfirmedIncidents) * 100) : 0;
+  const overallRate =
+    totalConfirmedIncidents > 0
+      ? Math.round((totalInterceptedIncidents / totalConfirmedIncidents) * 100)
+      : 0;
 
   return (
     <div className="bg-[#1a1a1a]/95 border border-[#2a2a2a] rounded-lg p-3 w-52">
@@ -119,21 +135,23 @@ export default memo(function InterceptGauge({ incidents }: InterceptGaugeProps) 
             <div className="flex items-center justify-between text-[11px] mb-0.5">
               <div className="flex items-center gap-1">
                 {sys.intercepted > 0 && (
-                  <span className="text-green-400 text-[9px]" title="Intercepted">&#x2713;</span>
+                  <span className="text-green-400 text-[9px]" title="Intercepted">
+                    &#x2713;
+                  </span>
                 )}
                 {sys.missed > 0 && (
-                  <span className="text-red-400 text-[9px]" title="Missed">&#x2717;</span>
+                  <span className="text-red-400 text-[9px]" title="Missed">
+                    &#x2717;
+                  </span>
                 )}
                 {sys.unknown > 0 && (
-                  <span className="text-neutral-500 text-[9px]" title="Unconfirmed">?</span>
+                  <span className="text-neutral-500 text-[9px]" title="Unconfirmed">
+                    ?
+                  </span>
                 )}
-                <span style={{ color: SYSTEM_COLORS[sys.name] || "#999" }}>
-                  {sys.name}
-                </span>
+                <span style={{ color: SYSTEM_COLORS[sys.name] || "#999" }}>{sys.name}</span>
               </div>
-              <span className="text-neutral-400 font-medium">
-                {sys.rate}%
-              </span>
+              <span className="text-neutral-400 font-medium">{sys.rate}%</span>
             </div>
             <div className="h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden">
               <div

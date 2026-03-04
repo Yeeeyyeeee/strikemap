@@ -19,34 +19,178 @@ export interface LaunchSite {
 // ~18 known launch sites grouped by region
 const LAUNCH_SITES: LaunchSite[] = [
   // Iran (6)
-  { name: "Isfahan",     lat: 32.6546, lng: 51.6680, threats: ["ballistic", "cruise"],          priority: 1, maxRangeKm: 2500, region: "iran" },
-  { name: "Tabriz",      lat: 38.0800, lng: 46.2919, threats: ["ballistic", "cruise"],          priority: 2, maxRangeKm: 2000, region: "iran" },
-  { name: "Khorramabad", lat: 33.4900, lng: 48.3500, threats: ["ballistic", "cruise", "drone"], priority: 2, maxRangeKm: 2000, region: "iran" },
-  { name: "Dezful",      lat: 32.3838, lng: 48.4035, threats: ["ballistic", "cruise", "drone"], priority: 3, maxRangeKm: 1800, region: "iran" },
-  { name: "Shiraz",      lat: 29.5918, lng: 52.5837, threats: ["ballistic", "cruise"],          priority: 3, maxRangeKm: 2200, region: "iran" },
-  { name: "Semnan",      lat: 35.5729, lng: 53.3971, threats: ["ballistic"],                    priority: 4, maxRangeKm: 2500, region: "iran" },
+  {
+    name: "Isfahan",
+    lat: 32.6546,
+    lng: 51.668,
+    threats: ["ballistic", "cruise"],
+    priority: 1,
+    maxRangeKm: 2500,
+    region: "iran",
+  },
+  {
+    name: "Tabriz",
+    lat: 38.08,
+    lng: 46.2919,
+    threats: ["ballistic", "cruise"],
+    priority: 2,
+    maxRangeKm: 2000,
+    region: "iran",
+  },
+  {
+    name: "Khorramabad",
+    lat: 33.49,
+    lng: 48.35,
+    threats: ["ballistic", "cruise", "drone"],
+    priority: 2,
+    maxRangeKm: 2000,
+    region: "iran",
+  },
+  {
+    name: "Dezful",
+    lat: 32.3838,
+    lng: 48.4035,
+    threats: ["ballistic", "cruise", "drone"],
+    priority: 3,
+    maxRangeKm: 1800,
+    region: "iran",
+  },
+  {
+    name: "Shiraz",
+    lat: 29.5918,
+    lng: 52.5837,
+    threats: ["ballistic", "cruise"],
+    priority: 3,
+    maxRangeKm: 2200,
+    region: "iran",
+  },
+  {
+    name: "Semnan",
+    lat: 35.5729,
+    lng: 53.3971,
+    threats: ["ballistic"],
+    priority: 4,
+    maxRangeKm: 2500,
+    region: "iran",
+  },
 
   // Gaza (2)
-  { name: "Northern Gaza", lat: 31.5200, lng: 34.4500, threats: ["rocket"],          priority: 1, maxRangeKm: 45, region: "gaza" },
-  { name: "Rafah",         lat: 31.2969, lng: 34.2455, threats: ["rocket"],          priority: 2, maxRangeKm: 40, region: "gaza" },
+  {
+    name: "Northern Gaza",
+    lat: 31.52,
+    lng: 34.45,
+    threats: ["rocket"],
+    priority: 1,
+    maxRangeKm: 45,
+    region: "gaza",
+  },
+  {
+    name: "Rafah",
+    lat: 31.2969,
+    lng: 34.2455,
+    threats: ["rocket"],
+    priority: 2,
+    maxRangeKm: 40,
+    region: "gaza",
+  },
 
   // Lebanon (3)
-  { name: "Nabatieh",     lat: 33.3800, lng: 35.4800, threats: ["rocket", "cruise"],           priority: 1, maxRangeKm: 250, region: "lebanon" },
-  { name: "Bekaa Valley", lat: 33.8500, lng: 36.0500, threats: ["rocket", "cruise", "drone"],  priority: 1, maxRangeKm: 300, region: "lebanon" },
-  { name: "Baalbek",      lat: 34.0047, lng: 36.2110, threats: ["rocket", "cruise", "drone"],  priority: 2, maxRangeKm: 350, region: "lebanon" },
+  {
+    name: "Nabatieh",
+    lat: 33.38,
+    lng: 35.48,
+    threats: ["rocket", "cruise"],
+    priority: 1,
+    maxRangeKm: 250,
+    region: "lebanon",
+  },
+  {
+    name: "Bekaa Valley",
+    lat: 33.85,
+    lng: 36.05,
+    threats: ["rocket", "cruise", "drone"],
+    priority: 1,
+    maxRangeKm: 300,
+    region: "lebanon",
+  },
+  {
+    name: "Baalbek",
+    lat: 34.0047,
+    lng: 36.211,
+    threats: ["rocket", "cruise", "drone"],
+    priority: 2,
+    maxRangeKm: 350,
+    region: "lebanon",
+  },
 
   // Syria (2)
-  { name: "T-4 (Tiyas)",  lat: 34.5228, lng: 37.6272, threats: ["cruise", "drone"],            priority: 2, maxRangeKm: 500, region: "syria" },
-  { name: "Palmyra",      lat: 34.5604, lng: 38.2840, threats: ["cruise", "drone"],            priority: 3, maxRangeKm: 600, region: "syria" },
+  {
+    name: "T-4 (Tiyas)",
+    lat: 34.5228,
+    lng: 37.6272,
+    threats: ["cruise", "drone"],
+    priority: 2,
+    maxRangeKm: 500,
+    region: "syria",
+  },
+  {
+    name: "Palmyra",
+    lat: 34.5604,
+    lng: 38.284,
+    threats: ["cruise", "drone"],
+    priority: 3,
+    maxRangeKm: 600,
+    region: "syria",
+  },
 
   // Yemen (3)
-  { name: "Sanaa",    lat: 15.3694, lng: 44.1910, threats: ["ballistic", "cruise", "drone"], priority: 1, maxRangeKm: 2500, region: "yemen" },
-  { name: "Hodeidah", lat: 14.7979, lng: 42.9531, threats: ["cruise", "drone"],             priority: 2, maxRangeKm: 2200, region: "yemen" },
-  { name: "Dhamar",   lat: 14.5426, lng: 44.4050, threats: ["ballistic", "cruise"],         priority: 2, maxRangeKm: 2500, region: "yemen" },
+  {
+    name: "Sanaa",
+    lat: 15.3694,
+    lng: 44.191,
+    threats: ["ballistic", "cruise", "drone"],
+    priority: 1,
+    maxRangeKm: 2500,
+    region: "yemen",
+  },
+  {
+    name: "Hodeidah",
+    lat: 14.7979,
+    lng: 42.9531,
+    threats: ["cruise", "drone"],
+    priority: 2,
+    maxRangeKm: 2200,
+    region: "yemen",
+  },
+  {
+    name: "Dhamar",
+    lat: 14.5426,
+    lng: 44.405,
+    threats: ["ballistic", "cruise"],
+    priority: 2,
+    maxRangeKm: 2500,
+    region: "yemen",
+  },
 
   // Iraq PMF (2)
-  { name: "Jurf al-Sakhar", lat: 32.8950, lng: 44.1000, threats: ["rocket", "cruise", "drone"], priority: 2, maxRangeKm: 1000, region: "iraq" },
-  { name: "Anbar",          lat: 33.4200, lng: 43.3000, threats: ["cruise", "drone"],           priority: 3, maxRangeKm: 1000, region: "iraq" },
+  {
+    name: "Jurf al-Sakhar",
+    lat: 32.895,
+    lng: 44.1,
+    threats: ["rocket", "cruise", "drone"],
+    priority: 2,
+    maxRangeKm: 1000,
+    region: "iraq",
+  },
+  {
+    name: "Anbar",
+    lat: 33.42,
+    lng: 43.3,
+    threats: ["cruise", "drone"],
+    priority: 3,
+    maxRangeKm: 1000,
+    region: "iraq",
+  },
 ];
 
 /**
@@ -54,7 +198,7 @@ const LAUNCH_SITES: LaunchSite[] = [
  */
 function classifyThreat(
   countdown: number | undefined,
-  threatType?: "missile" | "drone" | "unknown",
+  threatType?: "missile" | "drone" | "unknown"
 ): ThreatClass[] {
   // If drone is explicitly known, return drone
   if (threatType === "drone") return ["drone"];
@@ -90,7 +234,7 @@ export function selectLaunchOrigin(
   targetLng: number,
   threatType?: "missile" | "drone" | "unknown",
   countdown?: number,
-  originCountry?: string,
+  originCountry?: string
 ): LaunchOriginResult {
   const threatClasses = classifyThreat(countdown, threatType);
 
@@ -112,12 +256,12 @@ export function selectLaunchOrigin(
   if (candidates.length === 0) {
     // Fallback: Isfahan for ballistic, Bekaa for rockets, Khorramabad for drones
     if (threatClasses.includes("rocket")) {
-      return { lat: 33.3800, lng: 35.4800, siteName: "Nabatieh", threatClass: "rocket" };
+      return { lat: 33.38, lng: 35.48, siteName: "Nabatieh", threatClass: "rocket" };
     }
     if (threatClasses.includes("drone")) {
-      return { lat: 33.4900, lng: 48.3500, siteName: "Khorramabad", threatClass: "drone" };
+      return { lat: 33.49, lng: 48.35, siteName: "Khorramabad", threatClass: "drone" };
     }
-    return { lat: 32.6546, lng: 51.6680, siteName: "Isfahan", threatClass: "ballistic" };
+    return { lat: 32.6546, lng: 51.668, siteName: "Isfahan", threatClass: "ballistic" };
   }
 
   // Geographic heuristic: northern Israel targets prefer Lebanon/Syria origins for short/medium range

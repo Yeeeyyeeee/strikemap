@@ -10,7 +10,9 @@ interface IncidentPollingOptions {
   notificationsEnabled: boolean;
   onNewStrikes?: (incidents: Incident[]) => void;
   sendNotification?: (title: string, options: NotificationOptions) => void;
-  mapInstance?: { flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void } | null;
+  mapInstance?: {
+    flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void;
+  } | null;
 }
 
 interface IncidentPollingResult {
@@ -73,8 +75,19 @@ export function useIncidentPolling(options: IncidentPollingOptions): IncidentPol
         if (newIncs.length > 0) {
           const now = Date.now();
           if (newIncs.some((i) => i.side === "iran")) setLastIranStrikeAt(now);
-          if (newIncs.some((i) => i.side === "us" || (i.side === "us_israel" && i.location?.includes("Iran")))) setLastUSStrikeAt(now);
-          if (newIncs.some((i) => i.side === "israel" || (i.side === "us_israel" && !i.location?.includes("Iran")))) setLastIsraelStrikeAt(now);
+          if (
+            newIncs.some(
+              (i) => i.side === "us" || (i.side === "us_israel" && i.location?.includes("Iran"))
+            )
+          )
+            setLastUSStrikeAt(now);
+          if (
+            newIncs.some(
+              (i) =>
+                i.side === "israel" || (i.side === "us_israel" && !i.location?.includes("Iran"))
+            )
+          )
+            setLastIsraelStrikeAt(now);
 
           if (optionsRef.current.soundEnabled) playImpactSound();
           flashKey.current += 1;

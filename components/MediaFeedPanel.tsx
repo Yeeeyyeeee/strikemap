@@ -181,16 +181,21 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
           >
             Videos
           </h3>
-          <span className="text-[10px] text-neutral-600">
-            {feedItems.length} clips
-          </span>
+          <span className="text-[10px] text-neutral-600">{feedItems.length} clips</span>
         </div>
         <button
           onClick={onClose}
           className="w-6 h-6 flex items-center justify-center text-neutral-500 hover:text-neutral-300 transition-colors"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>

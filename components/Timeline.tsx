@@ -127,14 +127,8 @@ export default memo(function Timeline({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
-          <div
-            className="timeline-fill"
-            style={{ width: `${percentage}%` }}
-          />
-          <div
-            className="timeline-thumb"
-            style={{ left: `${percentage}%` }}
-          />
+          <div className="timeline-fill" style={{ width: `${percentage}%` }} />
+          <div className="timeline-thumb" style={{ left: `${percentage}%` }} />
         </div>
 
         {/* Controls: skip back, play/pause, skip forward, speed */}

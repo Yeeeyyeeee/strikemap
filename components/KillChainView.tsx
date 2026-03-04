@@ -11,7 +11,12 @@ interface KillChainViewProps {
 
 const SIDE_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
   iran: { label: "IRANIAN", color: "#ef4444", bg: "bg-red-500/10", border: "border-red-500/30" },
-  us_israel: { label: "US/ISRAEL", color: "#3b82f6", bg: "bg-blue-500/10", border: "border-blue-500/30" },
+  us_israel: {
+    label: "US/ISRAEL",
+    color: "#3b82f6",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/30",
+  },
   us: { label: "US", color: "#3b82f6", bg: "bg-blue-500/10", border: "border-blue-500/30" },
   israel: { label: "ISRAEL", color: "#06b6d4", bg: "bg-cyan-500/10", border: "border-cyan-500/30" },
 };
@@ -26,7 +31,13 @@ const SEVERITY_COLORS: Record<string, string> = {
 function StageIcon({ type }: { type: KillChainStage["type"] }) {
   if (type === "launch") {
     return (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        className="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
         <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
         <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 3 0 3 0" />
@@ -36,7 +47,13 @@ function StageIcon({ type }: { type: KillChainStage["type"] }) {
   }
   if (type === "intercept") {
     return (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        className="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         <path d="M9 12l2 2 4-4" />
       </svg>
@@ -70,20 +87,14 @@ function StageNode({
   const cfg = typeConfig[stage.type];
 
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1.5 min-w-[90px] group"
-    >
+    <button onClick={onClick} className="flex flex-col items-center gap-1.5 min-w-[90px] group">
       <div
         className="w-12 h-12 rounded-lg bg-[#0a0a0a] border flex items-center justify-center transition-all group-hover:scale-110"
         style={{ borderColor: `${cfg.color}50`, color: cfg.color }}
       >
         <StageIcon type={stage.type} />
       </div>
-      <span
-        className="text-[9px] font-bold uppercase tracking-wider"
-        style={{ color: cfg.color }}
-      >
+      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: cfg.color }}>
         {cfg.label}
       </span>
       <span className="text-[10px] text-neutral-500 text-center leading-tight max-w-[100px]">
@@ -117,9 +128,7 @@ function KillChainCard({
           >
             {side.label}
           </span>
-          <span className="text-sm text-neutral-300 font-medium">
-            {event.targetLocation}
-          </span>
+          <span className="text-sm text-neutral-300 font-medium">{event.targetLocation}</span>
         </div>
         <span
           className="text-xs text-neutral-500"
@@ -161,26 +170,19 @@ function KillChainCard({
       <div className="flex items-center gap-4 pt-3 border-t border-[#2a2a2a]/50">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] text-neutral-500">Launched:</span>
-          <span
-            className="text-[11px] font-bold"
-            style={{ color: side.color }}
-          >
+          <span className="text-[11px] font-bold" style={{ color: side.color }}>
             {event.totalProjectiles}
           </span>
         </div>
         {event.intercepted > 0 && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-neutral-500">Intercepted:</span>
-            <span className="text-[11px] font-bold text-green-400">
-              {event.intercepted}
-            </span>
+            <span className="text-[11px] font-bold text-green-400">{event.intercepted}</span>
           </div>
         )}
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] text-neutral-500">Impacted:</span>
-          <span className="text-[11px] font-bold text-red-400">
-            {event.impacted}
-          </span>
+          <span className="text-[11px] font-bold text-red-400">{event.impacted}</span>
         </div>
         {event.damageSeverity && (
           <span
@@ -199,14 +201,8 @@ function KillChainCard({
   );
 }
 
-export default memo(function KillChainView({
-  incidents,
-  onSelectIncident,
-}: KillChainViewProps) {
-  const killChains = useMemo(
-    () => groupIntoKillChains(incidents),
-    [incidents]
-  );
+export default memo(function KillChainView({ incidents, onSelectIncident }: KillChainViewProps) {
+  const killChains = useMemo(() => groupIntoKillChains(incidents), [incidents]);
 
   return (
     <div className="h-full overflow-y-auto px-4 md:px-8 py-6 pb-20">
@@ -224,16 +220,10 @@ export default memo(function KillChainView({
         </div>
 
         {killChains.length === 0 ? (
-          <div className="text-center py-20 text-neutral-600">
-            No attack events to display
-          </div>
+          <div className="text-center py-20 text-neutral-600">No attack events to display</div>
         ) : (
           killChains.map((event) => (
-            <KillChainCard
-              key={event.id}
-              event={event}
-              onSelectIncident={onSelectIncident}
-            />
+            <KillChainCard key={event.id} event={event} onSelectIncident={onSelectIncident} />
           ))
         )}
       </div>

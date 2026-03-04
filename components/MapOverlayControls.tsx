@@ -39,7 +39,10 @@ export default memo(function MapOverlayControls({
   return (
     <>
       {/* Desktop controls — unchanged */}
-      <div className="fixed right-4 hidden md:flex flex-col gap-2" style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}>
+      <div
+        className="fixed right-4 hidden md:flex flex-col gap-2"
+        style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}
+      >
         <ToggleButton
           label="Bases"
           icon={<StarIcon />}
@@ -90,33 +93,54 @@ export default memo(function MapOverlayControls({
         )}
         {/* Strike type color key */}
         <div className="bg-[#1a1a1a]/90 border border-[#2a2a2a] rounded-lg px-3 py-2 space-y-1">
-          <div className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+          <div
+            className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider mb-1"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
             Strike Type
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#ef4444" }} />
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: "#ef4444" }}
+            />
             <span className="text-[10px] text-neutral-400">Iranian Missile</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#a855f7" }} />
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: "#a855f7" }}
+            />
             <span className="text-[10px] text-neutral-400">Iranian Drone</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#3b82f6" }} />
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: "#3b82f6" }}
+            />
             <span className="text-[10px] text-neutral-400">US / Israeli Strike</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#22c55e" }} />
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: "#22c55e" }}
+            />
             <span className="text-[10px] text-neutral-400">Intercepted</span>
           </div>
           {showFirms && (
             <>
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#f97316" }} />
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: "#f97316" }}
+                />
                 <span className="text-[10px] text-neutral-400">Thermal Anomaly</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#ef4444" }} />
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: "#ef4444" }}
+                />
                 <span className="text-[10px] text-neutral-400">Confirmed Strike Heat</span>
               </div>
             </>
@@ -137,7 +161,10 @@ export default memo(function MapOverlayControls({
       </div>
 
       {/* Mobile FAB + expandable menu */}
-      <div className="fixed right-3 md:hidden" style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}>
+      <div
+        className="fixed right-3 md:hidden"
+        style={{ top: 92, zIndex: 50, transform: "translateZ(0)" }}
+      >
         <button
           onClick={() => setMobileOpen((p) => !p)}
           className={`w-11 h-11 rounded-full flex items-center justify-center border shadow-lg transition-all ${
@@ -146,7 +173,13 @@ export default memo(function MapOverlayControls({
               : "bg-[#1a1a1a] border-[#2a2a2a] text-neutral-400"
           }`}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
             <path d="M12 2L2 7l10 5 10-5-10-5z" strokeLinejoin="round" />
             <path d="M2 17l10 5 10-5" strokeLinejoin="round" />
             <path d="M2 12l10 5 10-5" strokeLinejoin="round" />
@@ -232,7 +265,13 @@ function StarIcon() {
 
 function TargetIcon() {
   return (
-    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="3" />
       <line x1="12" y1="3" x2="12" y2="9" />
@@ -251,7 +290,15 @@ function FlameIcon() {
 
 function ChatIcon() {
   return (
-    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
@@ -259,7 +306,15 @@ function ChatIcon() {
 
 function BordersIcon() {
   return (
-    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="12" y1="3" x2="12" y2="21" />

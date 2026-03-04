@@ -67,7 +67,9 @@ export function computeEscalation(incidents: Incident[], notams?: NOTAM[]): Esca
 
   // Factor 3: Both sides active in 24h (tit-for-tat = +20 points)
   const iranRecent = recent24.some((i) => i.side === "iran");
-  const usRecent = recent24.some((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel");
+  const usRecent = recent24.some(
+    (i) => i.side === "us_israel" || i.side === "us" || i.side === "israel"
+  );
   if (iranRecent && usRecent) {
     score += 20;
     factors.push("Both sides active in 24h");

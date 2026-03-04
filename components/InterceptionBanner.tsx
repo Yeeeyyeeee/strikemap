@@ -53,20 +53,44 @@ export default memo(function InterceptionBanner({ outcomes }: InterceptionBanner
               className="absolute top-1.5 right-1.5 text-white/40 hover:text-white transition-colors p-1"
               aria-label="Dismiss"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
             <div className="flex items-center justify-center gap-2">
               {isHit ? (
-                <svg className="w-5 h-5 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="w-5 h-5 text-orange-400 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="6" />
                   <circle cx="12" cy="12" r="2" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="w-5 h-5 text-blue-400 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               )}
@@ -77,20 +101,39 @@ export default memo(function InterceptionBanner({ outcomes }: InterceptionBanner
                 {outcome.summary}
               </span>
               {isHit ? (
-                <svg className="w-5 h-5 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="w-5 h-5 text-orange-400 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="6" />
                   <circle cx="12" cy="12" r="2" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="w-5 h-5 text-blue-400 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               )}
             </div>
             <p className="text-[10px] text-white/50 mt-1 text-center">
               via IDF Spokesperson &bull;{" "}
-              {new Date(outcome.detectedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {new Date(outcome.detectedAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
           </div>
         );

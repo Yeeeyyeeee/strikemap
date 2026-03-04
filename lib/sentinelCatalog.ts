@@ -6,8 +6,7 @@
 
 import { SENTINEL_MAX_CLOUD_COVER, SENTINEL_CATALOG_LIMIT } from "./constants";
 
-const CATALOG_URL =
-  "https://sh.dataspace.copernicus.eu/api/v1/catalog/1.0.0/search";
+const CATALOG_URL = "https://sh.dataspace.copernicus.eu/api/v1/catalog/1.0.0/search";
 
 // Bounding box half-size in degrees (~900m at equator)
 const BBOX_SIZE_DEG = 0.008;
@@ -30,7 +29,7 @@ export async function searchCatalog(
   dateFrom: string,
   dateTo: string,
   maxCloudCover = SENTINEL_MAX_CLOUD_COVER,
-  limit = SENTINEL_CATALOG_LIMIT,
+  limit = SENTINEL_CATALOG_LIMIT
 ): Promise<CatalogResult[]> {
   const body = {
     bbox,
@@ -54,7 +53,7 @@ export async function searchCatalog(
   if (!res.ok) {
     console.error(
       `[sentinelCatalog] Search failed (${res.status}):`,
-      await res.text().catch(() => ""),
+      await res.text().catch(() => "")
     );
     return [];
   }
@@ -88,7 +87,7 @@ export async function findClearestImage(
   lat: number,
   lng: number,
   dateFrom: string,
-  dateTo: string,
+  dateTo: string
 ): Promise<CatalogResult | null> {
   const bbox: [number, number, number, number] = [
     lng - BBOX_SIZE_DEG,

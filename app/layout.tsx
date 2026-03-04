@@ -6,8 +6,7 @@ import TelegramToast from "@/components/TelegramToast";
 
 export const metadata: Metadata = {
   title: "StrikeMap — Live US/Israel Iran Tracker",
-  description:
-    "Live map tracking US/Israel and Iran military activity in real-time",
+  description: "Live map tracking US/Israel and Iran military activity in real-time",
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
@@ -26,11 +25,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -41,10 +36,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="StrikeMap" />
         <meta name="google-adsense-account" content="ca-pub-5608578086593725" />
         <link rel="apple-touch-icon" href="/icon.png" />
-        <link
-          href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
-          rel="stylesheet"
-        />
+        <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet" />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
           rel="stylesheet"

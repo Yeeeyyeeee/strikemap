@@ -15,7 +15,9 @@ export function useNotamPolling(): NOTAM[] {
           const json = await res.json();
           setNotams(json.notams || []);
         }
-      } catch { /* keep existing data */ }
+      } catch {
+        /* keep existing data */
+      }
     };
     pollNotams();
     const interval = setInterval(pollNotams, NOTAM_POLL_MS);

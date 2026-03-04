@@ -68,13 +68,20 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
             "interpolate",
             ["linear"],
             ["heatmap-density"],
-            0, "rgba(0,0,0,0)",
-            0.1, "rgba(100,0,0,0.3)",
-            0.3, "rgba(180,30,0,0.5)",
-            0.5, "rgba(220,60,0,0.6)",
-            0.7, "rgba(255,100,0,0.7)",
-            0.9, "rgba(255,180,0,0.8)",
-            1, "rgba(255,255,100,0.9)",
+            0,
+            "rgba(0,0,0,0)",
+            0.1,
+            "rgba(100,0,0,0.3)",
+            0.3,
+            "rgba(180,30,0,0.5)",
+            0.5,
+            "rgba(220,60,0,0.6)",
+            0.7,
+            "rgba(255,100,0,0.7)",
+            0.9,
+            "rgba(255,180,0,0.8)",
+            1,
+            "rgba(255,255,100,0.9)",
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 15, 6, 30, 12, 50],
           "heatmap-opacity": 0.8,
@@ -90,11 +97,16 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 14, 10],
           "circle-color": [
-            "match", ["get", "side"],
-            "iran", "#ef4444",
-            "us_israel", "#3b82f6",
-            "us", "#3b82f6",
-            "israel", "#3b82f6",
+            "match",
+            ["get", "side"],
+            "iran",
+            "#ef4444",
+            "us_israel",
+            "#3b82f6",
+            "us",
+            "#3b82f6",
+            "israel",
+            "#3b82f6",
             "#f59e0b",
           ],
           "circle-opacity": 0.7,
@@ -109,7 +121,9 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
 
     // Click handler — query nearby incidents
     m.on("click", (e) => {
-      const features = m.queryRenderedFeatures(e.point, { layers: ["media-points", "media-heatmap"] });
+      const features = m.queryRenderedFeatures(e.point, {
+        layers: ["media-points", "media-heatmap"],
+      });
       if (features.length > 0) {
         const coords = e.lngLat;
         onAreaSelect({
@@ -123,8 +137,12 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
     });
 
     // Cursor style
-    m.on("mouseenter", "media-points", () => { m.getCanvas().style.cursor = "pointer"; });
-    m.on("mouseleave", "media-points", () => { m.getCanvas().style.cursor = ""; });
+    m.on("mouseenter", "media-points", () => {
+      m.getCanvas().style.cursor = "pointer";
+    });
+    m.on("mouseleave", "media-points", () => {
+      m.getCanvas().style.cursor = "";
+    });
 
     map.current = m;
 

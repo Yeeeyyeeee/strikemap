@@ -51,9 +51,7 @@ async function loadPuppeteer() {
   try {
     return await import("puppeteer");
   } catch {
-    console.error(
-      "Puppeteer not installed. Run: bash scripts/video/setup.sh"
-    );
+    console.error("Puppeteer not installed. Run: bash scripts/video/setup.sh");
     process.exit(1);
   }
 }

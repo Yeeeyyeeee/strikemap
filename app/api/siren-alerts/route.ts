@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getActiveSirenAlerts, processSirenPosts, hasRecentProcessing, clearSirenByCountry, clearAllSirens, addManualSiren } from "@/lib/sirenDetector";
+import {
+  getActiveSirenAlerts,
+  processSirenPosts,
+  hasRecentProcessing,
+  clearSirenByCountry,
+  clearAllSirens,
+  addManualSiren,
+} from "@/lib/sirenDetector";
 import { scrapeChannel, getConfiguredChannels } from "@/lib/telegram";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { isSourceRequest } from "@/lib/sourceAuth";
@@ -11,19 +18,14 @@ export async function GET() {
       const channels = getConfiguredChannels();
       if (channels.length > 0) {
         console.log("[siren-alerts] No recent feed processing, doing fallback scrape");
-        const results = await Promise.all(
-          channels.map((ch) => scrapeChannel(ch).catch(() => []))
-        );
+        const results = await Promise.all(channels.map((ch) => scrapeChannel(ch).catch(() => [])));
         const posts = results.flat().filter((p) => p.text);
         await processSirenPosts(posts);
       }
     }
 
     const alerts = await getActiveSirenAlerts();
-    return NextResponse.json(
-      { sirenAlerts: alerts },
-      { headers: { "Cache-Control": "no-store" } }
-    );
+    return NextResponse.json({ sirenAlerts: alerts }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return NextResponse.json({ sirenAlerts: [], error: String(err) });
   }

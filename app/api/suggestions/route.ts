@@ -19,7 +19,9 @@ interface Suggestion {
 const globalStore = globalThis as unknown as { __suggestions?: Suggestion[] };
 if (!globalStore.__suggestions) globalStore.__suggestions = [];
 const getFallback = () => globalStore.__suggestions!;
-const setFallback = (s: Suggestion[]) => { globalStore.__suggestions = s; };
+const setFallback = (s: Suggestion[]) => {
+  globalStore.__suggestions = s;
+};
 
 async function loadSuggestions(): Promise<Suggestion[]> {
   const redis = getRedis();
@@ -71,10 +73,16 @@ export async function POST(req: NextRequest) {
     const { action } = body;
 
     if (action === "add") {
-      const title = String(body.title || "").trim().slice(0, 100);
-      const description = String(body.description || "").trim().slice(0, 1000);
+      const title = String(body.title || "")
+        .trim()
+        .slice(0, 100);
+      const description = String(body.description || "")
+        .trim()
+        .slice(0, 1000);
       const device = ["desktop", "mobile", "all"].includes(body.device) ? body.device : "all";
-      const nickname = String(body.nickname || "Anon").trim().slice(0, 20);
+      const nickname = String(body.nickname || "Anon")
+        .trim()
+        .slice(0, 20);
 
       if (!title || !description) {
         return NextResponse.json({ error: "Title and description required" }, { status: 400 });

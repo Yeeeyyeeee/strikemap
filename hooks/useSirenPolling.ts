@@ -55,14 +55,14 @@ export function useSirenPolling(options: SirenPollingOptions): SirenPollingResul
                 if (optionsRef.current.soundEnabled) {
                   playAlertSound();
                 }
-                if (optionsRef.current.notificationsEnabled && optionsRef.current.sendNotification) {
-                  optionsRef.current.sendNotification(
-                    `SIRENS IN ${country.toUpperCase()}`,
-                    {
-                      body: `Sirens reported in ${country} — take shelter`,
-                      tag: `siren-${country}`,
-                    }
-                  );
+                if (
+                  optionsRef.current.notificationsEnabled &&
+                  optionsRef.current.sendNotification
+                ) {
+                  optionsRef.current.sendNotification(`SIRENS IN ${country.toUpperCase()}`, {
+                    body: `Sirens reported in ${country} — take shelter`,
+                    tag: `siren-${country}`,
+                  });
                 }
                 optionsRef.current.onNewSiren?.(country);
               }

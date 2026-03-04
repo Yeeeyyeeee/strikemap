@@ -32,10 +32,15 @@ function buildHeadline(inc: Incident): string {
   const parts: string[] = [];
 
   const sideLabel =
-    inc.side === "iran" ? "IRAN STRIKE" :
-    inc.side === "us_israel" ? "US/ISRAEL STRIKE" :
-    inc.side === "us" ? "US STRIKE" :
-    inc.side === "israel" ? "ISRAEL STRIKE" : "STRIKE";
+    inc.side === "iran"
+      ? "IRAN STRIKE"
+      : inc.side === "us_israel"
+        ? "US/ISRAEL STRIKE"
+        : inc.side === "us"
+          ? "US STRIKE"
+          : inc.side === "israel"
+            ? "ISRAEL STRIKE"
+            : "STRIKE";
 
   parts.push(sideLabel + ":");
 
@@ -90,7 +95,11 @@ const SEVERITY_PREFIX: Record<string, string> = {
 
 const SEP = "     \u2022     "; // bullet separator
 
-export default memo(function NewsTicker({ incidents, customText, briefingHeadlines }: NewsTickerProps) {
+export default memo(function NewsTicker({
+  incidents,
+  customText,
+  briefingHeadlines,
+}: NewsTickerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
@@ -209,8 +218,30 @@ export default memo(function NewsTicker({ incidents, customText, briefingHeadlin
       }}
     >
       {/* Edge fades */}
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 32, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to right, #7f1d1d, transparent)" }} />
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 32, zIndex: 10, pointerEvents: "none", background: "linear-gradient(to left, #7f1d1d, transparent)" }} />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 32,
+          zIndex: 10,
+          pointerEvents: "none",
+          background: "linear-gradient(to right, #7f1d1d, transparent)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 32,
+          zIndex: 10,
+          pointerEvents: "none",
+          background: "linear-gradient(to left, #7f1d1d, transparent)",
+        }}
+      />
 
       <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
         {/* LIVE badge */}
@@ -236,7 +267,15 @@ export default memo(function NewsTicker({ incidents, customText, briefingHeadlin
         </span>
 
         {/* Scrolling area */}
-        <div style={{ flex: 1, overflow: "hidden", height: "100%", display: "flex", alignItems: "center" }}>
+        <div
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
           <div
             ref={scrollRef}
             style={{

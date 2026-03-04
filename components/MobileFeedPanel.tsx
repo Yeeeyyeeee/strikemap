@@ -18,9 +18,18 @@ interface FeedPost {
 
 const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "All", keywords: [] },
-  { label: "Iran", keywords: ["iran", "iranian", "tehran", "isfahan", "tabriz", "shiraz", "mashhad", "🇮🇷"] },
-  { label: "Israel", keywords: ["israel", "israeli", "tel aviv", "jerusalem", "haifa", "negev", "idf", "🇮🇱"] },
-  { label: "USA", keywords: ["us ", "u.s.", "usa", "american", "pentagon", "trump", "centcom", "🇺🇸"] },
+  {
+    label: "Iran",
+    keywords: ["iran", "iranian", "tehran", "isfahan", "tabriz", "shiraz", "mashhad", "🇮🇷"],
+  },
+  {
+    label: "Israel",
+    keywords: ["israel", "israeli", "tel aviv", "jerusalem", "haifa", "negev", "idf", "🇮🇱"],
+  },
+  {
+    label: "USA",
+    keywords: ["us ", "u.s.", "usa", "american", "pentagon", "trump", "centcom", "🇺🇸"],
+  },
   { label: "Lebanon", keywords: ["lebanon", "lebanese", "beirut", "hezbollah", "🇱🇧"] },
   { label: "Yemen", keywords: ["yemen", "yemeni", "houthi", "sanaa", "🇾🇪"] },
   { label: "Iraq", keywords: ["iraq", "iraqi", "baghdad", "erbil", "🇮🇶"] },
@@ -37,7 +46,7 @@ const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "Cyprus", keywords: ["cyprus", "cypriot", "nicosia", "larnaca", "limassol", "🇨🇾"] },
 ];
 
-function matchesCountryFilter(text: string, filter: typeof COUNTRY_FILTERS[number]): boolean {
+function matchesCountryFilter(text: string, filter: (typeof COUNTRY_FILTERS)[number]): boolean {
   if (filter.keywords.length === 0) return true;
   const lower = text.toLowerCase();
   return filter.keywords.some((kw) => lower.includes(kw));
@@ -80,7 +89,9 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
         knownIdsRef.current = new Set(incoming.map((p) => p.id));
         setPosts(incoming);
       }
-    } catch { /* keep existing */ }
+    } catch {
+      /* keep existing */
+    }
   }, []);
 
   useEffect(() => {
@@ -124,8 +135,15 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
             onClick={onClose}
             className="text-neutral-500 hover:text-neutral-300 p-1.5 transition-colors shrink-0"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         )}
@@ -172,88 +190,116 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
                   </option>
                 ))}
               </select>
-              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              <svg
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50" style={{ WebkitOverflowScrolling: "touch" }}>
-          {posts.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="text-neutral-600 text-sm">Loading feed...</span>
-            </div>
-          ) : (
-            posts.filter((p) => matchesCountryFilter(p.text, countryFilter)).map((post) => {
-              const isExpanded = expandedId === post.id;
-              const isNew = newPostIds.has(post.id);
-              const msgId = post.id.split("/").pop() || "";
-              return (
-                <div
-                  key={post.id}
-                  className={`${isNew ? "feed-flash" : ""} ${isExpanded ? "" : "max-h-[76px] overflow-hidden"}`}
-                >
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
-                    className={`w-full text-left px-4 py-3 active:bg-[#1a1a1a] transition-colors cursor-pointer ${isExpanded ? "bg-[#1a1a1a]" : ""}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5 h-[18px]">
-                      {post.videoUrl && (
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 shrink-0">
-                          VID
-                        </span>
-                      )}
-                      {(post.imageUrls || []).length > 0 && !post.videoUrl && (
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
-                          IMG
-                        </span>
-                      )}
-                      <span className="text-neutral-600 text-[11px] ml-auto shrink-0">
-                        {post.timestamp
-                          ? new Date(post.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                          : post.date}
-                      </span>
-                    </div>
-                    <p className={`text-sm text-neutral-300 leading-snug ${isExpanded ? "whitespace-pre-line" : "line-clamp-2"}`}>
-                      {post.text}
-                    </p>
-                  </div>
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {posts.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <span className="text-neutral-600 text-sm">Loading feed...</span>
+              </div>
+            ) : (
+              posts
+                .filter((p) => matchesCountryFilter(p.text, countryFilter))
+                .map((post) => {
+                  const isExpanded = expandedId === post.id;
+                  const isNew = newPostIds.has(post.id);
+                  const msgId = post.id.split("/").pop() || "";
+                  return (
+                    <div
+                      key={post.id}
+                      className={`${isNew ? "feed-flash" : ""} ${isExpanded ? "" : "max-h-[76px] overflow-hidden"}`}
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setExpandedId((prev) => (prev === post.id ? null : post.id))}
+                        className={`w-full text-left px-4 py-3 active:bg-[#1a1a1a] transition-colors cursor-pointer ${isExpanded ? "bg-[#1a1a1a]" : ""}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5 h-[18px]">
+                          {post.videoUrl && (
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 shrink-0">
+                              VID
+                            </span>
+                          )}
+                          {(post.imageUrls || []).length > 0 && !post.videoUrl && (
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
+                              IMG
+                            </span>
+                          )}
+                          <span className="text-neutral-600 text-[11px] ml-auto shrink-0">
+                            {post.timestamp
+                              ? new Date(post.timestamp).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : post.date}
+                          </span>
+                        </div>
+                        <p
+                          className={`text-sm text-neutral-300 leading-snug ${isExpanded ? "whitespace-pre-line" : "line-clamp-2"}`}
+                        >
+                          {post.text}
+                        </p>
+                      </div>
 
-                  {isExpanded && (
-                    <div className="bg-[#0e0e0e] border-t border-[#2a2a2a]/50">
-                      {post.videoUrl && isDirectVideoUrl(post.videoUrl) && (
-                        <video
-                          src={post.videoUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          className="w-full max-h-[250px] object-contain bg-black"
-                        />
-                      )}
-                      {(post.imageUrls || []).length > 0 && (
-                        <div className={(post.imageUrls || []).length > 1 ? "grid grid-cols-2 gap-px" : ""}>
-                          {(post.imageUrls || []).map((url, i) => (
-                            <img key={i} src={url} alt="" className="w-full max-h-[200px] object-cover" loading="lazy" />
-                          ))}
+                      {isExpanded && (
+                        <div className="bg-[#0e0e0e] border-t border-[#2a2a2a]/50">
+                          {post.videoUrl && isDirectVideoUrl(post.videoUrl) && (
+                            <video
+                              src={post.videoUrl}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="w-full max-h-[250px] object-contain bg-black"
+                            />
+                          )}
+                          {(post.imageUrls || []).length > 0 && (
+                            <div
+                              className={
+                                (post.imageUrls || []).length > 1 ? "grid grid-cols-2 gap-px" : ""
+                              }
+                            >
+                              {(post.imageUrls || []).map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={url}
+                                  alt=""
+                                  className="w-full max-h-[200px] object-cover"
+                                  loading="lazy"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          <div className="px-4 py-2.5 border-t border-[#2a2a2a]/50">
+                            <a
+                              href={`https://t.me/${post.channelUsername}/${msgId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-neutral-500 hover:text-neutral-300 underline underline-offset-2"
+                            >
+                              View on Telegram
+                            </a>
+                          </div>
                         </div>
                       )}
-                      <div className="px-4 py-2.5 border-t border-[#2a2a2a]/50">
-                        <a
-                          href={`https://t.me/${post.channelUsername}/${msgId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-neutral-500 hover:text-neutral-300 underline underline-offset-2"
-                        >
-                          View on Telegram
-                        </a>
-                      </div>
                     </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+                  );
+                })
+            )}
           </div>
         </div>
       )}

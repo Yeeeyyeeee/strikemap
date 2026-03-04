@@ -10,13 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  sendMessage,
-  sendFeedPost,
-  sendIncident,
-  formatIncident,
-  apiCallJson,
-} from "@/lib/telegramBot";
+import { sendMessage, sendIncident, formatIncident } from "@/lib/telegramBot";
 import { getConfiguredChannels, isIranRelated } from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
 import { applyEnrichment } from "@/lib/enrichmentUtils";
@@ -166,12 +160,14 @@ export async function POST(req: NextRequest) {
     ? new Date(channelPost.date * 1000).toISOString()
     : new Date().toISOString();
 
-  const newSirenAlerts = await processSirenPosts([{
-    id: postId,
-    channelUsername: username,
-    text,
-    timestamp,
-  }]);
+  const newSirenAlerts = await processSirenPosts([
+    {
+      id: postId,
+      channelUsername: username,
+      text,
+      timestamp,
+    },
+  ]);
 
   // Send new siren alerts to Discord
   for (const alert of newSirenAlerts) {
@@ -188,7 +184,9 @@ export async function POST(req: NextRequest) {
       // Spatial dedup: skip if a nearby strike was already broadcast recently
       const isDup = await isStrikeBroadcastDuplicate(kwResult.lat, kwResult.lng);
       if (isDup) {
-        console.log(`[webhook] STRIKE DEDUP: ${postId} → ${kwResult.location} (nearby strike already broadcast)`);
+        console.log(
+          `[webhook] STRIKE DEDUP: ${postId} → ${kwResult.location} (nearby strike already broadcast)`
+        );
         // Mark as sent so we don't retry via broadcast route
         if (redis) await redis.sadd(REDIS_BROADCAST_KEY, postId as string);
         return NextResponse.json({ ok: true, dedup: true });
@@ -271,9 +269,7 @@ export async function POST(req: NextRequest) {
       // Can't build a full ChannelPost without scraping, send text summary
       const escapedText = text.slice(0, 600).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
       const escapedUrl = siteUrl.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
-      await sendMessage(
-        `${escapedText}\n\n[\u{1F5FA}\u{FE0F} View Live Map](${escapedUrl})`
-      );
+      await sendMessage(`${escapedText}\n\n[\u{1F5FA}\u{FE0F} View Live Map](${escapedUrl})`);
       sent = true;
     }
   }

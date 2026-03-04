@@ -14,7 +14,9 @@ export default function StatsBoard({ incidents }: StatsBoardProps) {
   const stats = useMemo(() => {
     const actual = incidents.filter((i) => !i.isStatement);
     const iranStrikes = actual.filter((i) => i.side === "iran");
-    const usStrikes = actual.filter((i) => i.side === "us_israel" || i.side === "us" || i.side === "israel");
+    const usStrikes = actual.filter(
+      (i) => i.side === "us_israel" || i.side === "us" || i.side === "israel"
+    );
     const dates = actual.map((i) => i.date).sort();
     const firstDate = dates[0] || "N/A";
     const lastDate = dates[dates.length - 1] || "N/A";
@@ -121,7 +123,9 @@ export default function StatsBoard({ incidents }: StatsBoardProps) {
               { label: "Military", value: stats.iranMil, color: "#22c55e" },
               { label: "Civilian", value: stats.iranCiv, color: "#f97316" },
             ]}
-            centerText={stats.iranCount > 0 ? `${Math.round((stats.iranMil / stats.iranCount) * 100)}%` : "0%"}
+            centerText={
+              stats.iranCount > 0 ? `${Math.round((stats.iranMil / stats.iranCount) * 100)}%` : "0%"
+            }
             centerSub="military"
           />
         </div>
@@ -134,7 +138,9 @@ export default function StatsBoard({ incidents }: StatsBoardProps) {
               { label: "Military", value: stats.usMil, color: "#22c55e" },
               { label: "Civilian", value: stats.usCiv, color: "#f97316" },
             ]}
-            centerText={stats.usCount > 0 ? `${Math.round((stats.usMil / stats.usCount) * 100)}%` : "0%"}
+            centerText={
+              stats.usCount > 0 ? `${Math.round((stats.usMil / stats.usCount) * 100)}%` : "0%"
+            }
             centerSub="military"
           />
         </div>

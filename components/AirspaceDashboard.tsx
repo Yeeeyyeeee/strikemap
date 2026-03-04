@@ -102,8 +102,8 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
             <span className="text-neutral-300">MONITOR</span>
           </h1>
           <p className="text-xs text-neutral-500 max-w-lg mx-auto">
-            NOTAMs (Notices to Air Missions) are official alerts about airspace status.
-            Regional closures often precede or accompany military operations.
+            NOTAMs (Notices to Air Missions) are official alerts about airspace status. Regional
+            closures often precede or accompany military operations.
           </p>
           {data?.timestamp && (
             <p
@@ -117,10 +117,13 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
 
         {/* Regional closure alert */}
         {closedCount >= 3 && (
-          <div className="mb-6 p-4 rounded-lg border text-center animate-pulse" style={{
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            borderColor: "rgba(239, 68, 68, 0.3)",
-          }}>
+          <div
+            className="mb-6 p-4 rounded-lg border text-center animate-pulse"
+            style={{
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              borderColor: "rgba(239, 68, 68, 0.3)",
+            }}
+          >
             <span
               className="text-sm font-bold text-red-400 uppercase tracking-wider"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -133,7 +136,9 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
         {/* Error state */}
         {error && !data && (
           <div className="text-center py-12">
-            <p className="text-neutral-600 text-sm">Airspace data unavailable. Upstream API may be down.</p>
+            <p className="text-neutral-600 text-sm">
+              Airspace data unavailable. Upstream API may be down.
+            </p>
           </div>
         )}
 
@@ -157,7 +162,10 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{
                         backgroundColor: STATUS_COLORS[region.status],
-                        boxShadow: region.status !== "open" ? `0 0 6px ${STATUS_COLORS[region.status]}60` : undefined,
+                        boxShadow:
+                          region.status !== "open"
+                            ? `0 0 6px ${STATUS_COLORS[region.status]}60`
+                            : undefined,
                       }}
                     />
                     <span
@@ -167,7 +175,12 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                       {region.country}
                     </span>
                   </div>
-                  <p className="text-[10px] text-neutral-600 mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>{region.fir}</p>
+                  <p
+                    className="text-[10px] text-neutral-600 mb-1"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    {region.fir}
+                  </p>
                   <div className="flex items-center gap-1.5">
                     <p
                       className="text-[10px] font-bold uppercase"
@@ -191,7 +204,9 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                     <p className="text-[10px] text-neutral-600 mt-1">
                       {region.active_notams} active NOTAM{region.active_notams !== 1 ? "s" : ""}
                       {region.critical_notams > 0 && (
-                        <span className="text-red-400 ml-1">({region.critical_notams} critical)</span>
+                        <span className="text-red-400 ml-1">
+                          ({region.critical_notams} critical)
+                        </span>
                       )}
                     </p>
                   )}
@@ -224,7 +239,8 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                       key={notam.id}
                       className="bg-[#1a1a1a] border rounded-lg overflow-hidden cursor-pointer"
                       style={{
-                        borderColor: notam.severity === "critical" ? "rgba(239, 68, 68, 0.3)" : "#2a2a2a",
+                        borderColor:
+                          notam.severity === "critical" ? "rgba(239, 68, 68, 0.3)" : "#2a2a2a",
                         borderLeftWidth: notam.severity === "critical" ? "3px" : "1px",
                         borderLeftColor: notam.severity === "critical" ? "#ef4444" : "#2a2a2a",
                       }}
@@ -258,7 +274,10 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                             <span className="text-neutral-600 text-[10px]">|</span>
                             <span
                               className="text-[10px]"
-                              style={{ color: colors.text, fontFamily: "JetBrains Mono, monospace" }}
+                              style={{
+                                color: colors.text,
+                                fontFamily: "JetBrains Mono, monospace",
+                              }}
                             >
                               {TYPE_LABELS[notam.type]}
                             </span>
@@ -266,7 +285,9 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                           <p className="text-xs text-neutral-300">{notam.summary}</p>
                           <p className="text-[10px] text-neutral-600 mt-1">
                             {new Date(notam.effective_from).toLocaleString()} —{" "}
-                            {notam.effective_to === "PERM" ? "PERMANENT" : new Date(notam.effective_to).toLocaleString()}
+                            {notam.effective_to === "PERM"
+                              ? "PERMANENT"
+                              : new Date(notam.effective_to).toLocaleString()}
                           </p>
                         </div>
 
@@ -287,7 +308,8 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                           </pre>
                           {notam.altitude_floor !== undefined && (
                             <p className="text-[10px] text-neutral-600 mt-2">
-                              Altitude: FL{notam.altitude_floor} — FL{notam.altitude_ceiling ?? "UNL"}
+                              Altitude: FL{notam.altitude_floor} — FL
+                              {notam.altitude_ceiling ?? "UNL"}
                             </p>
                           )}
                           {notam.lat && notam.lng && (
@@ -342,11 +364,21 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-neutral-300">
-                      Airspace closed {new Date(corr.notam.effective_from).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC
+                      Airspace closed{" "}
+                      {new Date(corr.notam.effective_from).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "UTC",
+                      })}{" "}
+                      UTC
                       {" → "}
                       Strike at {corr.incident.location}{" "}
                       {corr.incident.timestamp
-                        ? new Date(corr.incident.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })
+                        ? new Date(corr.incident.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            timeZone: "UTC",
+                          })
                         : corr.incident.date}{" "}
                       UTC
                     </p>
@@ -356,7 +388,10 @@ export default memo(function AirspaceDashboard({ incidents }: AirspaceDashboardP
                       className="text-[10px] font-bold px-2 py-0.5 rounded"
                       style={{
                         color: corr.delayMinutes <= 30 ? "#ef4444" : "#eab308",
-                        backgroundColor: corr.delayMinutes <= 30 ? "rgba(239, 68, 68, 0.15)" : "rgba(234, 179, 8, 0.15)",
+                        backgroundColor:
+                          corr.delayMinutes <= 30
+                            ? "rgba(239, 68, 68, 0.15)"
+                            : "rgba(234, 179, 8, 0.15)",
                         fontFamily: "JetBrains Mono, monospace",
                       }}
                     >

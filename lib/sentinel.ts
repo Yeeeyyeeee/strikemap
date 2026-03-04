@@ -96,7 +96,7 @@ export async function getSatelliteImagery(
   incidentId: string,
   lat: number,
   lng: number,
-  date: string,
+  date: string
 ): Promise<SatelliteImagery | null> {
   const token = await getAccessToken();
   if (!token) return null;
@@ -108,7 +108,7 @@ export async function getSatelliteImagery(
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        return typeof cached === "string" ? JSON.parse(cached) : cached as SatelliteImagery;
+        return typeof cached === "string" ? JSON.parse(cached) : (cached as SatelliteImagery);
       }
     } catch {}
   }
@@ -176,7 +176,7 @@ export async function downloadSatelliteImage(
   lat: number,
   lng: number,
   dateFrom: string,
-  dateTo: string,
+  dateTo: string
 ): Promise<Buffer | null> {
   const token = await getAccessToken();
   if (!token) return null;
@@ -212,7 +212,7 @@ export async function generateBeforeAfterComposite(
   beforeDateFrom: string,
   beforeDateTo: string,
   afterDateFrom: string,
-  afterDateTo: string,
+  afterDateTo: string
 ): Promise<Buffer | null> {
   const token = await getAccessToken();
   if (!token) return null;
@@ -265,7 +265,7 @@ export async function generateBeforeAfterComposite(
               fill="#999" font-family="monospace" font-size="14" font-weight="bold">
           BEFORE
         </text>
-      </svg>`,
+      </svg>`
     );
 
     const afterLabel = Buffer.from(
@@ -275,13 +275,13 @@ export async function generateBeforeAfterComposite(
               fill="#ef4444" font-family="monospace" font-size="14" font-weight="bold">
           AFTER
         </text>
-      </svg>`,
+      </svg>`
     );
 
     const divider = Buffer.from(
       `<svg width="4" height="${totalHeight}">
         <rect width="4" height="${totalHeight}" fill="#333"/>
-      </svg>`,
+      </svg>`
     );
 
     const composite = await sharp({

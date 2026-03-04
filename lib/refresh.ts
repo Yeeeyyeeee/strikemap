@@ -3,16 +3,20 @@ import { fetchSheetData } from "./fetchSheetData";
 import { fetchRSSIncidents } from "./rss";
 import { fetchTelegramIncidents } from "./telegram";
 import { getRedis } from "./redis";
-import { REFRESH_INTERVAL_MS, REDIS_REFRESH_KEY, SHEET_FETCH_TIMEOUT_MS, RSS_FETCH_TIMEOUT_MS, TELEGRAM_FETCH_TIMEOUT_MS } from "./constants";
+import {
+  REFRESH_INTERVAL_MS,
+  REDIS_REFRESH_KEY,
+  SHEET_FETCH_TIMEOUT_MS,
+  RSS_FETCH_TIMEOUT_MS,
+  TELEGRAM_FETCH_TIMEOUT_MS,
+} from "./constants";
 
 let refreshing = false;
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     p,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("timeout")), ms)
-    ),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
   ]);
 }
 
@@ -67,11 +71,15 @@ export async function refreshLiveData(): Promise<number> {
       }),
     ]);
 
-    console.log(`[refresh] Fetched: ${sheetData.length} sheet, ${rssData.length} rss, ${telegramData.length} telegram`);
+    console.log(
+      `[refresh] Fetched: ${sheetData.length} sheet, ${rssData.length} rss, ${telegramData.length} telegram`
+    );
 
     const allNew = [...sheetData, ...rssData, ...telegramData];
     const added = await mergeIncidents(allNew);
-    console.log(`[refresh] Merged ${added} new incidents (${allNew.length} candidates, store deduped)`);
+    console.log(
+      `[refresh] Merged ${added} new incidents (${allNew.length} candidates, store deduped)`
+    );
     return added;
   } catch (err) {
     console.error("[refresh] Refresh failed:", err);

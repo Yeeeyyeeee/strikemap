@@ -39,7 +39,13 @@ export default memo(function MobileStatsPanel({
     const calc = (side: string) => {
       const filtered = incidents.filter((i) => {
         if (side === "iran" && i.side !== "iran") return false;
-        if (side === "us_israel" && i.side !== "us_israel" && i.side !== "us" && i.side !== "israel") return false;
+        if (
+          side === "us_israel" &&
+          i.side !== "us_israel" &&
+          i.side !== "us" &&
+          i.side !== "israel"
+        )
+          return false;
         if (!i.lat || !i.lng) return false;
         const tt = (i.target_type || "").toLowerCase();
         return tt && tt !== "unknown" && tt !== "undetermined" && tt !== "pending";
@@ -59,7 +65,11 @@ export default memo(function MobileStatsPanel({
       else if (i.intercept_success === false) totalMissed++;
     }
     const confirmed = totalIntercepted + totalMissed;
-    return { intercepted: totalIntercepted, missed: totalMissed, rate: confirmed > 0 ? Math.round((totalIntercepted / confirmed) * 100) : 0 };
+    return {
+      intercepted: totalIntercepted,
+      missed: totalMissed,
+      rate: confirmed > 0 ? Math.round((totalIntercepted / confirmed) * 100) : 0,
+    };
   }, [incidents]);
 
   // Fetch Wikipedia-sourced casualties
@@ -72,20 +82,22 @@ export default memo(function MobileStatsPanel({
         if (!cancelled && d && !d.error) setCasualties(d);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const casualtyTotal = casualties
-    ? casualties.iran.killed + casualties.usIsrael.killed
-    : 0;
+  const casualtyTotal = casualties ? casualties.iran.killed + casualties.usIsrael.killed : 0;
 
   const lastStrikes = useMemo(() => {
     const findLast = (side: string, override?: number) => {
       if (override) return override;
       let latest = 0;
       for (const i of incidents) {
-        const match = side === "iran" ? i.side === "iran"
-          : i.side === "us_israel" || i.side === "us" || i.side === "israel";
+        const match =
+          side === "iran"
+            ? i.side === "iran"
+            : i.side === "us_israel" || i.side === "us" || i.side === "israel";
         if (!match) continue;
         const ts = i.timestamp ? new Date(i.timestamp).getTime() : new Date(i.date).getTime();
         if (ts > latest) latest = ts;
@@ -129,8 +141,15 @@ export default memo(function MobileStatsPanel({
               onClick={onClose}
               className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           )}
@@ -139,12 +158,19 @@ export default memo(function MobileStatsPanel({
         {/* Escalation */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               Escalation Level
             </span>
             <span
               className="text-xs font-bold uppercase px-2 py-0.5 rounded"
-              style={{ color: escColor, background: `${escColor}20`, border: `1px solid ${escColor}30` }}
+              style={{
+                color: escColor,
+                background: `${escColor}20`,
+                border: `1px solid ${escColor}30`,
+              }}
             >
               {escalation.level}
             </span>
@@ -156,7 +182,10 @@ export default memo(function MobileStatsPanel({
             />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold" style={{ color: escColor, fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-2xl font-bold"
+              style={{ color: escColor, fontFamily: "JetBrains Mono, monospace" }}
+            >
               {escalation.score}
             </span>
             <span className="text-[10px] text-neutral-600">/100</span>
@@ -164,7 +193,9 @@ export default memo(function MobileStatsPanel({
           {escalation.factors.length > 0 && (
             <div className="mt-2 space-y-1">
               {escalation.factors.slice(0, 3).map((f, i) => (
-                <p key={i} className="text-[10px] text-neutral-500">{f}</p>
+                <p key={i} className="text-[10px] text-neutral-500">
+                  {f}
+                </p>
               ))}
             </div>
           )}
@@ -172,25 +203,43 @@ export default memo(function MobileStatsPanel({
 
         {/* Last Strikes */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-3" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-3"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
             Time Since Last Strike
           </span>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-red-400 block mb-1">Iran</span>
-              <span className="text-sm font-bold text-neutral-200" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-red-400 block mb-1">
+                Iran
+              </span>
+              <span
+                className="text-sm font-bold text-neutral-200"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {formatElapsed(lastStrikes.iran)}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 block mb-1">US</span>
-              <span className="text-sm font-bold text-neutral-200" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 block mb-1">
+                US
+              </span>
+              <span
+                className="text-sm font-bold text-neutral-200"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {formatElapsed(lastStrikes.us)}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-400 block mb-1">Israel</span>
-              <span className="text-sm font-bold text-neutral-200" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-400 block mb-1">
+                Israel
+              </span>
+              <span
+                className="text-sm font-bold text-neutral-200"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {formatElapsed(lastStrikes.israel)}
               </span>
             </div>
@@ -201,10 +250,16 @@ export default memo(function MobileStatsPanel({
         <div className="grid grid-cols-2 gap-3">
           {/* Iran Accuracy */}
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 block mb-2" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 block mb-2"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               Iran Accuracy
             </span>
-            <span className="text-2xl font-bold text-neutral-200 block" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-2xl font-bold text-neutral-200 block"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               {accuracy.iran.pct}%
             </span>
             <div className="w-full h-2 bg-[#2a2a2a] rounded-full overflow-hidden mt-2">
@@ -212,7 +267,12 @@ export default memo(function MobileStatsPanel({
                 className="h-full rounded-full"
                 style={{
                   width: `${accuracy.iran.pct}%`,
-                  backgroundColor: accuracy.iran.pct >= 70 ? "#22c55e" : accuracy.iran.pct >= 40 ? "#eab308" : "#ef4444",
+                  backgroundColor:
+                    accuracy.iran.pct >= 70
+                      ? "#22c55e"
+                      : accuracy.iran.pct >= 40
+                        ? "#eab308"
+                        : "#ef4444",
                 }}
               />
             </div>
@@ -224,10 +284,16 @@ export default memo(function MobileStatsPanel({
 
           {/* US/Israel Accuracy */}
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 block mb-2" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 block mb-2"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               US/IL Accuracy
             </span>
-            <span className="text-2xl font-bold text-neutral-200 block" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-2xl font-bold text-neutral-200 block"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               {accuracy.us.pct}%
             </span>
             <div className="w-full h-2 bg-[#2a2a2a] rounded-full overflow-hidden mt-2">
@@ -235,7 +301,12 @@ export default memo(function MobileStatsPanel({
                 className="h-full rounded-full"
                 style={{
                   width: `${accuracy.us.pct}%`,
-                  backgroundColor: accuracy.us.pct >= 70 ? "#22c55e" : accuracy.us.pct >= 40 ? "#eab308" : "#ef4444",
+                  backgroundColor:
+                    accuracy.us.pct >= 70
+                      ? "#22c55e"
+                      : accuracy.us.pct >= 40
+                        ? "#eab308"
+                        : "#ef4444",
                 }}
               />
             </div>
@@ -249,13 +320,20 @@ export default memo(function MobileStatsPanel({
         {/* Intercept Rate */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider text-neutral-500"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               Intercept Rate
             </span>
-            <span className="text-xs font-bold" style={{
-              color: intercept.rate >= 80 ? "#22c55e" : intercept.rate >= 50 ? "#eab308" : "#ef4444",
-              fontFamily: "JetBrains Mono, monospace",
-            }}>
+            <span
+              className="text-xs font-bold"
+              style={{
+                color:
+                  intercept.rate >= 80 ? "#22c55e" : intercept.rate >= 50 ? "#eab308" : "#ef4444",
+                fontFamily: "JetBrains Mono, monospace",
+              }}
+            >
               {intercept.rate}%
             </span>
           </div>
@@ -264,13 +342,18 @@ export default memo(function MobileStatsPanel({
               className="h-full rounded-full transition-all"
               style={{
                 width: `${intercept.rate}%`,
-                backgroundColor: intercept.rate >= 80 ? "#22c55e" : intercept.rate >= 50 ? "#eab308" : "#ef4444",
+                backgroundColor:
+                  intercept.rate >= 80 ? "#22c55e" : intercept.rate >= 50 ? "#eab308" : "#ef4444",
               }}
             />
           </div>
           <div className="flex gap-4 text-[10px] text-neutral-500">
-            <span><span className="text-green-400 font-bold">{intercept.intercepted}</span> intercepted</span>
-            <span><span className="text-red-400 font-bold">{intercept.missed}</span> missed</span>
+            <span>
+              <span className="text-green-400 font-bold">{intercept.intercepted}</span> intercepted
+            </span>
+            <span>
+              <span className="text-red-400 font-bold">{intercept.missed}</span> missed
+            </span>
           </div>
         </div>
 
@@ -278,10 +361,16 @@ export default memo(function MobileStatsPanel({
         {casualties && casualtyTotal > 0 && (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider text-neutral-500"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 Casualties
               </span>
-              <span className="text-xs font-bold text-neutral-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span
+                className="text-xs font-bold text-neutral-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {casualtyTotal.toLocaleString()} total
               </span>
             </div>
@@ -293,12 +382,35 @@ export default memo(function MobileStatsPanel({
                       <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                       Iranian
                     </span>
-                    <span className="text-sm font-bold text-red-400 font-mono">{casualties.iran.killed.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-red-400 font-mono">
+                      {casualties.iran.killed.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex gap-3 text-[10px] text-neutral-500">
-                    {casualties.iran.military > 0 && <span><span className="text-red-400/80 font-mono">{casualties.iran.military.toLocaleString()}</span> military</span>}
-                    {casualties.iran.civilian > 0 && <span><span className="text-orange-400/80 font-mono">{casualties.iran.civilian.toLocaleString()}</span> civilian</span>}
-                    {casualties.iran.injured > 0 && <span><span className="text-yellow-400/80 font-mono">{casualties.iran.injured.toLocaleString()}</span> injured</span>}
+                    {casualties.iran.military > 0 && (
+                      <span>
+                        <span className="text-red-400/80 font-mono">
+                          {casualties.iran.military.toLocaleString()}
+                        </span>{" "}
+                        military
+                      </span>
+                    )}
+                    {casualties.iran.civilian > 0 && (
+                      <span>
+                        <span className="text-orange-400/80 font-mono">
+                          {casualties.iran.civilian.toLocaleString()}
+                        </span>{" "}
+                        civilian
+                      </span>
+                    )}
+                    {casualties.iran.injured > 0 && (
+                      <span>
+                        <span className="text-yellow-400/80 font-mono">
+                          {casualties.iran.injured.toLocaleString()}
+                        </span>{" "}
+                        injured
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -309,12 +421,35 @@ export default memo(function MobileStatsPanel({
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                       US / Israeli
                     </span>
-                    <span className="text-sm font-bold text-blue-400 font-mono">{casualties.usIsrael.killed.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-blue-400 font-mono">
+                      {casualties.usIsrael.killed.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex gap-3 text-[10px] text-neutral-500">
-                    {casualties.usIsrael.military > 0 && <span><span className="text-red-400/80 font-mono">{casualties.usIsrael.military.toLocaleString()}</span> military</span>}
-                    {casualties.usIsrael.civilian > 0 && <span><span className="text-orange-400/80 font-mono">{casualties.usIsrael.civilian.toLocaleString()}</span> civilian</span>}
-                    {casualties.usIsrael.injured > 0 && <span><span className="text-yellow-400/80 font-mono">{casualties.usIsrael.injured.toLocaleString()}</span> injured</span>}
+                    {casualties.usIsrael.military > 0 && (
+                      <span>
+                        <span className="text-red-400/80 font-mono">
+                          {casualties.usIsrael.military.toLocaleString()}
+                        </span>{" "}
+                        military
+                      </span>
+                    )}
+                    {casualties.usIsrael.civilian > 0 && (
+                      <span>
+                        <span className="text-orange-400/80 font-mono">
+                          {casualties.usIsrael.civilian.toLocaleString()}
+                        </span>{" "}
+                        civilian
+                      </span>
+                    )}
+                    {casualties.usIsrael.injured > 0 && (
+                      <span>
+                        <span className="text-yellow-400/80 font-mono">
+                          {casualties.usIsrael.injured.toLocaleString()}
+                        </span>{" "}
+                        injured
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -332,26 +467,46 @@ export default memo(function MobileStatsPanel({
 
         {/* Total Strikes Summary */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-3" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-3"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
             Strike Count
           </span>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-[#111] rounded-lg p-3 text-center">
-              <span className="text-[9px] font-bold uppercase text-neutral-500 block mb-1">Total</span>
-              <span className="text-lg font-bold text-neutral-200" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span className="text-[9px] font-bold uppercase text-neutral-500 block mb-1">
+                Total
+              </span>
+              <span
+                className="text-lg font-bold text-neutral-200"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {incidents.filter((i) => !i.isStatement).length}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
               <span className="text-[9px] font-bold uppercase text-red-400 block mb-1">Iran</span>
-              <span className="text-lg font-bold text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <span
+                className="text-lg font-bold text-red-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
                 {incidents.filter((i) => i.side === "iran" && !i.isStatement).length}
               </span>
             </div>
             <div className="bg-[#111] rounded-lg p-3 text-center">
               <span className="text-[9px] font-bold uppercase text-blue-400 block mb-1">US/IL</span>
-              <span className="text-lg font-bold text-blue-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                {incidents.filter((i) => (i.side === "us_israel" || i.side === "us" || i.side === "israel") && !i.isStatement).length}
+              <span
+                className="text-lg font-bold text-blue-400"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {
+                  incidents.filter(
+                    (i) =>
+                      (i.side === "us_israel" || i.side === "us" || i.side === "israel") &&
+                      !i.isStatement
+                  ).length
+                }
               </span>
             </div>
           </div>

@@ -26,19 +26,27 @@ const COUNTRIES = [
 const IODA_BASE = "https://api.ioda.inetintel.cc.gatech.edu/v2";
 const CACHE_TTL_S = 300; // 5 minutes
 
-async function fetchCountryStatus(code: string): Promise<{ changePercent: number; hasOutageEvent: boolean }> {
+async function fetchCountryStatus(
+  code: string
+): Promise<{ changePercent: number; hasOutageEvent: boolean }> {
   const now = Math.floor(Date.now() / 1000);
   const sevenDaysAgo = now - 7 * 86400;
   const oneDayAgo = now - 86400;
 
   // Fetch ping signal (7d for baseline) and outage events in parallel
   const [signalRes, eventsRes] = await Promise.all([
-    fetch(`${IODA_BASE}/signals/raw/country/${code}?from=${sevenDaysAgo}&until=${now}&datasource=ping-slash24&maxPoints=168`, {
-      signal: AbortSignal.timeout(10000),
-    }).catch(() => null),
-    fetch(`${IODA_BASE}/outages/events?entityType=country&entityCode=${code}&from=${oneDayAgo}&until=${now}&limit=10`, {
-      signal: AbortSignal.timeout(10000),
-    }).catch(() => null),
+    fetch(
+      `${IODA_BASE}/signals/raw/country/${code}?from=${sevenDaysAgo}&until=${now}&datasource=ping-slash24&maxPoints=168`,
+      {
+        signal: AbortSignal.timeout(10000),
+      }
+    ).catch(() => null),
+    fetch(
+      `${IODA_BASE}/outages/events?entityType=country&entityCode=${code}&from=${oneDayAgo}&until=${now}&limit=10`,
+      {
+        signal: AbortSignal.timeout(10000),
+      }
+    ).catch(() => null),
   ]);
 
   let changePercent = 0;
@@ -66,7 +74,9 @@ async function fetchCountryStatus(code: string): Promise<{ changePercent: number
           }
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Parse outage events — check for high-score active events
@@ -77,23 +87,25 @@ async function fetchCountryStatus(code: string): Promise<{ changePercent: number
       if (Array.isArray(events)) {
         hasOutageEvent = events.some(
           (e: { score?: number; datasource?: string }) =>
-            (e.score ?? 0) > 1000 &&
-            e.datasource !== "merit-nt" // merit-nt can be noisy, prioritize ping
+            (e.score ?? 0) > 1000 && e.datasource !== "merit-nt" // merit-nt can be noisy, prioritize ping
         );
         // Also check for very high merit-nt scores
         if (!hasOutageEvent) {
-          hasOutageEvent = events.some(
-            (e: { score?: number }) => (e.score ?? 0) > 50000
-          );
+          hasOutageEvent = events.some((e: { score?: number }) => (e.score ?? 0) > 50000);
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   return { changePercent, hasOutageEvent };
 }
 
-function classify(changePercent: number, hasOutageEvent: boolean): "normal" | "restricted" | "blackout" {
+function classify(
+  changePercent: number,
+  hasOutageEvent: boolean
+): "normal" | "restricted" | "blackout" {
   // Blackout: >80% drop from normal peak
   if (changePercent <= -80) {
     return "blackout";
@@ -136,16 +148,19 @@ export async function GET() {
     // Check cache
     if (r) {
       try {
-        const cached = await r.get(REDIS_CYBER_STATUS_KEY) as string | null;
+        const cached = (await r.get(REDIS_CYBER_STATUS_KEY)) as string | null;
         if (cached) {
-          const data: CyberStatusResponse = typeof cached === "string" ? JSON.parse(cached) : cached;
+          const data: CyberStatusResponse =
+            typeof cached === "string" ? JSON.parse(cached) : cached;
           if (Date.now() - data.timestamp < CACHE_TTL_S * 1000) {
             return NextResponse.json(data, {
               headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
             });
           }
         }
-      } catch { /* cache miss */ }
+      } catch {
+        /* cache miss */
+      }
     }
 
     // Fetch fresh data
@@ -161,7 +176,11 @@ export async function GET() {
     });
   } catch (err) {
     return NextResponse.json(
-      { countries: COUNTRIES.map((c) => ({ ...c, status: "normal", changePercent: 0 })), timestamp: Date.now(), error: String(err) },
+      {
+        countries: COUNTRIES.map((c) => ({ ...c, status: "normal", changePercent: 0 })),
+        timestamp: Date.now(),
+        error: String(err),
+      },
       { status: 200 }
     );
   }

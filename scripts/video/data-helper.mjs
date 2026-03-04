@@ -48,11 +48,7 @@ function getIncidentMedia(incident) {
   }
 
   // Fallback to video_url
-  if (
-    media.length === 0 &&
-    incident.video_url &&
-    isDirectVideoUrl(incident.video_url)
-  ) {
+  if (media.length === 0 && incident.video_url && isDirectVideoUrl(incident.video_url)) {
     media.push({ type: "video", url: incident.video_url });
   }
 
@@ -64,8 +60,7 @@ async function downloadFile(url, destPath) {
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
       },
       redirect: "follow",
     });
@@ -126,9 +121,7 @@ async function downloadMedia(options = {}) {
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, incidentId ? undefined : count);
 
-  console.log(
-    `\nDownloading media for ${withVideo.length} incident(s)...\n`
-  );
+  console.log(`\nDownloading media for ${withVideo.length} incident(s)...\n`);
 
   const downloaded = [];
 
@@ -136,9 +129,7 @@ async function downloadMedia(options = {}) {
     const media = getIncidentMedia(incident);
     const safeId = incident.id.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    console.log(
-      `  ${incident.location || "Unknown"} - ${incident.date || "?"}`
-    );
+    console.log(`  ${incident.location || "Unknown"} - ${incident.date || "?"}`);
 
     let mediaIndex = 0;
     for (const item of media) {
@@ -268,14 +259,12 @@ async function exportStats() {
 
     // Count by weapon
     if (incident.weapon) {
-      stats.by_weapon[incident.weapon] =
-        (stats.by_weapon[incident.weapon] || 0) + 1;
+      stats.by_weapon[incident.weapon] = (stats.by_weapon[incident.weapon] || 0) + 1;
     }
 
     // Count by date
     if (incident.date) {
-      stats.by_date[incident.date] =
-        (stats.by_date[incident.date] || 0) + 1;
+      stats.by_date[incident.date] = (stats.by_date[incident.date] || 0) + 1;
     }
 
     // Recent counts

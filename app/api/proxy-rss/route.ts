@@ -28,9 +28,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch RSS feed" },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "Failed to fetch RSS feed" }, { status: 502 });
   }
 }

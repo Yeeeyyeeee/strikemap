@@ -69,13 +69,16 @@ export default memo(function LiveVideoPanel({
   }, [open, fetchStreams]);
 
   // ── Drag handling (mouse + touch) ──
-  const onDragStart = useCallback((clientY: number) => {
-    dragging.current = true;
-    startY.current = clientY;
-    startVh.current = heightVh;
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "ns-resize";
-  }, [heightVh]);
+  const onDragStart = useCallback(
+    (clientY: number) => {
+      dragging.current = true;
+      startY.current = clientY;
+      startVh.current = heightVh;
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "ns-resize";
+    },
+    [heightVh]
+  );
 
   const onDragMove = useCallback((clientY: number) => {
     if (!dragging.current) return;
@@ -93,30 +96,42 @@ export default memo(function LiveVideoPanel({
   }, []);
 
   // ── Vertical drag mouse/touch bindings ──
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    onDragStart(e.clientY);
-  }, [onDragStart]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      onDragStart(e.clientY);
+    },
+    [onDragStart]
+  );
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    onDragStart(e.touches[0].clientY);
-  }, [onDragStart]);
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      onDragStart(e.touches[0].clientY);
+    },
+    [onDragStart]
+  );
 
   // ── Horizontal drag handlers ──
-  const onHDragStart = useCallback((side: "left" | "right", clientX: number) => {
-    hDragging.current = side;
-    hStartX.current = clientX;
-    hStartWidth.current = widthPx;
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "ew-resize";
-  }, [widthPx]);
+  const onHDragStart = useCallback(
+    (side: "left" | "right", clientX: number) => {
+      hDragging.current = side;
+      hStartX.current = clientX;
+      hStartWidth.current = widthPx;
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "ew-resize";
+    },
+    [widthPx]
+  );
 
   const onHDragMove = useCallback((clientX: number) => {
     if (!hDragging.current) return;
     const deltaX = clientX - hStartX.current;
     // Dragging left edge left = wider, dragging right edge right = wider
     const multiplier = hDragging.current === "left" ? -2 : 2;
-    const next = Math.min(window.innerWidth, Math.max(MIN_WIDTH_PX, hStartWidth.current + deltaX * multiplier));
+    const next = Math.min(
+      window.innerWidth,
+      Math.max(MIN_WIDTH_PX, hStartWidth.current + deltaX * multiplier)
+    );
     setWidthPx(next);
   }, []);
 
@@ -127,10 +142,13 @@ export default memo(function LiveVideoPanel({
     document.body.style.cursor = "";
   }, []);
 
-  const handleHMouseDown = useCallback((side: "left" | "right") => (e: React.MouseEvent) => {
-    e.preventDefault();
-    onHDragStart(side, e.clientX);
-  }, [onHDragStart]);
+  const handleHMouseDown = useCallback(
+    (side: "left" | "right") => (e: React.MouseEvent) => {
+      e.preventDefault();
+      onHDragStart(side, e.clientX);
+    },
+    [onHDragStart]
+  );
 
   // ── Combined event listeners for both vertical and horizontal drag ──
   useEffect(() => {
@@ -263,7 +281,13 @@ export default memo(function LiveVideoPanel({
               onClick={onToggle}
               className="text-neutral-500 hover:text-neutral-300 p-1.5 transition-colors"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -271,13 +295,19 @@ export default memo(function LiveVideoPanel({
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-3 pb-3 overscroll-contain min-h-0" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div
+            className="flex-1 overflow-y-auto px-3 pb-3 overscroll-contain min-h-0"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             {streams.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <p className="text-neutral-600 text-sm">No streams available</p>
               </div>
             ) : (
-              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+              >
                 {streams.map((stream, i) => (
                   <div key={stream.id} className="rounded-lg overflow-hidden bg-black">
                     <iframe

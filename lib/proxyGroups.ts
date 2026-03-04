@@ -34,7 +34,7 @@ export const PROXY_GROUPS: ProxyGroup[] = [
   },
   {
     name: "PMF (Hashd al-Shaabi)",
-    centerLat: 33.30,
+    centerLat: 33.3,
     centerLng: 44.37,
     radiusKm: 150,
     color: "#f97316",
@@ -42,7 +42,7 @@ export const PROXY_GROUPS: ProxyGroup[] = [
   },
   {
     name: "Palestinian Islamic Jihad",
-    centerLat: 31.50,
+    centerLat: 31.5,
     centerLng: 34.47,
     radiusKm: 30,
     color: "#14b8a6",

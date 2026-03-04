@@ -110,7 +110,10 @@ async function checkTelegramForClears(now: number): Promise<void> {
   // Only check if we have active Tzofar alerts
   let hasTzofarAlerts = false;
   for (const id of activeAlerts.keys()) {
-    if (id.startsWith("tzofar-")) { hasTzofarAlerts = true; break; }
+    if (id.startsWith("tzofar-")) {
+      hasTzofarAlerts = true;
+      break;
+    }
   }
   if (!hasTzofarAlerts) return;
 
@@ -268,7 +271,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
 
   // Expire alerts once their countdown + buffer has passed
   for (const [id, alert] of activeAlerts) {
-    const expiresAt = alert.createdAt + (alert.timeToImpact * 1000) + ALERT_BUFFER_MS;
+    const expiresAt = alert.createdAt + alert.timeToImpact * 1000 + ALERT_BUFFER_MS;
     if (now > expiresAt) {
       activeAlerts.delete(id);
     }
@@ -286,8 +289,7 @@ export async function fetchTzevAdomAlerts(): Promise<MissileAlert[]> {
 }
 
 function getActiveAlerts(): MissileAlert[] {
-  return Array.from(activeAlerts.values())
-    .map(({ createdAt: _, ...rest }) => rest);
+  return Array.from(activeAlerts.values()).map(({ createdAt: _, ...rest }) => rest);
 }
 
 /** Load manual alerts from Redis and merge with in-memory alerts. */
@@ -304,9 +306,11 @@ async function getActiveAlertsWithRedis(): Promise<MissileAlert[]> {
     const redisAlerts: MissileAlert[] = [];
     for (const [id, value] of Object.entries(raw)) {
       const alert: MissileAlert & { createdAt?: number } =
-        typeof value === "string" ? JSON.parse(value) : value as MissileAlert & { createdAt?: number };
+        typeof value === "string"
+          ? JSON.parse(value)
+          : (value as MissileAlert & { createdAt?: number });
       // Expire: countdown + 2min buffer
-      const expiresAt = (alert.createdAt || now) + (alert.timeToImpact * 1000) + ALERT_BUFFER_MS;
+      const expiresAt = (alert.createdAt || now) + alert.timeToImpact * 1000 + ALERT_BUFFER_MS;
       if (now > expiresAt) {
         r.hdel(REDIS_MANUAL_ALERTS_KEY, id).catch(() => {});
         continue;
@@ -391,11 +395,13 @@ export async function fetchTzevAdomAlertsDebug() {
         alerts: item.alerts.map((a: TzofarAlertEntry) => ({
           time: a.time,
           ageMinutes: ((now - a.time * 1000) / 60000).toFixed(1),
-          withinWindow: (now - a.time * 1000) < 5 * 60 * 1000,
+          withinWindow: now - a.time * 1000 < 5 * 60 * 1000,
           cities: a.cities,
           cityLookup: a.cities.map((c: string) => {
             const city = lookupCity(c);
-            return city ? { name: city.en, lat: city.lat, lng: city.lng } : { name: c, found: false };
+            return city
+              ? { name: city.en, lat: city.lat, lng: city.lng }
+              : { name: c, found: false };
           }),
         })),
       }));

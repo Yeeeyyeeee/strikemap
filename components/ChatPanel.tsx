@@ -38,39 +38,219 @@ const FLAG_STORAGE_KEY = "strikemap-chat-flag";
 // All sovereign nation flags, organized by region
 const FLAGS = [
   // North America & Caribbean
-  "\u{1F1FA}\u{1F1F8}","\u{1F1E8}\u{1F1E6}","\u{1F1F2}\u{1F1FD}","\u{1F1E8}\u{1F1FA}","\u{1F1EF}\u{1F1F2}","\u{1F1ED}\u{1F1F9}","\u{1F1E9}\u{1F1F4}","\u{1F1F5}\u{1F1F7}","\u{1F1F9}\u{1F1F9}","\u{1F1E7}\u{1F1E7}","\u{1F1E7}\u{1F1F8}","\u{1F1E6}\u{1F1EC}","\u{1F1F0}\u{1F1F3}","\u{1F1F1}\u{1F1E8}","\u{1F1FB}\u{1F1E8}","\u{1F1EC}\u{1F1E9}","\u{1F1E9}\u{1F1F2}",
+  "\u{1F1FA}\u{1F1F8}",
+  "\u{1F1E8}\u{1F1E6}",
+  "\u{1F1F2}\u{1F1FD}",
+  "\u{1F1E8}\u{1F1FA}",
+  "\u{1F1EF}\u{1F1F2}",
+  "\u{1F1ED}\u{1F1F9}",
+  "\u{1F1E9}\u{1F1F4}",
+  "\u{1F1F5}\u{1F1F7}",
+  "\u{1F1F9}\u{1F1F9}",
+  "\u{1F1E7}\u{1F1E7}",
+  "\u{1F1E7}\u{1F1F8}",
+  "\u{1F1E6}\u{1F1EC}",
+  "\u{1F1F0}\u{1F1F3}",
+  "\u{1F1F1}\u{1F1E8}",
+  "\u{1F1FB}\u{1F1E8}",
+  "\u{1F1EC}\u{1F1E9}",
+  "\u{1F1E9}\u{1F1F2}",
   // Central America
-  "\u{1F1EC}\u{1F1F9}","\u{1F1E7}\u{1F1FF}","\u{1F1F8}\u{1F1FB}","\u{1F1ED}\u{1F1F3}","\u{1F1F3}\u{1F1EE}","\u{1F1E8}\u{1F1F7}","\u{1F1F5}\u{1F1E6}",
+  "\u{1F1EC}\u{1F1F9}",
+  "\u{1F1E7}\u{1F1FF}",
+  "\u{1F1F8}\u{1F1FB}",
+  "\u{1F1ED}\u{1F1F3}",
+  "\u{1F1F3}\u{1F1EE}",
+  "\u{1F1E8}\u{1F1F7}",
+  "\u{1F1F5}\u{1F1E6}",
   // South America
-  "\u{1F1E7}\u{1F1F7}","\u{1F1E6}\u{1F1F7}","\u{1F1E8}\u{1F1F4}","\u{1F1E8}\u{1F1F1}","\u{1F1F5}\u{1F1EA}","\u{1F1FB}\u{1F1EA}","\u{1F1EA}\u{1F1E8}","\u{1F1E7}\u{1F1F4}","\u{1F1F5}\u{1F1FE}","\u{1F1FA}\u{1F1FE}","\u{1F1EC}\u{1F1FE}","\u{1F1F8}\u{1F1F7}",
+  "\u{1F1E7}\u{1F1F7}",
+  "\u{1F1E6}\u{1F1F7}",
+  "\u{1F1E8}\u{1F1F4}",
+  "\u{1F1E8}\u{1F1F1}",
+  "\u{1F1F5}\u{1F1EA}",
+  "\u{1F1FB}\u{1F1EA}",
+  "\u{1F1EA}\u{1F1E8}",
+  "\u{1F1E7}\u{1F1F4}",
+  "\u{1F1F5}\u{1F1FE}",
+  "\u{1F1FA}\u{1F1FE}",
+  "\u{1F1EC}\u{1F1FE}",
+  "\u{1F1F8}\u{1F1F7}",
   // Western Europe
-  "\u{1F1EC}\u{1F1E7}","\u{1F1EE}\u{1F1EA}","\u{1F1EB}\u{1F1F7}","\u{1F1E9}\u{1F1EA}","\u{1F1F3}\u{1F1F1}","\u{1F1E7}\u{1F1EA}","\u{1F1F1}\u{1F1FA}","\u{1F1E6}\u{1F1F9}","\u{1F1E8}\u{1F1ED}","\u{1F1F1}\u{1F1EE}","\u{1F1F2}\u{1F1E8}","\u{1F1E6}\u{1F1E9}",
+  "\u{1F1EC}\u{1F1E7}",
+  "\u{1F1EE}\u{1F1EA}",
+  "\u{1F1EB}\u{1F1F7}",
+  "\u{1F1E9}\u{1F1EA}",
+  "\u{1F1F3}\u{1F1F1}",
+  "\u{1F1E7}\u{1F1EA}",
+  "\u{1F1F1}\u{1F1FA}",
+  "\u{1F1E6}\u{1F1F9}",
+  "\u{1F1E8}\u{1F1ED}",
+  "\u{1F1F1}\u{1F1EE}",
+  "\u{1F1F2}\u{1F1E8}",
+  "\u{1F1E6}\u{1F1E9}",
   // Northern Europe
-  "\u{1F1F8}\u{1F1EA}","\u{1F1F3}\u{1F1F4}","\u{1F1E9}\u{1F1F0}","\u{1F1EB}\u{1F1EE}","\u{1F1EE}\u{1F1F8}","\u{1F1EA}\u{1F1EA}","\u{1F1F1}\u{1F1FB}","\u{1F1F1}\u{1F1F9}",
+  "\u{1F1F8}\u{1F1EA}",
+  "\u{1F1F3}\u{1F1F4}",
+  "\u{1F1E9}\u{1F1F0}",
+  "\u{1F1EB}\u{1F1EE}",
+  "\u{1F1EE}\u{1F1F8}",
+  "\u{1F1EA}\u{1F1EA}",
+  "\u{1F1F1}\u{1F1FB}",
+  "\u{1F1F1}\u{1F1F9}",
   // Southern Europe
-  "\u{1F1EE}\u{1F1F9}","\u{1F1EA}\u{1F1F8}","\u{1F1F5}\u{1F1F9}","\u{1F1EC}\u{1F1F7}","\u{1F1F2}\u{1F1F9}","\u{1F1E8}\u{1F1FE}","\u{1F1F8}\u{1F1F2}","\u{1F1FB}\u{1F1E6}",
+  "\u{1F1EE}\u{1F1F9}",
+  "\u{1F1EA}\u{1F1F8}",
+  "\u{1F1F5}\u{1F1F9}",
+  "\u{1F1EC}\u{1F1F7}",
+  "\u{1F1F2}\u{1F1F9}",
+  "\u{1F1E8}\u{1F1FE}",
+  "\u{1F1F8}\u{1F1F2}",
+  "\u{1F1FB}\u{1F1E6}",
   // Eastern Europe & Balkans
-  "\u{1F1F5}\u{1F1F1}","\u{1F1E8}\u{1F1FF}","\u{1F1F8}\u{1F1F0}","\u{1F1ED}\u{1F1FA}","\u{1F1F7}\u{1F1F4}","\u{1F1E7}\u{1F1EC}","\u{1F1ED}\u{1F1F7}","\u{1F1F8}\u{1F1EE}","\u{1F1F7}\u{1F1F8}","\u{1F1E7}\u{1F1E6}","\u{1F1F2}\u{1F1EA}","\u{1F1F2}\u{1F1F0}","\u{1F1E6}\u{1F1F1}","\u{1F1FD}\u{1F1F0}","\u{1F1F2}\u{1F1E9}","\u{1F1FA}\u{1F1E6}","\u{1F1E7}\u{1F1FE}","\u{1F1F7}\u{1F1FA}",
+  "\u{1F1F5}\u{1F1F1}",
+  "\u{1F1E8}\u{1F1FF}",
+  "\u{1F1F8}\u{1F1F0}",
+  "\u{1F1ED}\u{1F1FA}",
+  "\u{1F1F7}\u{1F1F4}",
+  "\u{1F1E7}\u{1F1EC}",
+  "\u{1F1ED}\u{1F1F7}",
+  "\u{1F1F8}\u{1F1EE}",
+  "\u{1F1F7}\u{1F1F8}",
+  "\u{1F1E7}\u{1F1E6}",
+  "\u{1F1F2}\u{1F1EA}",
+  "\u{1F1F2}\u{1F1F0}",
+  "\u{1F1E6}\u{1F1F1}",
+  "\u{1F1FD}\u{1F1F0}",
+  "\u{1F1F2}\u{1F1E9}",
+  "\u{1F1FA}\u{1F1E6}",
+  "\u{1F1E7}\u{1F1FE}",
+  "\u{1F1F7}\u{1F1FA}",
   // Middle East
-  "\u{1F1EE}\u{1F1F1}","\u{1F1F5}\u{1F1F8}","\u{1F1EE}\u{1F1F7}","\u{1F1EE}\u{1F1F6}","\u{1F1F8}\u{1F1E6}","\u{1F1E6}\u{1F1EA}","\u{1F1F6}\u{1F1E6}","\u{1F1F0}\u{1F1FC}","\u{1F1E7}\u{1F1ED}","\u{1F1F4}\u{1F1F2}","\u{1F1FE}\u{1F1EA}","\u{1F1EF}\u{1F1F4}","\u{1F1F1}\u{1F1E7}","\u{1F1F8}\u{1F1FE}","\u{1F1F9}\u{1F1F7}",
+  "\u{1F1EE}\u{1F1F1}",
+  "\u{1F1F5}\u{1F1F8}",
+  "\u{1F1EE}\u{1F1F7}",
+  "\u{1F1EE}\u{1F1F6}",
+  "\u{1F1F8}\u{1F1E6}",
+  "\u{1F1E6}\u{1F1EA}",
+  "\u{1F1F6}\u{1F1E6}",
+  "\u{1F1F0}\u{1F1FC}",
+  "\u{1F1E7}\u{1F1ED}",
+  "\u{1F1F4}\u{1F1F2}",
+  "\u{1F1FE}\u{1F1EA}",
+  "\u{1F1EF}\u{1F1F4}",
+  "\u{1F1F1}\u{1F1E7}",
+  "\u{1F1F8}\u{1F1FE}",
+  "\u{1F1F9}\u{1F1F7}",
   // North Africa
-  "\u{1F1EA}\u{1F1EC}","\u{1F1F1}\u{1F1FE}","\u{1F1F9}\u{1F1F3}","\u{1F1E9}\u{1F1FF}","\u{1F1F2}\u{1F1E6}","\u{1F1F2}\u{1F1F7}",
+  "\u{1F1EA}\u{1F1EC}",
+  "\u{1F1F1}\u{1F1FE}",
+  "\u{1F1F9}\u{1F1F3}",
+  "\u{1F1E9}\u{1F1FF}",
+  "\u{1F1F2}\u{1F1E6}",
+  "\u{1F1F2}\u{1F1F7}",
   // West Africa
-  "\u{1F1F3}\u{1F1EC}","\u{1F1EC}\u{1F1ED}","\u{1F1F8}\u{1F1F3}","\u{1F1EC}\u{1F1F2}","\u{1F1F2}\u{1F1F1}","\u{1F1E7}\u{1F1EB}","\u{1F1F3}\u{1F1EA}","\u{1F1EC}\u{1F1F3}","\u{1F1F8}\u{1F1F1}","\u{1F1F1}\u{1F1F7}","\u{1F1E8}\u{1F1EE}","\u{1F1F9}\u{1F1EC}","\u{1F1E7}\u{1F1EF}","\u{1F1E8}\u{1F1FB}","\u{1F1EC}\u{1F1FC}",
+  "\u{1F1F3}\u{1F1EC}",
+  "\u{1F1EC}\u{1F1ED}",
+  "\u{1F1F8}\u{1F1F3}",
+  "\u{1F1EC}\u{1F1F2}",
+  "\u{1F1F2}\u{1F1F1}",
+  "\u{1F1E7}\u{1F1EB}",
+  "\u{1F1F3}\u{1F1EA}",
+  "\u{1F1EC}\u{1F1F3}",
+  "\u{1F1F8}\u{1F1F1}",
+  "\u{1F1F1}\u{1F1F7}",
+  "\u{1F1E8}\u{1F1EE}",
+  "\u{1F1F9}\u{1F1EC}",
+  "\u{1F1E7}\u{1F1EF}",
+  "\u{1F1E8}\u{1F1FB}",
+  "\u{1F1EC}\u{1F1FC}",
   // East Africa
-  "\u{1F1F0}\u{1F1EA}","\u{1F1EA}\u{1F1F9}","\u{1F1F9}\u{1F1FF}","\u{1F1FA}\u{1F1EC}","\u{1F1F7}\u{1F1FC}","\u{1F1E7}\u{1F1EE}","\u{1F1F8}\u{1F1F4}","\u{1F1E9}\u{1F1EF}","\u{1F1EA}\u{1F1F7}","\u{1F1F8}\u{1F1E9}","\u{1F1F8}\u{1F1F8}",
+  "\u{1F1F0}\u{1F1EA}",
+  "\u{1F1EA}\u{1F1F9}",
+  "\u{1F1F9}\u{1F1FF}",
+  "\u{1F1FA}\u{1F1EC}",
+  "\u{1F1F7}\u{1F1FC}",
+  "\u{1F1E7}\u{1F1EE}",
+  "\u{1F1F8}\u{1F1F4}",
+  "\u{1F1E9}\u{1F1EF}",
+  "\u{1F1EA}\u{1F1F7}",
+  "\u{1F1F8}\u{1F1E9}",
+  "\u{1F1F8}\u{1F1F8}",
   // Central & Southern Africa
-  "\u{1F1FF}\u{1F1E6}","\u{1F1E8}\u{1F1E9}","\u{1F1E8}\u{1F1EC}","\u{1F1EC}\u{1F1E6}","\u{1F1E8}\u{1F1F2}","\u{1F1E8}\u{1F1EB}","\u{1F1F9}\u{1F1E9}","\u{1F1E6}\u{1F1F4}","\u{1F1F2}\u{1F1FF}","\u{1F1FF}\u{1F1F2}","\u{1F1FF}\u{1F1FC}","\u{1F1E7}\u{1F1FC}","\u{1F1F3}\u{1F1E6}","\u{1F1F1}\u{1F1F8}","\u{1F1F8}\u{1F1FF}","\u{1F1F2}\u{1F1EC}","\u{1F1F2}\u{1F1FA}","\u{1F1F0}\u{1F1F2}","\u{1F1F8}\u{1F1E8}","\u{1F1EC}\u{1F1F6}","\u{1F1F8}\u{1F1F9}",
+  "\u{1F1FF}\u{1F1E6}",
+  "\u{1F1E8}\u{1F1E9}",
+  "\u{1F1E8}\u{1F1EC}",
+  "\u{1F1EC}\u{1F1E6}",
+  "\u{1F1E8}\u{1F1F2}",
+  "\u{1F1E8}\u{1F1EB}",
+  "\u{1F1F9}\u{1F1E9}",
+  "\u{1F1E6}\u{1F1F4}",
+  "\u{1F1F2}\u{1F1FF}",
+  "\u{1F1FF}\u{1F1F2}",
+  "\u{1F1FF}\u{1F1FC}",
+  "\u{1F1E7}\u{1F1FC}",
+  "\u{1F1F3}\u{1F1E6}",
+  "\u{1F1F1}\u{1F1F8}",
+  "\u{1F1F8}\u{1F1FF}",
+  "\u{1F1F2}\u{1F1EC}",
+  "\u{1F1F2}\u{1F1FA}",
+  "\u{1F1F0}\u{1F1F2}",
+  "\u{1F1F8}\u{1F1E8}",
+  "\u{1F1EC}\u{1F1F6}",
+  "\u{1F1F8}\u{1F1F9}",
   // South Asia
-  "\u{1F1EE}\u{1F1F3}","\u{1F1F5}\u{1F1F0}","\u{1F1E7}\u{1F1E9}","\u{1F1F1}\u{1F1F0}","\u{1F1F3}\u{1F1F5}","\u{1F1E7}\u{1F1F9}","\u{1F1F2}\u{1F1FB}","\u{1F1E6}\u{1F1EB}",
+  "\u{1F1EE}\u{1F1F3}",
+  "\u{1F1F5}\u{1F1F0}",
+  "\u{1F1E7}\u{1F1E9}",
+  "\u{1F1F1}\u{1F1F0}",
+  "\u{1F1F3}\u{1F1F5}",
+  "\u{1F1E7}\u{1F1F9}",
+  "\u{1F1F2}\u{1F1FB}",
+  "\u{1F1E6}\u{1F1EB}",
   // Central Asia & Caucasus
-  "\u{1F1F0}\u{1F1FF}","\u{1F1FA}\u{1F1FF}","\u{1F1F9}\u{1F1F2}","\u{1F1F0}\u{1F1EC}","\u{1F1F9}\u{1F1EF}","\u{1F1EC}\u{1F1EA}","\u{1F1E6}\u{1F1F2}","\u{1F1E6}\u{1F1FF}","\u{1F1F2}\u{1F1F3}",
+  "\u{1F1F0}\u{1F1FF}",
+  "\u{1F1FA}\u{1F1FF}",
+  "\u{1F1F9}\u{1F1F2}",
+  "\u{1F1F0}\u{1F1EC}",
+  "\u{1F1F9}\u{1F1EF}",
+  "\u{1F1EC}\u{1F1EA}",
+  "\u{1F1E6}\u{1F1F2}",
+  "\u{1F1E6}\u{1F1FF}",
+  "\u{1F1F2}\u{1F1F3}",
   // East Asia
-  "\u{1F1E8}\u{1F1F3}","\u{1F1EF}\u{1F1F5}","\u{1F1F0}\u{1F1F7}","\u{1F1F0}\u{1F1F5}","\u{1F1F9}\u{1F1FC}",
+  "\u{1F1E8}\u{1F1F3}",
+  "\u{1F1EF}\u{1F1F5}",
+  "\u{1F1F0}\u{1F1F7}",
+  "\u{1F1F0}\u{1F1F5}",
+  "\u{1F1F9}\u{1F1FC}",
   // Southeast Asia
-  "\u{1F1F5}\u{1F1ED}","\u{1F1FB}\u{1F1F3}","\u{1F1F9}\u{1F1ED}","\u{1F1F2}\u{1F1FE}","\u{1F1EE}\u{1F1E9}","\u{1F1F8}\u{1F1EC}","\u{1F1F2}\u{1F1F2}","\u{1F1F0}\u{1F1ED}","\u{1F1F1}\u{1F1E6}","\u{1F1E7}\u{1F1F3}","\u{1F1F9}\u{1F1F1}",
+  "\u{1F1F5}\u{1F1ED}",
+  "\u{1F1FB}\u{1F1F3}",
+  "\u{1F1F9}\u{1F1ED}",
+  "\u{1F1F2}\u{1F1FE}",
+  "\u{1F1EE}\u{1F1E9}",
+  "\u{1F1F8}\u{1F1EC}",
+  "\u{1F1F2}\u{1F1F2}",
+  "\u{1F1F0}\u{1F1ED}",
+  "\u{1F1F1}\u{1F1E6}",
+  "\u{1F1E7}\u{1F1F3}",
+  "\u{1F1F9}\u{1F1F1}",
   // Oceania
-  "\u{1F1E6}\u{1F1FA}","\u{1F1F3}\u{1F1FF}","\u{1F1F5}\u{1F1EC}","\u{1F1EB}\u{1F1EF}","\u{1F1F8}\u{1F1E7}","\u{1F1FB}\u{1F1FA}","\u{1F1FC}\u{1F1F8}","\u{1F1F9}\u{1F1F4}","\u{1F1F9}\u{1F1FB}","\u{1F1F0}\u{1F1EE}","\u{1F1F2}\u{1F1ED}","\u{1F1F5}\u{1F1FC}","\u{1F1F3}\u{1F1F7}","\u{1F1EB}\u{1F1F2}",
+  "\u{1F1E6}\u{1F1FA}",
+  "\u{1F1F3}\u{1F1FF}",
+  "\u{1F1F5}\u{1F1EC}",
+  "\u{1F1EB}\u{1F1EF}",
+  "\u{1F1F8}\u{1F1E7}",
+  "\u{1F1FB}\u{1F1FA}",
+  "\u{1F1FC}\u{1F1F8}",
+  "\u{1F1F9}\u{1F1F4}",
+  "\u{1F1F9}\u{1F1FB}",
+  "\u{1F1F0}\u{1F1EE}",
+  "\u{1F1F2}\u{1F1ED}",
+  "\u{1F1F5}\u{1F1FC}",
+  "\u{1F1F3}\u{1F1F7}",
+  "\u{1F1EB}\u{1F1F2}",
 ];
 
 function getSavedFlag(): string | null {
@@ -89,7 +269,9 @@ function getMutedUsers(): Set<string> {
   try {
     const raw = localStorage.getItem(MUTED_USERS_KEY);
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch { return new Set(); }
+  } catch {
+    return new Set();
+  }
 }
 
 function saveMutedUsers(muted: Set<string>): void {
@@ -180,7 +362,9 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     try {
       const raw = localStorage.getItem("strikemap-chat-liked");
       return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch { return new Set(); }
+    } catch {
+      return new Set();
+    }
   });
   const [heartAnimId, setHeartAnimId] = useState<string | null>(null);
 
@@ -216,14 +400,17 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   }, []);
 
   // ── Move handlers ──
-  const onMoveStart = useCallback((clientX: number, clientY: number) => {
-    moving.current = true;
-    moveStartX.current = clientX;
-    moveStartY.current = clientY;
-    moveStartPos.current = pos || getDefaultPos();
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "grabbing";
-  }, [pos, getDefaultPos]);
+  const onMoveStart = useCallback(
+    (clientX: number, clientY: number) => {
+      moving.current = true;
+      moveStartX.current = clientX;
+      moveStartY.current = clientY;
+      moveStartPos.current = pos || getDefaultPos();
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "grabbing";
+    },
+    [pos, getDefaultPos]
+  );
 
   const onMoveMove = useCallback((clientX: number, clientY: number) => {
     if (!moving.current) return;
@@ -243,15 +430,18 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   }, []);
 
   // ── Resize handlers ──
-  const onResizeStart = useCallback((clientX: number, clientY: number) => {
-    resizing.current = true;
-    resizeStartX.current = clientX;
-    resizeStartY.current = clientY;
-    resizeStartW.current = width;
-    resizeStartH.current = height;
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "nwse-resize";
-  }, [width, height]);
+  const onResizeStart = useCallback(
+    (clientX: number, clientY: number) => {
+      resizing.current = true;
+      resizeStartX.current = clientX;
+      resizeStartY.current = clientY;
+      resizeStartW.current = width;
+      resizeStartH.current = height;
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "nwse-resize";
+    },
+    [width, height]
+  );
 
   const onResizeMove = useCallback((clientX: number, clientY: number) => {
     if (!resizing.current) return;
@@ -357,14 +547,21 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
       fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "claim-nickname", nickname: saved, clientId: getClientId(), flag: getSavedFlag() || undefined }),
-      }).then(async (res) => {
-        if (res.status === 409) {
-          // Someone else took this name — force re-pick
-          setNicknameReady(false);
-          setNickError("Your username was taken by someone else. Please pick a new one.");
-        }
-      }).catch(() => {});
+        body: JSON.stringify({
+          action: "claim-nickname",
+          nickname: saved,
+          clientId: getClientId(),
+          flag: getSavedFlag() || undefined,
+        }),
+      })
+        .then(async (res) => {
+          if (res.status === 409) {
+            // Someone else took this name — force re-pick
+            setNicknameReady(false);
+            setNickError("Your username was taken by someone else. Please pick a new one.");
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -416,42 +613,55 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     }
   }, [messages, open, activeTab]);
 
-  const claimAndSaveNick = useCallback(async (nick: string, flag?: string | null) => {
-    if (isOffensiveNickname(nick)) { setNickError("That username is not allowed"); return false; }
-    if (!isValidNickname(nick)) { setNickError("Invalid format"); return false; }
-
-    setNickLoading(true);
-    setNickError("");
-    try {
-      const flagToSend = flag !== undefined ? flag : selectedFlag;
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "claim-nickname",
-          nickname: nick,
-          clientId: getClientId(),
-          oldNickname: nicknameRef.current || undefined,
-          ...(flagToSend ? { flag: flagToSend } : {}),
-        }),
-      });
-      if (res.status === 409) { setNickError("Username is already taken"); return false; }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setNickError(data.error || "Failed to claim username"); return false;
+  const claimAndSaveNick = useCallback(
+    async (nick: string, flag?: string | null) => {
+      if (isOffensiveNickname(nick)) {
+        setNickError("That username is not allowed");
+        return false;
       }
-      nicknameRef.current = nick;
-      saveNickname(nick);
-      setNicknameReady(true);
-      setChangingNick(false);
-      return true;
-    } catch {
-      setNickError("Connection error");
-      return false;
-    } finally {
-      setNickLoading(false);
-    }
-  }, [selectedFlag]);
+      if (!isValidNickname(nick)) {
+        setNickError("Invalid format");
+        return false;
+      }
+
+      setNickLoading(true);
+      setNickError("");
+      try {
+        const flagToSend = flag !== undefined ? flag : selectedFlag;
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "claim-nickname",
+            nickname: nick,
+            clientId: getClientId(),
+            oldNickname: nicknameRef.current || undefined,
+            ...(flagToSend ? { flag: flagToSend } : {}),
+          }),
+        });
+        if (res.status === 409) {
+          setNickError("Username is already taken");
+          return false;
+        }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setNickError(data.error || "Failed to claim username");
+          return false;
+        }
+        nicknameRef.current = nick;
+        saveNickname(nick);
+        setNicknameReady(true);
+        setChangingNick(false);
+        return true;
+      } catch {
+        setNickError("Connection error");
+        return false;
+      } finally {
+        setNickLoading(false);
+      }
+    },
+    [selectedFlag]
+  );
 
   const toggleMute = useCallback((nickname: string) => {
     setMutedUsers((prev) => {
@@ -485,7 +695,8 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
       const panelEl = flagButtonRef.current?.closest(".fixed");
       const dropdownEl = panelEl?.querySelector("[data-flag-dropdown]");
       if (
-        flagDropdownRef.current && !flagDropdownRef.current.contains(target) &&
+        flagDropdownRef.current &&
+        !flagDropdownRef.current.contains(target) &&
         (!dropdownEl || !dropdownEl.contains(target))
       ) {
         setFlagDropdownOpen(false);
@@ -563,26 +774,31 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     } catch {}
   }, []);
 
-  const handleLike = useCallback(async (msgId: string) => {
-    if (likedIds.has(msgId)) return;
-    // Optimistic update
-    setLikes((prev) => ({ ...prev, [msgId]: (prev[msgId] || 0) + 1 }));
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      next.add(msgId);
-      try { localStorage.setItem("strikemap-chat-liked", JSON.stringify([...next])); } catch {}
-      return next;
-    });
-    setHeartAnimId(msgId);
-    setTimeout(() => setHeartAnimId((prev) => (prev === msgId ? null : prev)), 600);
-    try {
-      await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "like", messageId: msgId, clientId: getClientId() }),
+  const handleLike = useCallback(
+    async (msgId: string) => {
+      if (likedIds.has(msgId)) return;
+      // Optimistic update
+      setLikes((prev) => ({ ...prev, [msgId]: (prev[msgId] || 0) + 1 }));
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        next.add(msgId);
+        try {
+          localStorage.setItem("strikemap-chat-liked", JSON.stringify([...next]));
+        } catch {}
+        return next;
       });
-    } catch {}
-  }, [likedIds]);
+      setHeartAnimId(msgId);
+      setTimeout(() => setHeartAnimId((prev) => (prev === msgId ? null : prev)), 600);
+      try {
+        await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "like", messageId: msgId, clientId: getClientId() }),
+        });
+      } catch {}
+    },
+    [likedIds]
+  );
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -618,9 +834,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
       });
       const data = await res.json();
       if (data.message) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticMsg.id ? data.message : m))
-        );
+        setMessages((prev) => prev.map((m) => (m.id === optimisticMsg.id ? data.message : m)));
         lastTimestamp.current = data.message.timestamp;
       }
     } catch {
@@ -637,485 +851,642 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   const panel = (
     <div
       className="fixed z-[60] bg-[#0a0a0a] md:bg-[#1a1a1a]/95 md:backdrop-blur-sm md:border md:border-[#2a2a2a] md:rounded-lg md:shadow-2xl"
-      style={isMobile
-        ? { top: "3.5rem", bottom: "3.5rem", left: 0, right: 0, overscrollBehaviorX: "none", touchAction: "pan-y pinch-zoom" }
-        : { left: x, top: y, width, height }
+      style={
+        isMobile
+          ? {
+              top: "3.5rem",
+              bottom: "3.5rem",
+              left: 0,
+              right: 0,
+              overscrollBehaviorX: "none",
+              touchAction: "pan-y pinch-zoom",
+            }
+          : { left: x, top: y, width, height }
       }
     >
-    <div className="flex flex-col overflow-hidden h-full md:rounded-lg">
-      {/* Header — drag handle on desktop */}
-      <div
-        className={`border-b border-[#2a2a2a] bg-[#0a0a0a] md:bg-transparent ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}`}
-        onMouseDown={(e) => {
-          if (isMobile) return;
-          // Don't start drag if clicking a button
-          if ((e.target as HTMLElement).closest("button")) return;
-          e.preventDefault();
-          onMoveStart(e.clientX, e.clientY);
-        }}
-        onTouchStart={(e) => {
-          if (isMobile) return;
-          if ((e.target as HTMLElement).closest("button")) return;
-          onMoveStart(e.touches[0].clientX, e.touches[0].clientY);
-          startTouchDrag();
-        }}
-      >
-        <div className="px-3 py-2 md:px-2 md:py-1.5 flex items-center justify-between">
-          <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-0.5">
-            <button
-              onClick={() => setActiveTab("chat")}
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
-                activeTab === "chat"
-                  ? "bg-neutral-700 text-white"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Chat
-            </button>
-            <button
-              onClick={() => setActiveTab("suggestions")}
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
-                activeTab === "suggestions"
-                  ? "bg-neutral-700 text-white"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Suggestions
-            </button>
-            <button
-              onClick={() => setActiveTab("changes")}
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
-                activeTab === "changes"
-                  ? "bg-neutral-700 text-white"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Changes
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            {nicknameReady && !changingNick && (
-              <div className="relative" ref={flagDropdownRef}>
-                <button
-                  ref={flagButtonRef}
-                  onClick={() => setFlagDropdownOpen((v) => !v)}
-                  className="text-[10px] text-neutral-600 hover:text-neutral-400 whitespace-nowrap transition-colors flex items-center gap-0.5"
-                  title="Change flag or username"
+      <div className="flex flex-col overflow-hidden h-full md:rounded-lg">
+        {/* Header — drag handle on desktop */}
+        <div
+          className={`border-b border-[#2a2a2a] bg-[#0a0a0a] md:bg-transparent ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}`}
+          onMouseDown={(e) => {
+            if (isMobile) return;
+            // Don't start drag if clicking a button
+            if ((e.target as HTMLElement).closest("button")) return;
+            e.preventDefault();
+            onMoveStart(e.clientX, e.clientY);
+          }}
+          onTouchStart={(e) => {
+            if (isMobile) return;
+            if ((e.target as HTMLElement).closest("button")) return;
+            onMoveStart(e.touches[0].clientX, e.touches[0].clientY);
+            startTouchDrag();
+          }}
+        >
+          <div className="px-3 py-2 md:px-2 md:py-1.5 flex items-center justify-between">
+            <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-0.5">
+              <button
+                onClick={() => setActiveTab("chat")}
+                className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
+                  activeTab === "chat"
+                    ? "bg-neutral-700 text-white"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Chat
+              </button>
+              <button
+                onClick={() => setActiveTab("suggestions")}
+                className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
+                  activeTab === "suggestions"
+                    ? "bg-neutral-700 text-white"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Suggestions
+              </button>
+              <button
+                onClick={() => setActiveTab("changes")}
+                className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
+                  activeTab === "changes"
+                    ? "bg-neutral-700 text-white"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Changes
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {nicknameReady && !changingNick && (
+                <div className="relative" ref={flagDropdownRef}>
+                  <button
+                    ref={flagButtonRef}
+                    onClick={() => setFlagDropdownOpen((v) => !v)}
+                    className="text-[10px] text-neutral-600 hover:text-neutral-400 whitespace-nowrap transition-colors flex items-center gap-0.5"
+                    title="Change flag or username"
+                  >
+                    {selectedFlag && <span className="text-sm">{selectedFlag}</span>}
+                    {nicknameRef.current}
+                  </button>
+                </div>
+              )}
+              <button onClick={onClose} className="text-neutral-500 hover:text-neutral-300 p-1">
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  {selectedFlag && <span className="text-sm">{selectedFlag}</span>}
-                  {nicknameRef.current}
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {activeTab === "suggestions" ? (
+          <SuggestionsPanel />
+        ) : activeTab === "changes" ? (
+          <ChangelogPanel />
+        ) : !nicknameReady || changingNick ? (
+          /* Username setup screen */
+          <div className="flex-1 flex items-center justify-center px-6">
+            <div className="w-full max-w-[16rem] space-y-4">
+              <div className="text-center">
+                <p
+                  className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  Choose a Username
+                </p>
+                <p className="text-[10px] text-neutral-600">Format: 4 letters + 4 numbers</p>
+              </div>
+              <div className="flex items-center gap-1.5 justify-center">
+                <input
+                  type="text"
+                  placeholder="ABCD"
+                  value={nickInput.letters}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 4);
+                    setNickInput((p) => ({ ...p, letters: val }));
+                    setNickError("");
+                    if (val.length === 4) numbersInputRef.current?.focus();
+                  }}
+                  maxLength={4}
+                  autoFocus
+                  className="w-[4.5rem] bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-2 text-sm text-neutral-200 placeholder-neutral-700 outline-none focus:border-neutral-500 text-center uppercase tracking-widest"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                />
+                <span className="text-neutral-600 text-sm font-bold">-</span>
+                <input
+                  ref={numbersInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="1234"
+                  value={nickInput.numbers}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setNickInput((p) => ({ ...p, numbers: val }));
+                    setNickError("");
+                  }}
+                  maxLength={4}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      nickInput.letters.length === 4 &&
+                      nickInput.numbers.length === 4 &&
+                      !nickLoading
+                    ) {
+                      const nick = `${nickInput.letters.toUpperCase()}-${nickInput.numbers}`;
+                      saveFlag(selectedFlag);
+                      claimAndSaveNick(nick, selectedFlag);
+                    }
+                  }}
+                  className="w-[4.5rem] bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-2 text-sm text-neutral-200 placeholder-neutral-700 outline-none focus:border-neutral-500 text-center tracking-widest"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                />
+              </div>
+              <p className="text-red-400 text-[10px] text-center h-4">{nickError || "\u00A0"}</p>
+              <div>
+                <p className="text-[10px] text-neutral-500 mb-1.5 text-center">
+                  Pick your flag (optional)
+                </p>
+                <div
+                  className="grid grid-cols-8 gap-0.5 max-h-[160px] overflow-y-scroll touch-pan-y overscroll-contain bg-[#111] border border-[#2a2a2a] rounded-md p-1.5"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
+                  {FLAGS.map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => {
+                        setSelectedFlag(selectedFlag === f ? null : f);
+                        flagRef.current = selectedFlag === f ? null : f;
+                      }}
+                      className={`text-base p-0.5 rounded hover:bg-neutral-700/50 transition-colors ${selectedFlag === f ? "bg-neutral-700 ring-1 ring-neutral-500" : ""}`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (nickInput.letters.length !== 4) {
+                    setNickError("Letters must be exactly 4");
+                    return;
+                  }
+                  if (nickInput.numbers.length !== 4) {
+                    setNickError("Numbers must be exactly 4");
+                    return;
+                  }
+                  const nick = `${nickInput.letters.toUpperCase()}-${nickInput.numbers}`;
+                  saveFlag(selectedFlag);
+                  claimAndSaveNick(nick, selectedFlag);
+                }}
+                disabled={
+                  nickInput.letters.length !== 4 || nickInput.numbers.length !== 4 || nickLoading
+                }
+                className="w-full py-2 text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {nickLoading ? "Checking..." : changingNick ? "Change Username" : "Join Chat"}
+              </button>
+              {changingNick && (
+                <button
+                  onClick={() => {
+                    setChangingNick(false);
+                    setNickError("");
+                  }}
+                  className="w-full py-1.5 text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Pinned message */}
+            {pinnedMessage && (
+              <div className="px-3 py-2 border-b border-red-500/30 bg-red-500/10">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <svg
+                        className="w-3 h-3 text-red-400 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M16 2H8a2 2 0 00-2 2v16l6-3 6 3V4a2 2 0 00-2-2z" />
+                      </svg>
+                      <span
+                        className="text-[9px] font-bold uppercase tracking-wider text-red-400"
+                        style={{ fontFamily: "JetBrains Mono, monospace" }}
+                      >
+                        Pinned
+                      </span>
+                      <span className="text-[10px] font-semibold text-neutral-400">
+                        {pinnedMessage.nickname}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-red-200/80 break-words leading-relaxed">
+                      {pinnedMessage.text}
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={handleUnpin}
+                      className="shrink-0 text-red-400/50 hover:text-red-400 transition-colors p-0.5 mt-0.5"
+                      title="Unpin"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Muted users bar */}
+            {mutedUsers.size > 0 && (
+              <div className="px-3 py-1.5 border-b border-[#2a2a2a] bg-[#111] flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] text-neutral-600 shrink-0">Muted:</span>
+                {[...mutedUsers].map((nick) => (
+                  <button
+                    key={nick}
+                    onClick={() => toggleMute(nick)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-500 transition-colors flex items-center gap-1"
+                    title={`Unmute ${nick}`}
+                  >
+                    {nick}
+                    <svg
+                      className="w-2.5 h-2.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Messages */}
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-3 py-3 md:py-2 space-y-3 md:space-y-2"
+            >
+              {messages.length === 0 && (
+                <div className="text-neutral-600 text-sm md:text-xs text-center mt-8">
+                  No messages yet. Say something!
+                </div>
+              )}
+              {messages
+                .filter((msg) => !mutedUsers.has(msg.nickname))
+                .map((msg) => {
+                  const isMe = msg.nickname === nicknameRef.current;
+                  const mentionsMe =
+                    !isMe && nicknameRef.current && msg.text.includes(`@${nicknameRef.current}`);
+                  const repliesToMe = !isMe && msg.replyTo?.nickname === nicknameRef.current;
+                  const highlightMe = mentionsMe || repliesToMe;
+                  const isMenuOpen = menuOpenId === msg.id;
+                  const likeCount = likes[msg.id] || 0;
+                  const showMenu = !isMe || isAdmin;
+                  return (
+                    <div
+                      key={msg.id}
+                      id={`chat-msg-${msg.id}`}
+                      className={`group rounded px-1 -mx-1 transition-colors relative select-none ${highlightMe ? "bg-blue-500/10 border border-blue-500/20" : ""}`}
+                      onDoubleClick={() => handleLike(msg.id)}
+                    >
+                      {/* Heart animation overlay */}
+                      {heartAnimId === msg.id && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                          <svg
+                            className="w-8 h-8 text-red-500 animate-like-heart"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Reply preview */}
+                      {msg.replyTo && (
+                        <button
+                          onClick={() => scrollToMessage(msg.replyTo!.id)}
+                          className={`flex items-center gap-1.5 mb-1 pl-2 border-l-2 text-[10px] transition-colors w-full text-left ${repliesToMe ? "border-blue-500 text-blue-400 hover:text-blue-300" : "border-neutral-600 text-neutral-500 hover:text-neutral-400"}`}
+                        >
+                          <svg
+                            className="w-2.5 h-2.5 shrink-0"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <path
+                              d="M3 10l4-4m0 0l4 4m-4-4v12"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="font-semibold text-neutral-400">
+                            {msg.replyTo.nickname}
+                          </span>
+                          <span className="truncate">{msg.replyTo.text}</span>
+                        </button>
+                      )}
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0 flex-1">
+                          {msg.flag && (
+                            <span className="mr-0.5 text-sm md:text-xs">{msg.flag}</span>
+                          )}
+                          <span className="font-semibold text-neutral-300 text-sm md:text-xs">
+                            {msg.nickname}
+                          </span>
+                          {isMe && (
+                            <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                              me
+                            </span>
+                          )}
+                          {msg.role === "dev" && (
+                            <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                              dev
+                            </span>
+                          )}
+                          <span className="text-neutral-600 text-[10px] ml-1.5">
+                            {relativeTime(msg.timestamp)}
+                          </span>
+                          {likeCount > 0 && (
+                            <span className="text-red-400/70 text-[10px] ml-1.5 inline-flex items-center gap-0.5">
+                              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                              </svg>
+                              {likeCount}
+                            </span>
+                          )}
+                          <p className="text-neutral-400 text-sm md:text-xs mt-0.5 break-words">
+                            {msg.text.split(/(@[A-Za-z]{4}-\d{4})/g).map((part, i) =>
+                              /^@[A-Za-z]{4}-\d{4}$/.test(part) ? (
+                                <span
+                                  key={i}
+                                  className={`font-semibold ${part.slice(1) === nicknameRef.current ? "text-blue-400" : "text-neutral-300"}`}
+                                >
+                                  {part}
+                                </span>
+                              ) : (
+                                part
+                              )
+                            )}
+                          </p>
+                        </div>
+                        {/* Action buttons */}
+                        <div className="flex items-center shrink-0 relative">
+                          <button
+                            onClick={() => handleReply(msg)}
+                            className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 mt-0.5 p-1 rounded hover:bg-neutral-700/50 active:bg-neutral-700/50 text-neutral-600 hover:text-neutral-400 active:text-neutral-400 transition-all"
+                            title="Reply"
+                          >
+                            <svg
+                              className="w-3.5 h-3.5 md:w-3 md:h-3"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                            >
+                              <path
+                                d="M3 10l4-4m0 0l4 4m-4-4v12"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          {showMenu && (
+                            <div className="relative">
+                              <button
+                                onClick={() => setMenuOpenId(isMenuOpen ? null : msg.id)}
+                                className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 mt-0.5 p-1 rounded hover:bg-neutral-700/50 active:bg-neutral-700/50 text-neutral-600 hover:text-neutral-400 active:text-neutral-400 transition-all"
+                                title="More"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5 md:w-3 md:h-3"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                >
+                                  <circle cx="12" cy="5" r="2" />
+                                  <circle cx="12" cy="12" r="2" />
+                                  <circle cx="12" cy="19" r="2" />
+                                </svg>
+                              </button>
+                              {isMenuOpen && (
+                                <div
+                                  ref={menuRef}
+                                  className="absolute right-0 top-full mt-0.5 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md shadow-xl py-1 min-w-[120px]"
+                                >
+                                  {!isMe && (
+                                    <button
+                                      onClick={() => toggleMute(msg.nickname)}
+                                      className="w-full text-left px-3 py-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/50 transition-colors flex items-center gap-2"
+                                    >
+                                      <svg
+                                        className="w-3 h-3"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path
+                                          d="M17 14V2M9 18.12L3.95 21.04A1 1 0 012 20.18V5.82a1 1 0 01.95-.82L9 2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                        <line x1="1" y1="1" x2="23" y2="23" />
+                                      </svg>
+                                      Mute {msg.nickname}
+                                    </button>
+                                  )}
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => handlePin(msg)}
+                                      className="w-full text-left px-3 py-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/50 transition-colors flex items-center gap-2"
+                                    >
+                                      <svg
+                                        className="w-3 h-3"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                      >
+                                        <path d="M16 2H8a2 2 0 00-2 2v16l6-3 6 3V4a2 2 0 00-2-2z" />
+                                      </svg>
+                                      Pin message
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Reply bar */}
+            {replyingTo && (
+              <div className="px-3 py-1.5 border-t border-[#2a2a2a] bg-[#111] flex items-center gap-2 min-w-0">
+                <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[10px]">
+                  <div className="w-0.5 h-4 bg-red-500/50 rounded shrink-0" />
+                  <span className="text-neutral-500">Replying to</span>
+                  <span className="font-semibold text-neutral-400">{replyingTo.nickname}</span>
+                  <span className="text-neutral-600 truncate">{replyingTo.text}</span>
+                </div>
+                <button
+                  onClick={cancelReply}
+                  className="text-neutral-600 hover:text-neutral-400 p-0.5 shrink-0"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
                 </button>
               </div>
             )}
-            <button
-              onClick={onClose}
-              className="text-neutral-500 hover:text-neutral-300 p-1"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {activeTab === "suggestions" ? (
-        <SuggestionsPanel />
-      ) : activeTab === "changes" ? (
-        <ChangelogPanel />
-      ) : !nicknameReady || changingNick ? (
-        /* Username setup screen */
-        <div className="flex-1 flex items-center justify-center px-6">
-          <div className="w-full max-w-[16rem] space-y-4">
-            <div className="text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>
-                Choose a Username
+            {/* Input */}
+            <div className="px-2 py-2 border-t border-[#2a2a2a] flex gap-1.5 safe-area-bottom min-w-0">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder={
+                  replyingTo ? `Reply to ${replyingTo.nickname}...` : "Type a message..."
+                }
+                maxLength={500}
+                className="flex-1 min-w-0 bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-1.5 text-[16px] md:text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-neutral-500"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || sending}
+                className="px-2.5 py-1.5 text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-40 transition-colors shrink-0"
+              >
+                Send
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Resize handle — bottom-right corner (desktop only) */}
+        {!isMobile && (
+          <div
+            className="absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize touch-none group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onResizeStart(e.clientX, e.clientY);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              onResizeStart(e.touches[0].clientX, e.touches[0].clientY);
+              startTouchDrag();
+            }}
+          >
+            <svg
+              className="w-3 h-3 absolute bottom-0.5 right-0.5 text-neutral-600 group-hover:text-neutral-400 transition-colors"
+              viewBox="0 0 10 10"
+              fill="currentColor"
+            >
+              <circle cx="8" cy="8" r="1.2" />
+              <circle cx="4" cy="8" r="1.2" />
+              <circle cx="8" cy="4" r="1.2" />
+            </svg>
+          </div>
+        )}
+      </div>
+      {/* end inner overflow-hidden wrapper */}
+
+      {/* Flag dropdown — rendered outside overflow-hidden so it's not clipped */}
+      {flagDropdownOpen &&
+        flagButtonRef.current &&
+        (() => {
+          const rect = flagButtonRef.current!.getBoundingClientRect();
+          const panelRect = (
+            flagButtonRef.current!.closest(".fixed") as HTMLElement
+          )?.getBoundingClientRect();
+          const top = rect.bottom - (panelRect?.top ?? 0) + 4;
+          const right = (panelRect?.right ?? 0) - rect.right;
+          return (
+            <div
+              data-flag-dropdown
+              className="absolute z-[70] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl p-2 w-[220px] overflow-hidden"
+              style={{ top, right: Math.max(4, right) }}
+            >
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5 px-0.5">
+                Pick your flag
               </p>
-              <p className="text-[10px] text-neutral-600">Format: 4 letters + 4 numbers</p>
-            </div>
-            <div className="flex items-center gap-1.5 justify-center">
-              <input
-                type="text"
-                placeholder="ABCD"
-                value={nickInput.letters}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 4);
-                  setNickInput((p) => ({ ...p, letters: val }));
-                  setNickError("");
-                  if (val.length === 4) numbersInputRef.current?.focus();
-                }}
-                maxLength={4}
-                autoFocus
-                className="w-[4.5rem] bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-2 text-sm text-neutral-200 placeholder-neutral-700 outline-none focus:border-neutral-500 text-center uppercase tracking-widest"
-                style={{ fontFamily: "JetBrains Mono, monospace" }}
-              />
-              <span className="text-neutral-600 text-sm font-bold">-</span>
-              <input
-                ref={numbersInputRef}
-                type="text"
-                inputMode="numeric"
-                placeholder="1234"
-                value={nickInput.numbers}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setNickInput((p) => ({ ...p, numbers: val }));
-                  setNickError("");
-                }}
-                maxLength={4}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && nickInput.letters.length === 4 && nickInput.numbers.length === 4 && !nickLoading) {
-                    const nick = `${nickInput.letters.toUpperCase()}-${nickInput.numbers}`;
-                    saveFlag(selectedFlag);
-                    claimAndSaveNick(nick, selectedFlag);
-                  }
-                }}
-                className="w-[4.5rem] bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-2 text-sm text-neutral-200 placeholder-neutral-700 outline-none focus:border-neutral-500 text-center tracking-widest"
-                style={{ fontFamily: "JetBrains Mono, monospace" }}
-              />
-            </div>
-            <p className="text-red-400 text-[10px] text-center h-4">{nickError || "\u00A0"}</p>
-            <div>
-              <p className="text-[10px] text-neutral-500 mb-1.5 text-center">Pick your flag (optional)</p>
               <div
-                className="grid grid-cols-8 gap-0.5 max-h-[160px] overflow-y-scroll touch-pan-y overscroll-contain bg-[#111] border border-[#2a2a2a] rounded-md p-1.5"
+                className="grid grid-cols-8 gap-0.5 max-h-[160px] overflow-y-auto touch-pan-y overscroll-contain mb-2"
                 style={{ WebkitOverflowScrolling: "touch" }}
                 onTouchMove={(e) => e.stopPropagation()}
               >
                 {FLAGS.map((f) => (
                   <button
                     key={f}
-                    type="button"
-                    onClick={() => { setSelectedFlag(selectedFlag === f ? null : f); flagRef.current = selectedFlag === f ? null : f; }}
+                    onClick={() => updateFlag(f)}
                     className={`text-base p-0.5 rounded hover:bg-neutral-700/50 transition-colors ${selectedFlag === f ? "bg-neutral-700 ring-1 ring-neutral-500" : ""}`}
                   >
                     {f}
                   </button>
                 ))}
               </div>
-            </div>
-            <button
-              onClick={() => {
-                if (nickInput.letters.length !== 4) { setNickError("Letters must be exactly 4"); return; }
-                if (nickInput.numbers.length !== 4) { setNickError("Numbers must be exactly 4"); return; }
-                const nick = `${nickInput.letters.toUpperCase()}-${nickInput.numbers}`;
-                saveFlag(selectedFlag);
-                claimAndSaveNick(nick, selectedFlag);
-              }}
-              disabled={nickInput.letters.length !== 4 || nickInput.numbers.length !== 4 || nickLoading}
-              className="w-full py-2 text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              {nickLoading ? "Checking..." : changingNick ? "Change Username" : "Join Chat"}
-            </button>
-            {changingNick && (
-              <button
-                onClick={() => { setChangingNick(false); setNickError(""); }}
-                className="w-full py-1.5 text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Pinned message */}
-          {pinnedMessage && (
-            <div className="px-3 py-2 border-b border-red-500/30 bg-red-500/10">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <svg className="w-3 h-3 text-red-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M16 2H8a2 2 0 00-2 2v16l6-3 6 3V4a2 2 0 00-2-2z" />
-                    </svg>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>Pinned</span>
-                    <span className="text-[10px] font-semibold text-neutral-400">{pinnedMessage.nickname}</span>
-                  </div>
-                  <p className="text-[11px] text-red-200/80 break-words leading-relaxed">{pinnedMessage.text}</p>
-                </div>
-                {isAdmin && (
+              <div className="border-t border-[#2a2a2a] pt-1.5 flex items-center justify-between">
+                {selectedFlag && (
                   <button
-                    onClick={handleUnpin}
-                    className="shrink-0 text-red-400/50 hover:text-red-400 transition-colors p-0.5 mt-0.5"
-                    title="Unpin"
+                    onClick={() => updateFlag(null)}
+                    className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
                   >
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                    Remove flag
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    setFlagDropdownOpen(false);
+                    setChangingNick(true);
+                    setNickInput({ letters: "", numbers: "" });
+                    setNickError("");
+                  }}
+                  className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors ml-auto"
+                >
+                  Change Username
+                </button>
               </div>
             </div>
-          )}
-
-          {/* Muted users bar */}
-          {mutedUsers.size > 0 && (
-            <div className="px-3 py-1.5 border-b border-[#2a2a2a] bg-[#111] flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] text-neutral-600 shrink-0">Muted:</span>
-              {[...mutedUsers].map((nick) => (
-                <button
-                  key={nick}
-                  onClick={() => toggleMute(nick)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-500 transition-colors flex items-center gap-1"
-                  title={`Unmute ${nick}`}
-                >
-                  {nick}
-                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Messages */}
-          <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-3 py-3 md:py-2 space-y-3 md:space-y-2">
-            {messages.length === 0 && (
-              <div className="text-neutral-600 text-sm md:text-xs text-center mt-8">
-                No messages yet. Say something!
-              </div>
-            )}
-            {messages.filter((msg) => !mutedUsers.has(msg.nickname)).map((msg) => {
-              const isMe = msg.nickname === nicknameRef.current;
-              const mentionsMe = !isMe && nicknameRef.current && msg.text.includes(`@${nicknameRef.current}`);
-              const repliesToMe = !isMe && msg.replyTo?.nickname === nicknameRef.current;
-              const highlightMe = mentionsMe || repliesToMe;
-              const isMenuOpen = menuOpenId === msg.id;
-              const likeCount = likes[msg.id] || 0;
-              const showMenu = !isMe || isAdmin;
-              return (
-                <div
-                  key={msg.id}
-                  id={`chat-msg-${msg.id}`}
-                  className={`group rounded px-1 -mx-1 transition-colors relative select-none ${highlightMe ? "bg-blue-500/10 border border-blue-500/20" : ""}`}
-                  onDoubleClick={() => handleLike(msg.id)}
-                >
-                  {/* Heart animation overlay */}
-                  {heartAnimId === msg.id && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                      <svg className="w-8 h-8 text-red-500 animate-like-heart" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-                      </svg>
-                    </div>
-                  )}
-                  {/* Reply preview */}
-                  {msg.replyTo && (
-                    <button
-                      onClick={() => scrollToMessage(msg.replyTo!.id)}
-                      className={`flex items-center gap-1.5 mb-1 pl-2 border-l-2 text-[10px] transition-colors w-full text-left ${repliesToMe ? "border-blue-500 text-blue-400 hover:text-blue-300" : "border-neutral-600 text-neutral-500 hover:text-neutral-400"}`}
-                    >
-                      <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M3 10l4-4m0 0l4 4m-4-4v12" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="font-semibold text-neutral-400">{msg.replyTo.nickname}</span>
-                      <span className="truncate">{msg.replyTo.text}</span>
-                    </button>
-                  )}
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="min-w-0 flex-1">
-                      {msg.flag && <span className="mr-0.5 text-sm md:text-xs">{msg.flag}</span>}
-                      <span className="font-semibold text-neutral-300 text-sm md:text-xs">{msg.nickname}</span>
-                      {isMe && (
-                        <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">me</span>
-                      )}
-                      {msg.role === "dev" && (
-                        <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">dev</span>
-                      )}
-                      <span className="text-neutral-600 text-[10px] ml-1.5">{relativeTime(msg.timestamp)}</span>
-                      {likeCount > 0 && (
-                        <span className="text-red-400/70 text-[10px] ml-1.5 inline-flex items-center gap-0.5">
-                          <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" /></svg>
-                          {likeCount}
-                        </span>
-                      )}
-                      <p className="text-neutral-400 text-sm md:text-xs mt-0.5 break-words">
-                        {msg.text.split(/(@[A-Za-z]{4}-\d{4})/g).map((part, i) =>
-                          /^@[A-Za-z]{4}-\d{4}$/.test(part)
-                            ? <span key={i} className={`font-semibold ${part.slice(1) === nicknameRef.current ? "text-blue-400" : "text-neutral-300"}`}>{part}</span>
-                            : part
-                        )}
-                      </p>
-                    </div>
-                    {/* Action buttons */}
-                    <div className="flex items-center shrink-0 relative">
-                      <button
-                        onClick={() => handleReply(msg)}
-                        className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 mt-0.5 p-1 rounded hover:bg-neutral-700/50 active:bg-neutral-700/50 text-neutral-600 hover:text-neutral-400 active:text-neutral-400 transition-all"
-                        title="Reply"
-                      >
-                        <svg className="w-3.5 h-3.5 md:w-3 md:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M3 10l4-4m0 0l4 4m-4-4v12" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                      {showMenu && (
-                        <div className="relative">
-                          <button
-                            onClick={() => setMenuOpenId(isMenuOpen ? null : msg.id)}
-                            className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 mt-0.5 p-1 rounded hover:bg-neutral-700/50 active:bg-neutral-700/50 text-neutral-600 hover:text-neutral-400 active:text-neutral-400 transition-all"
-                            title="More"
-                          >
-                            <svg className="w-3.5 h-3.5 md:w-3 md:h-3" viewBox="0 0 24 24" fill="currentColor">
-                              <circle cx="12" cy="5" r="2" />
-                              <circle cx="12" cy="12" r="2" />
-                              <circle cx="12" cy="19" r="2" />
-                            </svg>
-                          </button>
-                          {isMenuOpen && (
-                            <div
-                              ref={menuRef}
-                              className="absolute right-0 top-full mt-0.5 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md shadow-xl py-1 min-w-[120px]"
-                            >
-                              {!isMe && (
-                                <button
-                                  onClick={() => toggleMute(msg.nickname)}
-                                  className="w-full text-left px-3 py-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/50 transition-colors flex items-center gap-2"
-                                >
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M17 14V2M9 18.12L3.95 21.04A1 1 0 012 20.18V5.82a1 1 0 01.95-.82L9 2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <line x1="1" y1="1" x2="23" y2="23" />
-                                  </svg>
-                                  Mute {msg.nickname}
-                                </button>
-                              )}
-                              {isAdmin && (
-                                <button
-                                  onClick={() => handlePin(msg)}
-                                  className="w-full text-left px-3 py-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/50 transition-colors flex items-center gap-2"
-                                >
-                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M16 2H8a2 2 0 00-2 2v16l6-3 6 3V4a2 2 0 00-2-2z" />
-                                  </svg>
-                                  Pin message
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Reply bar */}
-          {replyingTo && (
-            <div className="px-3 py-1.5 border-t border-[#2a2a2a] bg-[#111] flex items-center gap-2 min-w-0">
-              <div className="flex-1 min-w-0 flex items-center gap-1.5 text-[10px]">
-                <div className="w-0.5 h-4 bg-red-500/50 rounded shrink-0" />
-                <span className="text-neutral-500">Replying to</span>
-                <span className="font-semibold text-neutral-400">{replyingTo.nickname}</span>
-                <span className="text-neutral-600 truncate">{replyingTo.text}</span>
-              </div>
-              <button
-                onClick={cancelReply}
-                className="text-neutral-600 hover:text-neutral-400 p-0.5 shrink-0"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* Input */}
-          <div className="px-2 py-2 border-t border-[#2a2a2a] flex gap-1.5 safe-area-bottom min-w-0">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={replyingTo ? `Reply to ${replyingTo.nickname}...` : "Type a message..."}
-              maxLength={500}
-              className="flex-1 min-w-0 bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-1.5 text-[16px] md:text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-neutral-500"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || sending}
-              className="px-2.5 py-1.5 text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 disabled:opacity-40 transition-colors shrink-0"
-            >
-              Send
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Resize handle — bottom-right corner (desktop only) */}
-      {!isMobile && (
-        <div
-          className="absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize touch-none group"
-          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onResizeStart(e.clientX, e.clientY); }}
-          onTouchStart={(e) => { e.stopPropagation(); onResizeStart(e.touches[0].clientX, e.touches[0].clientY); startTouchDrag(); }}
-        >
-          <svg
-            className="w-3 h-3 absolute bottom-0.5 right-0.5 text-neutral-600 group-hover:text-neutral-400 transition-colors"
-            viewBox="0 0 10 10"
-            fill="currentColor"
-          >
-            <circle cx="8" cy="8" r="1.2" />
-            <circle cx="4" cy="8" r="1.2" />
-            <circle cx="8" cy="4" r="1.2" />
-          </svg>
-        </div>
-      )}
-    </div>{/* end inner overflow-hidden wrapper */}
-
-      {/* Flag dropdown — rendered outside overflow-hidden so it's not clipped */}
-      {flagDropdownOpen && flagButtonRef.current && (() => {
-        const rect = flagButtonRef.current!.getBoundingClientRect();
-        const panelRect = (flagButtonRef.current!.closest(".fixed") as HTMLElement)?.getBoundingClientRect();
-        const top = rect.bottom - (panelRect?.top ?? 0) + 4;
-        const right = (panelRect?.right ?? 0) - rect.right;
-        return (
-          <div
-            data-flag-dropdown
-            className="absolute z-[70] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl p-2 w-[220px] overflow-hidden"
-            style={{ top, right: Math.max(4, right) }}
-          >
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5 px-0.5">Pick your flag</p>
-            <div
-              className="grid grid-cols-8 gap-0.5 max-h-[160px] overflow-y-auto touch-pan-y overscroll-contain mb-2"
-              style={{ WebkitOverflowScrolling: "touch" }}
-              onTouchMove={(e) => e.stopPropagation()}
-            >
-              {FLAGS.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => updateFlag(f)}
-                  className={`text-base p-0.5 rounded hover:bg-neutral-700/50 transition-colors ${selectedFlag === f ? "bg-neutral-700 ring-1 ring-neutral-500" : ""}`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-            <div className="border-t border-[#2a2a2a] pt-1.5 flex items-center justify-between">
-              {selectedFlag && (
-                <button
-                  onClick={() => updateFlag(null)}
-                  className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
-                >
-                  Remove flag
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setFlagDropdownOpen(false);
-                  setChangingNick(true);
-                  setNickInput({ letters: "", numbers: "" });
-                  setNickError("");
-                }}
-                className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors ml-auto"
-              >
-                Change Username
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </div>
   );
 

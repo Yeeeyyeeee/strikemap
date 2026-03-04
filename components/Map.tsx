@@ -4,7 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { Incident } from "@/lib/types";
 import { getWeaponColor } from "./Legend";
-import { MilitaryBase, MILITARY_BASES, BASE_COLORS, OPERATOR_LABELS, getBaseIcon } from "@/lib/militaryBases";
+import {
+  MilitaryBase,
+  MILITARY_BASES,
+  BASE_COLORS,
+  OPERATOR_LABELS,
+  getBaseIcon,
+} from "@/lib/militaryBases";
 import { PROXY_GROUPS, PROXY_CONNECTIONS, createProxyCircle } from "@/lib/proxyGroups";
 import { createCircleGeoJSON } from "@/lib/weaponsData";
 
@@ -74,11 +80,7 @@ function getIncidentColor(incident: Incident): string {
     if (incident.intercept_success === false) return "#ef4444";
     return "#6b7280";
   }
-  if (
-    incident.side === "us_israel" ||
-    incident.side === "us" ||
-    incident.side === "israel"
-  )
+  if (incident.side === "us_israel" || incident.side === "us" || incident.side === "israel")
     return "#3b82f6";
   return getWeaponColor(incident.weapon);
 }
@@ -110,8 +112,8 @@ function buildGeoJSON(
         description: (inc.description || "").slice(0, 120),
         hasVideo: Boolean(
           inc.video_url ||
-            inc.telegram_post_id ||
-            (inc.source_url && /t\.me\/\w+\/\d+/.test(inc.source_url))
+          inc.telegram_post_id ||
+          (inc.source_url && /t\.me\/\w+\/\d+/.test(inc.source_url))
         )
           ? "1"
           : "",
@@ -177,134 +179,113 @@ export default function MapView({
   }, []);
 
   // Add incident layers to the map (called after style loads)
-  const addIncidentLayers = useCallback((m: mapboxgl.Map) => {
-    if (m.getSource(SRC)) return; // already added
+  const addIncidentLayers = useCallback(
+    (m: mapboxgl.Map) => {
+      if (m.getSource(SRC)) return; // already added
 
-    m.addSource(SRC, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-      cluster: true,
-      clusterMaxZoom: 7,
-      clusterRadius: 40,
-    });
+      m.addSource(SRC, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        cluster: true,
+        clusterMaxZoom: 7,
+        clusterRadius: 40,
+      });
 
-    // Cluster circles
-    m.addLayer({
-      id: LAYER_CLUSTERS,
-      type: "circle",
-      source: SRC,
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#ef4444",
-          20,
-          "#f97316",
-          50,
-          "#eab308",
-        ],
-        "circle-radius": [
-          "step",
-          ["get", "point_count"],
-          14,
-          10,
-          18,
-          50,
-          24,
-        ],
-        "circle-opacity": 0.75,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "rgba(0,0,0,0.3)",
-      },
-    });
+      // Cluster circles
+      m.addLayer({
+        id: LAYER_CLUSTERS,
+        type: "circle",
+        source: SRC,
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": ["step", ["get", "point_count"], "#ef4444", 20, "#f97316", 50, "#eab308"],
+          "circle-radius": ["step", ["get", "point_count"], 14, 10, 18, 50, 24],
+          "circle-opacity": 0.75,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "rgba(0,0,0,0.3)",
+        },
+      });
 
-    // Cluster count labels
-    m.addLayer({
-      id: LAYER_CLUSTER_COUNT,
-      type: "symbol",
-      source: SRC,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-size": 12,
-        "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-      },
-      paint: {
-        "text-color": "#ffffff",
-      },
-    });
+      // Cluster count labels
+      m.addLayer({
+        id: LAYER_CLUSTER_COUNT,
+        type: "symbol",
+        source: SRC,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count_abbreviated}",
+          "text-size": 12,
+          "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
 
-    // Individual points — GPU-rendered circles
-    m.addLayer({
-      id: LAYER_POINTS,
-      type: "circle",
-      source: SRC,
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": ["get", "color"],
-        "circle-opacity": ["get", "opacity"],
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          3,
-          3 * markerSize,
-          6,
-          5 * markerSize,
-          10,
-          7 * markerSize,
-          14,
-          10 * markerSize,
-        ],
-        "circle-stroke-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          3,
-          0,
-          8,
-          1.5,
-        ],
-        "circle-stroke-color": ["get", "color"],
-        "circle-stroke-opacity": 0.4,
-      },
-    });
+      // Individual points — GPU-rendered circles
+      m.addLayer({
+        id: LAYER_POINTS,
+        type: "circle",
+        source: SRC,
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": ["get", "color"],
+          "circle-opacity": ["get", "opacity"],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3,
+            3 * markerSize,
+            6,
+            5 * markerSize,
+            10,
+            7 * markerSize,
+            14,
+            10 * markerSize,
+          ],
+          "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 3, 0, 8, 1.5],
+          "circle-stroke-color": ["get", "color"],
+          "circle-stroke-opacity": 0.4,
+        },
+      });
 
-    // Selected point highlight
-    m.addSource(SRC_SELECTED, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-    });
+      // Selected point highlight
+      m.addSource(SRC_SELECTED, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
 
-    m.addLayer({
-      id: LAYER_SELECTED,
-      type: "circle",
-      source: SRC_SELECTED,
-      paint: {
-        "circle-color": ["get", "color"],
-        "circle-opacity": 1,
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          3,
-          6 * markerSize,
-          6,
-          9 * markerSize,
-          10,
-          12 * markerSize,
-          14,
-          16 * markerSize,
-        ],
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-opacity": 0.8,
-      },
-    });
+      m.addLayer({
+        id: LAYER_SELECTED,
+        type: "circle",
+        source: SRC_SELECTED,
+        paint: {
+          "circle-color": ["get", "color"],
+          "circle-opacity": 1,
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3,
+            6 * markerSize,
+            6,
+            9 * markerSize,
+            10,
+            12 * markerSize,
+            14,
+            16 * markerSize,
+          ],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-opacity": 0.8,
+        },
+      });
 
-    layersReady.current = true;
-  }, [markerSize]);
+      layersReady.current = true;
+    },
+    [markerSize]
+  );
 
   // Initialize map
   useEffect(() => {
@@ -326,10 +307,7 @@ export default function MapView({
       attributionControl: false,
     });
 
-    map.current.addControl(
-      new mapboxgl.NavigationControl({ showCompass: false }),
-      "top-right"
-    );
+    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
 
     const m = map.current;
 
@@ -381,14 +359,10 @@ export default function MapView({
       if (!e.features || e.features.length === 0) return;
       m.getCanvas().style.cursor = "pointer";
       const props = e.features[0].properties!;
-      const coords = (e.features[0].geometry as GeoJSON.Point)
-        .coordinates as [number, number];
-      const videoTag =
-        props.hasVideo === "1"
-          ? ' · <span style="color:#a855f7;">VIDEO</span>'
-          : "";
-      popupRef.current!
-        .setLngLat(coords)
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      const videoTag = props.hasVideo === "1" ? ' · <span style="color:#a855f7;">VIDEO</span>' : "";
+      popupRef
+        .current!.setLngLat(coords)
         .setHTML(
           `<div>
             <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(props.location)}</div>
@@ -486,13 +460,19 @@ export default function MapView({
           "interpolate",
           ["linear"],
           ["zoom"],
-          3, 3 * markerSize,
-          6, 5 * markerSize,
-          10, 7 * markerSize,
-          14, 10 * markerSize,
+          3,
+          3 * markerSize,
+          6,
+          5 * markerSize,
+          10,
+          7 * markerSize,
+          14,
+          10 * markerSize,
         ]);
       }
-    } catch { /* layer might not exist yet */ }
+    } catch {
+      /* layer might not exist yet */
+    }
   }, [markerSize, styleRevision]);
 
   // Recalculate age-based fading every 60 seconds
@@ -746,11 +726,7 @@ export default function MapView({
     const addRange = () => {
       cleanup();
 
-      const circle = createCircleGeoJSON(
-        rangeWeapon.lat,
-        rangeWeapon.lng,
-        rangeWeapon.radiusKm
-      );
+      const circle = createCircleGeoJSON(rangeWeapon.lat, rangeWeapon.lng, rangeWeapon.radiusKm);
 
       m.addSource(rangeSourceId, {
         type: "geojson",
@@ -813,7 +789,9 @@ export default function MapView({
         if (m.getLayer(firmsGlowId)) m.removeLayer(firmsGlowId);
         if (m.getLayer(firmsLayerId)) m.removeLayer(firmsLayerId);
         if (m.getSource(firmsSourceId)) m.removeSource(firmsSourceId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     if (!showFirms || !firmsGeoJSON) {
@@ -835,21 +813,8 @@ export default function MapView({
         type: "circle",
         source: firmsSourceId,
         paint: {
-          "circle-color": [
-            "case",
-            ["==", ["get", "correlated"], "1"],
-            "#ef4444",
-            "#f97316",
-          ],
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            3, 12,
-            6, 20,
-            10, 30,
-            14, 45,
-          ],
+          "circle-color": ["case", ["==", ["get", "correlated"], "1"], "#ef4444", "#f97316"],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 12, 6, 20, 10, 30, 14, 45],
           "circle-opacity": 0.25,
           "circle-blur": 1,
         },
@@ -861,35 +826,19 @@ export default function MapView({
         type: "circle",
         source: firmsSourceId,
         paint: {
-          "circle-color": [
-            "case",
-            ["==", ["get", "correlated"], "1"],
-            "#ef4444",
-            "#f97316",
-          ],
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            3, 5,
-            6, 8,
-            10, 12,
-            14, 18,
-          ],
+          "circle-color": ["case", ["==", ["get", "correlated"], "1"], "#ef4444", "#f97316"],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 6, 8, 10, 12, 14, 18],
           "circle-opacity": 0.9,
           "circle-stroke-width": 2,
-          "circle-stroke-color": [
-            "case",
-            ["==", ["get", "correlated"], "1"],
-            "#fca5a5",
-            "#fdba74",
-          ],
+          "circle-stroke-color": ["case", ["==", ["get", "correlated"], "1"], "#fca5a5", "#fdba74"],
           "circle-stroke-opacity": 0.7,
         },
       });
     };
 
-    const onFirmsMouseMove = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    const onFirmsMouseMove = (
+      e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }
+    ) => {
       if (!e.features || e.features.length === 0) return;
       m.getCanvas().style.cursor = "pointer";
       const props = e.features[0].properties!;
@@ -897,8 +846,8 @@ export default function MapView({
       const isCorrelated = props.correlated === "1";
       const statusColor = isCorrelated ? "#ef4444" : "#f97316";
       const statusLabel = isCorrelated ? "STRIKE CONFIRMED" : "UNCONFIRMED";
-      popupRef.current!
-        .setLngLat(coords)
+      popupRef
+        .current!.setLngLat(coords)
         .setHTML(
           `<div>
             <div style="font-weight:700;color:${statusColor};font-size:11px;margin-bottom:4px;letter-spacing:0.5px;">${statusLabel}</div>
@@ -916,7 +865,9 @@ export default function MapView({
     };
 
     // Click FIRMS dot with correlated incident → select that incident
-    const onFirmsClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    const onFirmsClick = (
+      e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }
+    ) => {
       if (!e.features || e.features.length === 0) return;
       const incId = e.features[0].properties?.incidentId;
       if (incId) {
@@ -957,7 +908,9 @@ export default function MapView({
         if (m.getLayer(lineId)) m.removeLayer(lineId);
         if (m.getLayer(fillId)) m.removeLayer(fillId);
         if (m.getSource(srcId)) m.removeSource(srcId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     if (!showCountries) {
@@ -966,8 +919,20 @@ export default function MapView({
     }
 
     const ISO_CODES = [
-      "IRN", "ISR", "IRQ", "SYR", "LBN", "JOR",
-      "SAU", "YEM", "ARE", "BHR", "KWT", "QAT", "OMN", "PSE",
+      "IRN",
+      "ISR",
+      "IRQ",
+      "SYR",
+      "LBN",
+      "JOR",
+      "SAU",
+      "YEM",
+      "ARE",
+      "BHR",
+      "KWT",
+      "QAT",
+      "OMN",
+      "PSE",
     ];
 
     const addLayers = () => {
@@ -980,45 +945,66 @@ export default function MapView({
 
       const beforeLayer = m.getLayer("incident-clusters") ? "incident-clusters" : undefined;
 
-      m.addLayer({
-        id: fillId,
-        type: "fill",
-        source: srcId,
-        "source-layer": "country_boundaries",
-        filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
-        paint: {
-          "fill-color": [
-            "match", ["get", "iso_3166_1_alpha_3"],
-            "IRN", "rgba(251, 146, 60, 0.15)",
-            "ISR", "rgba(59, 130, 246, 0.15)",
-            "IRQ", "rgba(234, 179, 8, 0.12)",
-            "SYR", "rgba(168, 85, 247, 0.12)",
-            "LBN", "rgba(34, 197, 94, 0.12)",
-            "JOR", "rgba(249, 115, 22, 0.12)",
-            "SAU", "rgba(236, 72, 153, 0.10)",
-            "YEM", "rgba(6, 182, 212, 0.12)",
-            "ARE", "rgba(139, 92, 246, 0.10)",
-            "BHR", "rgba(20, 184, 166, 0.10)",
-            "KWT", "rgba(251, 191, 36, 0.12)",
-            "QAT", "rgba(217, 119, 6, 0.12)",
-            "OMN", "rgba(56, 189, 248, 0.10)",
-            "PSE", "rgba(74, 222, 128, 0.12)",
-            "rgba(100, 100, 100, 0.08)",
-          ],
+      m.addLayer(
+        {
+          id: fillId,
+          type: "fill",
+          source: srcId,
+          "source-layer": "country_boundaries",
+          filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
+          paint: {
+            "fill-color": [
+              "match",
+              ["get", "iso_3166_1_alpha_3"],
+              "IRN",
+              "rgba(251, 146, 60, 0.15)",
+              "ISR",
+              "rgba(59, 130, 246, 0.15)",
+              "IRQ",
+              "rgba(234, 179, 8, 0.12)",
+              "SYR",
+              "rgba(168, 85, 247, 0.12)",
+              "LBN",
+              "rgba(34, 197, 94, 0.12)",
+              "JOR",
+              "rgba(249, 115, 22, 0.12)",
+              "SAU",
+              "rgba(236, 72, 153, 0.10)",
+              "YEM",
+              "rgba(6, 182, 212, 0.12)",
+              "ARE",
+              "rgba(139, 92, 246, 0.10)",
+              "BHR",
+              "rgba(20, 184, 166, 0.10)",
+              "KWT",
+              "rgba(251, 191, 36, 0.12)",
+              "QAT",
+              "rgba(217, 119, 6, 0.12)",
+              "OMN",
+              "rgba(56, 189, 248, 0.10)",
+              "PSE",
+              "rgba(74, 222, 128, 0.12)",
+              "rgba(100, 100, 100, 0.08)",
+            ],
+          },
         },
-      }, beforeLayer);
+        beforeLayer
+      );
 
-      m.addLayer({
-        id: lineId,
-        type: "line",
-        source: srcId,
-        "source-layer": "country_boundaries",
-        filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
-        paint: {
-          "line-color": "rgba(255, 255, 255, 0.35)",
-          "line-width": 1.5,
+      m.addLayer(
+        {
+          id: lineId,
+          type: "line",
+          source: srcId,
+          "source-layer": "country_boundaries",
+          filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
+          paint: {
+            "line-color": "rgba(255, 255, 255, 0.35)",
+            "line-width": 1.5,
+          },
         },
-      }, beforeLayer);
+        beforeLayer
+      );
     };
 
     if (m.isStyleLoaded()) {
@@ -1033,12 +1019,26 @@ export default function MapView({
   // Country name → ISO 3166-1 alpha-3 mapping for flash/siren effects
   const countryToISO = useCallback((name: string): string | null => {
     const map: Record<string, string> = {
-      "Iran": "IRN", "Israel": "ISR", "Iraq": "IRQ", "Syria": "SYR",
-      "Lebanon": "LBN", "Jordan": "JOR", "Saudi Arabia": "SAU", "Yemen": "YEM",
-      "United Arab Emirates": "ARE", "Bahrain": "BHR", "Kuwait": "KWT",
-      "Qatar": "QAT", "Oman": "OMN", "Palestine": "PSE",
-      "Pakistan": "PAK", "Afghanistan": "AFG", "Cyprus": "CYP",
-      "UAE": "ARE", "Gaza": "PSE", "Turkey": "TUR",
+      Iran: "IRN",
+      Israel: "ISR",
+      Iraq: "IRQ",
+      Syria: "SYR",
+      Lebanon: "LBN",
+      Jordan: "JOR",
+      "Saudi Arabia": "SAU",
+      Yemen: "YEM",
+      "United Arab Emirates": "ARE",
+      Bahrain: "BHR",
+      Kuwait: "KWT",
+      Qatar: "QAT",
+      Oman: "OMN",
+      Palestine: "PSE",
+      Pakistan: "PAK",
+      Afghanistan: "AFG",
+      Cyprus: "CYP",
+      UAE: "ARE",
+      Gaza: "PSE",
+      Turkey: "TUR",
     };
     return map[name] ?? null;
   }, []);
@@ -1094,18 +1094,24 @@ export default function MapView({
           try {
             m.setPaintProperty(fillId, "fill-opacity", 0.35 * (1 - progress));
             m.setPaintProperty(lineId, "line-opacity", 0.8 * (1 - progress));
-          } catch { /* layer removed */ }
+          } catch {
+            /* layer removed */
+          }
           if (step >= steps) {
             clearInterval(fadeTimer);
             try {
               if (m.getLayer(fillId)) m.removeLayer(fillId);
               if (m.getLayer(lineId)) m.removeLayer(lineId);
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
         }, interval);
 
         return fadeTimer;
-      } catch { /* layers not ready */ }
+      } catch {
+        /* layers not ready */
+      }
       return undefined;
     };
 
@@ -1113,7 +1119,9 @@ export default function MapView({
     if (m.isStyleLoaded()) {
       fadeTimer = addFlash();
     } else {
-      m.once("idle", () => { fadeTimer = addFlash(); });
+      m.once("idle", () => {
+        fadeTimer = addFlash();
+      });
     }
 
     return () => {
@@ -1121,7 +1129,9 @@ export default function MapView({
       try {
         if (m.getLayer(fillId)) m.removeLayer(fillId);
         if (m.getLayer(lineId)) m.removeLayer(lineId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
   }, [flashCountry, sirenCountries, countryToISO, styleRevision]);
 
@@ -1139,7 +1149,9 @@ export default function MapView({
         if (m.getLayer(sirenFillId)) m.removeLayer(sirenFillId);
         if (m.getLayer(sirenLineId)) m.removeLayer(sirenLineId);
         if (m.getSource(srcId)) m.removeSource(srcId);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     if (sirenCountries.length === 0) {
@@ -1163,7 +1175,8 @@ export default function MapView({
       m.addSource(srcId, { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
 
       const isoFilter: mapboxgl.FilterSpecification = [
-        "in", ["get", "iso_3166_1_alpha_3"],
+        "in",
+        ["get", "iso_3166_1_alpha_3"],
         ["literal", isoCodes],
       ];
 
@@ -1201,7 +1214,9 @@ export default function MapView({
       try {
         m.setPaintProperty(sirenFillId, "fill-opacity", fillOp);
         m.setPaintProperty(sirenLineId, "line-opacity", lineOp);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 50);
 
     return () => {

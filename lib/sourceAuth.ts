@@ -21,10 +21,7 @@ export function authenticateSource(password: string): string | null {
 
 /** Generate HMAC token for a source name + password pair */
 export function makeSourceToken(name: string, password: string): string {
-  return crypto
-    .createHmac("sha256", password)
-    .update(`iranaim-source-${name}`)
-    .digest("hex");
+  return crypto.createHmac("sha256", password).update(`iranaim-source-${name}`).digest("hex");
 }
 
 /** Check if request has a valid source cookie. Returns source name or null. */

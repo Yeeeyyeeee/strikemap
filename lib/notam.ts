@@ -16,19 +16,110 @@ export interface FIREntry {
 }
 
 export const FIR_CONFIG: FIREntry[] = [
-  { fir: "OIIX", country: "Iran",         code: "IR", region: "iran",   bbox: [25, 44, 40, 63],     normalTraffic: 30 },
-  { fir: "LLLL", country: "Israel",       code: "IL", region: "israel", bbox: [29, 34, 33.5, 36],   normalTraffic: 15 },
-  { fir: "OLBB", country: "Lebanon",      code: "LB", region: "israel", bbox: [33, 35, 34.7, 36.7], normalTraffic: 5 },
-  { fir: "OSTT", country: "Syria",        code: "SY", region: "israel", bbox: [32, 35.5, 37.3, 42.4], normalTraffic: 5 },
-  { fir: "ORBB", country: "Iraq",         code: "IQ", region: "gulf",   bbox: [29, 38.5, 37.4, 48.5], normalTraffic: 10 },
-  { fir: "OJAC", country: "Jordan",       code: "JO", region: "israel", bbox: [29, 34.8, 33.4, 39],  normalTraffic: 8 },
-  { fir: "OEJD", country: "Saudi Arabia", code: "SA", region: "gulf",   bbox: [16, 34.5, 32, 56],   normalTraffic: 40 },
-  { fir: "OYSC", country: "Yemen",        code: "YE", region: "gulf",   bbox: [12, 42, 19, 54],     normalTraffic: 5 },
-  { fir: "OMAE", country: "UAE",          code: "AE", region: "gulf",   bbox: [22.5, 51, 26.2, 56.5], normalTraffic: 20 },
-  { fir: "OBBB", country: "Bahrain",      code: "BH", region: "gulf",   bbox: [25.5, 50, 26.5, 51], normalTraffic: 3 },
-  { fir: "OOMM", country: "Oman",         code: "OM", region: "gulf",   bbox: [16.5, 52, 26.5, 60], normalTraffic: 15 },
-  { fir: "OTBD", country: "Qatar",        code: "QA", region: "gulf",   bbox: [24.4, 50.7, 26.2, 51.7], normalTraffic: 10 },
-  { fir: "OKAC", country: "Kuwait",       code: "KW", region: "gulf",   bbox: [28.5, 46.5, 30.1, 48.5], normalTraffic: 8 },
+  {
+    fir: "OIIX",
+    country: "Iran",
+    code: "IR",
+    region: "iran",
+    bbox: [25, 44, 40, 63],
+    normalTraffic: 30,
+  },
+  {
+    fir: "LLLL",
+    country: "Israel",
+    code: "IL",
+    region: "israel",
+    bbox: [29, 34, 33.5, 36],
+    normalTraffic: 15,
+  },
+  {
+    fir: "OLBB",
+    country: "Lebanon",
+    code: "LB",
+    region: "israel",
+    bbox: [33, 35, 34.7, 36.7],
+    normalTraffic: 5,
+  },
+  {
+    fir: "OSTT",
+    country: "Syria",
+    code: "SY",
+    region: "israel",
+    bbox: [32, 35.5, 37.3, 42.4],
+    normalTraffic: 5,
+  },
+  {
+    fir: "ORBB",
+    country: "Iraq",
+    code: "IQ",
+    region: "gulf",
+    bbox: [29, 38.5, 37.4, 48.5],
+    normalTraffic: 10,
+  },
+  {
+    fir: "OJAC",
+    country: "Jordan",
+    code: "JO",
+    region: "israel",
+    bbox: [29, 34.8, 33.4, 39],
+    normalTraffic: 8,
+  },
+  {
+    fir: "OEJD",
+    country: "Saudi Arabia",
+    code: "SA",
+    region: "gulf",
+    bbox: [16, 34.5, 32, 56],
+    normalTraffic: 40,
+  },
+  {
+    fir: "OYSC",
+    country: "Yemen",
+    code: "YE",
+    region: "gulf",
+    bbox: [12, 42, 19, 54],
+    normalTraffic: 5,
+  },
+  {
+    fir: "OMAE",
+    country: "UAE",
+    code: "AE",
+    region: "gulf",
+    bbox: [22.5, 51, 26.2, 56.5],
+    normalTraffic: 20,
+  },
+  {
+    fir: "OBBB",
+    country: "Bahrain",
+    code: "BH",
+    region: "gulf",
+    bbox: [25.5, 50, 26.5, 51],
+    normalTraffic: 3,
+  },
+  {
+    fir: "OOMM",
+    country: "Oman",
+    code: "OM",
+    region: "gulf",
+    bbox: [16.5, 52, 26.5, 60],
+    normalTraffic: 15,
+  },
+  {
+    fir: "OTBD",
+    country: "Qatar",
+    code: "QA",
+    region: "gulf",
+    bbox: [24.4, 50.7, 26.2, 51.7],
+    normalTraffic: 10,
+  },
+  {
+    fir: "OKAC",
+    country: "Kuwait",
+    code: "KW",
+    region: "gulf",
+    bbox: [28.5, 46.5, 30.1, 48.5],
+    normalTraffic: 8,
+  },
 ];
 
 // ── Flight Data APIs ─────────────────────────────────────────────────────────
@@ -50,19 +141,19 @@ const ME_BBOX = { lamin: 12, lomin: 34, lamax: 40, lomax: 63 };
 
 // Center points + radius for each FIR (for ADSB.lol point queries)
 const FIR_CENTERS: { code: string; lat: number; lon: number; radius: number }[] = [
-  { code: "IR", lat: 32.5, lon: 53.5, radius: 250 },  // Iran
-  { code: "IL", lat: 31.2, lon: 35.0, radius: 60 },   // Israel
-  { code: "LB", lat: 33.8, lon: 35.8, radius: 40 },   // Lebanon
-  { code: "SY", lat: 34.8, lon: 38.9, radius: 100 },  // Syria
-  { code: "IQ", lat: 33.2, lon: 43.5, radius: 150 },  // Iraq
-  { code: "JO", lat: 31.2, lon: 36.9, radius: 70 },   // Jordan
-  { code: "SA", lat: 24.0, lon: 45.0, radius: 250 },  // Saudi Arabia
-  { code: "YE", lat: 15.5, lon: 48.0, radius: 200 },  // Yemen
-  { code: "AE", lat: 24.4, lon: 53.8, radius: 80 },   // UAE
-  { code: "BH", lat: 26.0, lon: 50.5, radius: 30 },   // Bahrain
-  { code: "OM", lat: 21.5, lon: 57.0, radius: 200 },  // Oman
-  { code: "QA", lat: 25.3, lon: 51.2, radius: 40 },   // Qatar
-  { code: "KW", lat: 29.3, lon: 47.5, radius: 50 },   // Kuwait
+  { code: "IR", lat: 32.5, lon: 53.5, radius: 250 }, // Iran
+  { code: "IL", lat: 31.2, lon: 35.0, radius: 60 }, // Israel
+  { code: "LB", lat: 33.8, lon: 35.8, radius: 40 }, // Lebanon
+  { code: "SY", lat: 34.8, lon: 38.9, radius: 100 }, // Syria
+  { code: "IQ", lat: 33.2, lon: 43.5, radius: 150 }, // Iraq
+  { code: "JO", lat: 31.2, lon: 36.9, radius: 70 }, // Jordan
+  { code: "SA", lat: 24.0, lon: 45.0, radius: 250 }, // Saudi Arabia
+  { code: "YE", lat: 15.5, lon: 48.0, radius: 200 }, // Yemen
+  { code: "AE", lat: 24.4, lon: 53.8, radius: 80 }, // UAE
+  { code: "BH", lat: 26.0, lon: 50.5, radius: 30 }, // Bahrain
+  { code: "OM", lat: 21.5, lon: 57.0, radius: 200 }, // Oman
+  { code: "QA", lat: 25.3, lon: 51.2, radius: 40 }, // Qatar
+  { code: "KW", lat: 29.3, lon: 47.5, radius: 50 }, // Kuwait
 ];
 
 // ── Military aircraft filtering ──────────────────────────────────────────────
@@ -72,14 +163,14 @@ const FIR_CENTERS: { code: string; lat: number; lon: number; radius: number }[] 
 // Known military callsign prefixes (case-insensitive match on first chars)
 const MILITARY_CALLSIGN_PREFIXES = [
   // Iran
-  "IRI",    // Islamic Republic of Iran Air Force
-  "IRGC",   // IRGC aviation
-  "SEP",    // Sepahan Air (IRGC-linked)
+  "IRI", // Islamic Republic of Iran Air Force
+  "IRGC", // IRGC aviation
+  "SEP", // Sepahan Air (IRGC-linked)
   // US
-  "RCH",    // Reach (C-17, C-5 transport)
+  "RCH", // Reach (C-17, C-5 transport)
   "REACH",
-  "STEEL",  // US military tankers
-  "DOOM",   // Fighter callsigns
+  "STEEL", // US military tankers
+  "DOOM", // Fighter callsigns
   "FURY",
   "EVIL",
   "JAKE",
@@ -91,35 +182,35 @@ const MILITARY_CALLSIGN_PREFIXES = [
   "COBRA",
   "HAWK",
   // US ISR/drone
-  "FORTE",  // RQ-4 Global Hawk
-  "DRAK",   // MQ-9 Reaper
+  "FORTE", // RQ-4 Global Hawk
+  "DRAK", // MQ-9 Reaper
   // Israel
-  "IAF",    // Israeli Air Force
+  "IAF", // Israeli Air Force
   // NATO/coalition
   "NATO",
   "NATO0",
-  "RRR",    // RAF
-  "ASCOT",  // RAF transport
-  "BAF",    // Belgian Air Force
-  "FAF",    // French Air Force
-  "GAF",    // German Air Force
-  "MMF",    // Military mixed flights
-  "SAM",    // Special Air Mission (US VIP)
-  "EXEC",   // US executive transport
-  "CNV",    // US Navy
-  "PAT",    // US patrol
+  "RRR", // RAF
+  "ASCOT", // RAF transport
+  "BAF", // Belgian Air Force
+  "FAF", // French Air Force
+  "GAF", // German Air Force
+  "MMF", // Military mixed flights
+  "SAM", // Special Air Mission (US VIP)
+  "EXEC", // US executive transport
+  "CNV", // US Navy
+  "PAT", // US patrol
 ];
 
 // ICAO24 hex ranges allocated to military registrations
 // Format: [startHex, endHex] inclusive
 const MILITARY_ICAO_RANGES: [number, number][] = [
-  [0xADF7C0, 0xADFAFF],  // US military (partial block)
-  [0xAE0000, 0xAEFFFF],  // US military
-  [0x730000, 0x737FFF],  // Iran military
-  [0x738000, 0x73BFFF],  // Israel military
-  [0x3C0000, 0x3C0FFF],  // Germany military
-  [0x3F0000, 0x3F0FFF],  // UK military (partial)
-  [0x43C000, 0x43CFFF],  // UK military
+  [0xadf7c0, 0xadfaff], // US military (partial block)
+  [0xae0000, 0xaeffff], // US military
+  [0x730000, 0x737fff], // Iran military
+  [0x738000, 0x73bfff], // Israel military
+  [0x3c0000, 0x3c0fff], // Germany military
+  [0x3f0000, 0x3f0fff], // UK military (partial)
+  [0x43c000, 0x43cfff], // UK military
 ];
 
 /** Check if an aircraft is likely military based on callsign + ICAO24 */

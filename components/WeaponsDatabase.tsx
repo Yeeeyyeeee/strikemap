@@ -57,9 +57,7 @@ export default function WeaponsDatabase({ onShowRange }: WeaponsDatabaseProps) {
 
   const filtered = useMemo(() => {
     const byFilter =
-      sideFilter === "all"
-        ? WEAPONS_CATALOG
-        : WEAPONS_CATALOG.filter((w) => w.side === sideFilter);
+      sideFilter === "all" ? WEAPONS_CATALOG : WEAPONS_CATALOG.filter((w) => w.side === sideFilter);
     return sortWeapons(byFilter, sortBy);
   }, [sideFilter, sortBy]);
 
@@ -85,7 +83,14 @@ export default function WeaponsDatabase({ onShowRange }: WeaponsDatabaseProps) {
               }`}
               title="Sort weapons"
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg
+                className="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <path d="M3 6h18M6 12h12M9 18h6" />
               </svg>
               <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
@@ -161,9 +166,7 @@ function FilterTab({
     <button
       onClick={onClick}
       className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-        active
-          ? "text-white"
-          : "text-neutral-500 hover:text-neutral-300"
+        active ? "text-white" : "text-neutral-500 hover:text-neutral-300"
       }`}
       style={active ? { background: `${color}30`, color } : undefined}
     >
