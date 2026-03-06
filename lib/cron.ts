@@ -29,9 +29,12 @@ async function runJob(route: string, name: string) {
 
 export function startCronJobs() {
   console.log("[cron] Starting in-process cron scheduler");
-  for (const job of CRON_JOBS) {
-    // Stagger initial runs so they don't all fire at once
-    const initialDelay = Math.random() * 10000 + 5000;
+  // Wait 30s for the server to fully start before firing any crons
+  const warmupDelay = 30000;
+  for (let i = 0; i < CRON_JOBS.length; i++) {
+    const job = CRON_JOBS[i];
+    // Stagger each job by 15s so they don't all fire at once
+    const initialDelay = warmupDelay + i * 15000;
     setTimeout(() => {
       runJob(job.route, job.name);
       const timer = setInterval(() => runJob(job.route, job.name), job.intervalMs);
