@@ -20,9 +20,16 @@ interface SideCasualties {
   civilian: number;
 }
 
+interface ISWCorroboration {
+  usIsraelStrikes: number;
+  iranRetaliationStrikes: number;
+  fetchedAt: string;
+}
+
 interface CasualtyData {
   iran: SideCasualties;
   usIsrael: SideCasualties;
+  isw?: ISWCorroboration;
 }
 
 export default memo(function MobileStatsPanel({
@@ -127,7 +134,7 @@ export default memo(function MobileStatsPanel({
           {onClose && (
             <button
               onClick={onClose}
-              className="text-neutral-500 hover:text-neutral-300 p-1.5 -mr-1.5 transition-colors"
+              className="text-red-400/70 hover:text-red-400 p-1.5 -mr-1.5 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -319,14 +326,41 @@ export default memo(function MobileStatsPanel({
                 </div>
               )}
             </div>
-            <a
-              href="https://en.wikipedia.org/wiki/2025_Iran%E2%80%93Israel_conflict"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors block text-right mt-2"
-            >
-              Source: Wikipedia
-            </a>
+            {/* ISW corroboration */}
+            {casualties.isw && (casualties.isw.usIsraelStrikes > 0 || casualties.isw.iranRetaliationStrikes > 0) && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-neutral-600 mt-2 pt-2 border-t border-[#2a2a2a]">
+                <span className="text-neutral-500">ISW/CTP confirms:</span>
+                {casualties.isw.usIsraelStrikes > 0 && (
+                  <span><span className="text-blue-400/70 font-mono">{casualties.isw.usIsraelStrikes.toLocaleString()}</span> US/IL strikes</span>
+                )}
+                {casualties.isw.iranRetaliationStrikes > 0 && (
+                  <span><span className="text-red-400/70 font-mono">{casualties.isw.iranRetaliationStrikes.toLocaleString()}</span> Iran strikes</span>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <a
+                href="https://en.wikipedia.org/wiki/2026_Iran_war"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
+              >
+                Wikipedia
+              </a>
+              {casualties.isw && (
+                <>
+                  <span className="text-[9px] text-neutral-700">|</span>
+                  <a
+                    href="https://storymaps.arcgis.com/stories/089bc1a2fe684405a67d67f13bd31324"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
+                  >
+                    ISW/CTP
+                  </a>
+                </>
+              )}
+            </div>
           </div>
         )}
 

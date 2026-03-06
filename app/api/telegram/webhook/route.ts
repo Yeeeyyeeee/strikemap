@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "TELEGRAM_BOT_TOKEN not set" }, { status: 500 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!siteUrl) {
       return NextResponse.json({ error: "No site URL configured" }, { status: 500 });
     }

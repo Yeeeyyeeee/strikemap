@@ -40,7 +40,7 @@ export default memo(function InterceptionBanner({ outcomes }: InterceptionBanner
   if (visibleOutcomes.length === 0) return null;
 
   return (
-    <div className="fixed top-[56px] z-[44] pointer-events-none left-2 right-2 md:left-[17rem] md:right-[19rem] flex flex-col items-center gap-2">
+    <div className="fixed top-[56px] z-[54] pointer-events-none left-2 right-2 md:left-[17rem] md:right-[19rem] flex flex-col items-center gap-2">
       {visibleOutcomes.map((outcome) => {
         const isHit = outcome.intercepted === false;
         return (

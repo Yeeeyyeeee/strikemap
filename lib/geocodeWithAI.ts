@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, type ResponseSchema, SchemaType } from "@google/generative-ai";
+import { GEOCODE_LAT_MIN, GEOCODE_LAT_MAX, GEOCODE_LNG_MIN, GEOCODE_LNG_MAX } from "./constants";
 
 export interface EnrichmentResult {
   location: string;
@@ -97,7 +98,17 @@ export async function enrichPostWithAI(text: string): Promise<EnrichmentResult |
     // Validate the result
     if (!parsed.location || typeof parsed.lat !== "number" || typeof parsed.lng !== "number") {
       c.set(cacheKey, null);
+      return null;
+    }
+
+    // Bounding box validation: reject coordinates outside Middle East region
+    if (parsed.lat !== 0 && parsed.lng !== 0) {
+      if (parsed.lat < GEOCODE_LAT_MIN || parsed.lat > GEOCODE_LAT_MAX ||
+          parsed.lng < GEOCODE_LNG_MIN || parsed.lng > GEOCODE_LNG_MAX) {
+        console.warn(`[geocode] AI returned out-of-bounds coordinates (${parsed.lat}, ${parsed.lng}) for "${parsed.location}" — rejecting`);
+        c.set(cacheKey, null);
         return null;
+      }
     }
 
     // Normalize side value

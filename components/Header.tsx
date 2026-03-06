@@ -39,7 +39,7 @@ interface HeaderProps {
 }
 
 /** Dropdown wrapper that closes on outside click */
-function Dropdown({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+function Dropdown({ open, onClose, children, alignRight }: { open: boolean; onClose: () => void; children: React.ReactNode; alignRight?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -51,7 +51,7 @@ function Dropdown({ open, onClose, children }: { open: boolean; onClose: () => v
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div ref={ref} className="absolute top-full left-0 mt-1 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1 shadow-lg min-w-[140px]">
+    <div ref={ref} className={`absolute top-full mt-1 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1 shadow-lg min-w-[140px] ${alignRight ? "right-0" : "left-0"}`}>
       {children}
     </div>
   );
@@ -67,25 +67,24 @@ const LOCALE_LABELS: Record<Locale, string> = {
 // Top-level tabs (flat)
 const TABS: { path: string; label: string; activeClass: string }[] = [
   { path: "/", label: "strikes", activeClass: "bg-neutral-700 text-white" },
-  { path: "/report", label: "Briefing", activeClass: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" },
-  { path: "/satellite", label: "Satellite", activeClass: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
 ];
 
-// Analytics dropdown — stats + leadership
+// Analytics dropdown — stats + leadership + briefing
 const ANALYTICS_TABS: { path: string; label: string; activeClass: string }[] = [
   { path: "/stats", label: "stats", activeClass: "bg-green-500/20 text-green-400 border border-green-500/30" },
   { path: "/leadership", label: "leadership", activeClass: "bg-orange-500/20 text-orange-400 border border-orange-500/30" },
+  { path: "/report", label: "Briefing", activeClass: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" },
 ];
 
 const ANALYTICS_PATHS = new Set(ANALYTICS_TABS.map((t) => t.path));
 
-// Recon dropdown — airspace + heatmap
+// Recon dropdown — airspace + heatmap + satellite
 const RECON_TABS: { path: string; label: string; activeClass: string }[] = [
   { path: "/airspace", label: "Airspace", activeClass: "bg-sky-500/20 text-sky-400 border border-sky-500/30" },
   { path: "/heatmap", label: "Heatmap", activeClass: "bg-amber-500/20 text-amber-400 border border-amber-500/30" },
 ];
 
-const RECON_PATHS = new Set(RECON_TABS.map((t) => t.path));
+const RECON_PATHS = new Set([...RECON_TABS.map((t) => t.path), "/satellite"]);
 
 // Military sub-tabs (grouped under dropdown)
 const MILITARY_TABS: { path: string; label: string; activeClass: string }[] = [
@@ -176,11 +175,10 @@ export default memo(function Header({
             href="https://buymeacoffee.com/strikemap"
             target="_blank"
             rel="noopener noreferrer"
-            className="md:hidden flex items-center gap-1 px-2 py-1 rounded-full bg-[#FFDD00]/15 border border-[#FFDD00]/30 text-[#FFDD00] hover:bg-[#FFDD00]/25 hover:border-[#FFDD00]/50 transition-all"
+            className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-[#FFDD00]/15 border border-[#FFDD00]/30 text-[#FFDD00] hover:bg-[#FFDD00]/25 hover:border-[#FFDD00]/50 transition-all"
             title="Support the Project"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            <span className="text-[10px] font-bold" style={{ fontFamily: "JetBrains Mono, monospace" }}>Support</span>
           </a>
           <div className="flex items-center gap-1.5">
             <a
@@ -269,7 +267,7 @@ export default memo(function Header({
                       <svg className="w-5 h-5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" /><path d="M19.07 4.93a10 10 0 010 14.14" /><path d="M15.54 8.46a5 5 0 010 7.07" /></svg>
                     )}
                   </button>
-                  <Dropdown open={volumeOpen} onClose={() => setVolumeOpen(false)}>
+                  <Dropdown open={volumeOpen} onClose={() => setVolumeOpen(false)} alignRight>
                     <div className="px-3 py-2 min-w-[160px]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider" style={{ fontFamily: "JetBrains Mono, monospace" }}>Volume</span>
@@ -345,10 +343,10 @@ export default memo(function Header({
                 </div>
               )}
               {onToggleChat && (
-                <button onClick={onToggleChat} className={`relative transition-colors p-1.5 md:p-1 ${chatOpen ? "text-red-400" : "text-neutral-500 hover:text-neutral-300"}`} title="Live Chat">
-                  <svg className="w-5 h-5 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                <button onClick={onToggleChat} className={`relative transition-colors p-1.5 md:hidden ${chatOpen ? "text-red-400" : "text-neutral-500 hover:text-neutral-300"}`} title="Live Chat">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                   {hasUnreadChat && !chatOpen && (
-                    <span className="absolute top-0.5 right-0.5 md:top-0 md:right-0 w-2 h-2 bg-red-500 rounded-full" />
+                    <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full" />
                   )}
                 </button>
               )}
@@ -395,36 +393,19 @@ export default memo(function Header({
                         <button onClick={() => { onViewModeChange?.("us_israel"); setStrikesOpen(false); }} className={`w-full text-left px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === "us_israel" ? "bg-blue-500/20 text-blue-400" : "text-neutral-400 hover:text-neutral-200"}`}>
                           {t("us_israel")} ({usIsraelCount})
                         </button>
+                        {onTimelineToggle && (
+                          <button onClick={() => { onTimelineToggle(); setStrikesOpen(false); }} className={`w-full text-left px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${timelineActive ? "bg-green-500/20 text-green-400" : "text-neutral-400 hover:text-neutral-200"}`}>
+                            <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5" /><path d="M8 4v4l2.5 2.5" strokeLinecap="round" /></svg>
+                            {t("timeline")}
+                          </button>
+                        )}
                       </Dropdown>
                     )}
                   </div>
                 );
               }
 
-              // Satellite tab — stays on home page, toggles view mode
-              if (tab.path === "/satellite") {
-                const satActive = isHome && viewMode === "satellite";
-                return (
-                  <button
-                    key={tab.path}
-                    onClick={() => {
-                      if (!isHome) {
-                        window.location.href = "/";
-                      } else {
-                        onViewModeChange?.(viewMode === "satellite" ? "all" : "satellite");
-                      }
-                    }}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                      satActive ? tab.activeClass : "text-neutral-500 hover:text-neutral-300"
-                    }`}
-                  >
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4.97 0-8-3.03-8-7 0-2.5 1.5-5 3-6.5.5-.5 1.5-.5 1.5.5 0 1.5.5 3 2 4 0-4 2-7 5.5-9.5.5-.5 1.5 0 1.5.5 0 3 1 5.5 2 7.5.5 1 1 2 1 3.5 0 3.97-3.03 7-8.5 7z"/></svg>
-                    {tab.label}
-                  </button>
-                );
-              }
-
-              // Translate label — "airspace" doesn't have a translation key, use raw
+              // Translate label
               const label = t(tab.label as Parameters<typeof t>[0]);
 
               return (
@@ -476,7 +457,7 @@ export default memo(function Header({
               <button
                 onClick={() => setReconOpen((p) => !p)}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                  isReconPage ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" : "text-neutral-500 hover:text-neutral-300"
+                  isReconPage || (isHome && viewMode === "satellite") ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" : "text-neutral-500 hover:text-neutral-300"
                 }`}
               >
                 Recon
@@ -498,6 +479,21 @@ export default memo(function Header({
                     </Link>
                   );
                 })}
+                <button
+                  onClick={() => {
+                    setReconOpen(false);
+                    if (!isHome) {
+                      window.location.href = "/";
+                    } else {
+                      onViewModeChange?.(viewMode === "satellite" ? "all" : "satellite");
+                    }
+                  }}
+                  className={`block w-full text-left px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    isHome && viewMode === "satellite" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" : "text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  Satellite
+                </button>
               </Dropdown>
             </div>
 
@@ -532,21 +528,6 @@ export default memo(function Header({
               </Dropdown>
             </div>
 
-            {/* Timeline — only on map page */}
-            {isHome && onTimelineToggle && (
-              <>
-                <div className="w-px h-4 bg-[#2a2a2a]" />
-                <button
-                  onClick={onTimelineToggle}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                    timelineActive ? "bg-green-500/20 text-green-400 border border-green-500/30" : "text-neutral-500 hover:text-neutral-300"
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5" /><path d="M8 4v4l2.5 2.5" strokeLinecap="round" /></svg>
-                  {t("timeline")}
-                </button>
-              </>
-            )}
           </div>
 
           {/* Language selector dropdown — desktop only */}

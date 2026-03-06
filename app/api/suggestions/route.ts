@@ -3,6 +3,14 @@ import { getRedis } from "@/lib/redis";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { REDIS_SUGGESTIONS_KEY } from "@/lib/constants";
 
+function sanitizeId(raw: string): string {
+  return raw.replace(/[^a-zA-Z0-9\-]/g, "").slice(0, 64);
+}
+
+function stripHtml(raw: string): string {
+  return raw.replace(/<[^>]*>/g, "");
+}
+
 interface Suggestion {
   id: string;
   title: string;
@@ -11,6 +19,7 @@ interface Suggestion {
   status: "wip" | "completed";
   votes: number;
   voterIds: string[];
+  downvoterIds?: string[];
   createdAt: number;
   nickname: string;
 }
@@ -71,13 +80,27 @@ export async function POST(req: NextRequest) {
     const { action } = body;
 
     if (action === "add") {
-      const title = String(body.title || "").trim().slice(0, 100);
-      const description = String(body.description || "").trim().slice(0, 1000);
+      const title = stripHtml(String(body.title || "")).trim().slice(0, 100);
+      const description = stripHtml(String(body.description || "")).trim().slice(0, 1000);
       const device = ["desktop", "mobile", "all"].includes(body.device) ? body.device : "all";
-      const nickname = String(body.nickname || "Anon").trim().slice(0, 20);
+      const nickname = stripHtml(String(body.nickname || "Anon")).trim().slice(0, 20);
 
       if (!title || !description) {
         return NextResponse.json({ error: "Title and description required" }, { status: 400 });
+      }
+
+      // Rate limit: max 1 suggestion per 60s per IP
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const redis = getRedis();
+      if (redis) {
+        try {
+          const key = `sug_rl:${ip}`;
+          const last = await redis.get(key) as string | null;
+          if (last && Date.now() - Number(last) < 60_000) {
+            return NextResponse.json({ error: "Please wait before submitting another suggestion" }, { status: 429 });
+          }
+          await redis.set(key, String(Date.now()), { ex: 60 });
+        } catch {}
       }
 
       const suggestion: Suggestion = {
@@ -100,7 +123,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "vote") {
-      const { id, voterId } = body;
+      const id = sanitizeId(String(body.id || ""));
+      const voterId = sanitizeId(String(body.voterId || ""));
       if (!id || !voterId) {
         return NextResponse.json({ error: "id and voterId required" }, { status: 400 });
       }
@@ -116,6 +140,35 @@ export async function POST(req: NextRequest) {
 
       sug.voterIds.push(voterId);
       sug.votes++;
+      await saveSuggestions(suggestions);
+
+      return NextResponse.json({ ok: true, votes: sug.votes });
+    }
+
+    if (action === "downvote") {
+      const id = sanitizeId(String(body.id || ""));
+      const voterId = sanitizeId(String(body.voterId || ""));
+      if (!id || !voterId) {
+        return NextResponse.json({ error: "id and voterId required" }, { status: 400 });
+      }
+
+      const suggestions = await loadSuggestions();
+      const sug = suggestions.find((s) => s.id === id);
+      if (!sug) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      // Can't downvote if already upvoted or already downvoted
+      if (sug.voterIds.includes(voterId)) {
+        return NextResponse.json({ error: "Already voted" }, { status: 409 });
+      }
+      const downvoterIds = sug.downvoterIds || [];
+      if (downvoterIds.includes(voterId)) {
+        return NextResponse.json({ error: "Already downvoted" }, { status: 409 });
+      }
+
+      downvoterIds.push(voterId);
+      sug.downvoterIds = downvoterIds;
+      sug.votes--;
       await saveSuggestions(suggestions);
 
       return NextResponse.json({ ok: true, votes: sug.votes });

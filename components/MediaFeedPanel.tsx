@@ -22,12 +22,14 @@ interface FeedItem {
   location: string;
   date: string;
   side: string;
+  sourceUrl?: string;
 }
 
 /** Individual video slide — handles autoplay via IntersectionObserver */
 function MediaSlide({ item, index, total }: { item: FeedItem; index: number; total: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoError, setVideoError] = useState(false);
 
   // Autoplay video when visible, pause when not
   useEffect(() => {
@@ -52,6 +54,11 @@ function MediaSlide({ item, index, total }: { item: FeedItem; index: number; tot
 
   const ytUrl = getYouTubeEmbedUrl(item.media.url);
 
+  // Build Telegram embed URL from source_url (e.g. https://t.me/channel/123)
+  const telegramEmbedUrl = item.sourceUrl?.match(/t\.me\//)
+    ? `${item.sourceUrl}?embed=1&mode=tme`
+    : null;
+
   return (
     <div
       ref={ref}
@@ -67,7 +74,7 @@ function MediaSlide({ item, index, total }: { item: FeedItem; index: number; tot
           allowFullScreen
           title="Video"
         />
-      ) : isDirectVideoUrl(item.media.url) ? (
+      ) : isDirectVideoUrl(item.media.url) && !videoError ? (
         <video
           ref={videoRef}
           key={item.media.url}
@@ -77,17 +84,28 @@ function MediaSlide({ item, index, total }: { item: FeedItem; index: number; tot
           loop
           preload="metadata"
           className="w-full h-full object-cover"
+          onError={() => setVideoError(true)}
+        />
+      ) : telegramEmbedUrl ? (
+        <iframe
+          src={telegramEmbedUrl}
+          className="w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          title="Telegram post"
         />
       ) : (
-        <div className="flex items-center justify-center h-full">
-          <a
-            href={item.media.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-white/10 rounded-lg text-sm text-red-400 hover:text-red-300"
-          >
-            Watch video ↗
-          </a>
+        <div className="flex flex-col items-center justify-center h-full gap-3">
+          <div className="text-neutral-600 text-xs">Video unavailable</div>
+          {item.sourceUrl && (
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-white/10 rounded-lg text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              View on Telegram ↗
+            </a>
+          )}
         </div>
       )}
 
@@ -164,6 +182,7 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
           location: inc.location || "",
           date: inc.date || "",
           side: inc.side,
+          sourceUrl: inc.source_url,
         });
       }
     }
@@ -187,7 +206,7 @@ export default function MediaFeedPanel({ area, onClose }: MediaFeedPanelProps) {
         </div>
         <button
           onClick={onClose}
-          className="w-6 h-6 flex items-center justify-center text-neutral-500 hover:text-neutral-300 transition-colors"
+          className="w-6 h-6 flex items-center justify-center text-red-400/70 hover:text-red-400 transition-colors"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

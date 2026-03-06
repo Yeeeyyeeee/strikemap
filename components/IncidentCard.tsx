@@ -220,7 +220,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
       {/* === DETAILS === */}
       <div className="overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3 flex-1">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">
               {incident.weapon || "Strike"}
             </span>
@@ -233,6 +233,29 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
                 }`}
               >
                 {incident.source}
+              </span>
+            )}
+            {incident.confidence && (
+              <span
+                className={`text-[9px] font-bold uppercase px-1 py-0.5 rounded ${
+                  incident.confidence === "verified"
+                    ? "bg-green-500/20 text-green-400"
+                    : incident.confidence === "confirmed"
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-neutral-500/20 text-neutral-400"
+                }`}
+              >
+                {incident.confidence}
+              </span>
+            )}
+            {incident.firmsBacked && (
+              <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-orange-500/15 text-orange-400/80" title="Corroborated by FIRMS thermal hotspot">
+                FIRMS
+              </span>
+            )}
+            {incident.seismicBacked && (
+              <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400/80" title="Corroborated by seismic activity">
+                SEISMIC
               </span>
             )}
           </div>
@@ -292,6 +315,40 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             <p className="text-[11px] text-neutral-400 leading-relaxed">
               {incident.damage_assessment}
             </p>
+          </div>
+        )}
+
+        {/* Verification evidence */}
+        {incident.verification && (incident.verification.firms || incident.verification.seismic) && (
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-3">
+            <span
+              className="text-[9px] font-semibold text-neutral-500 uppercase tracking-wider block mb-1.5"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              Sensor Verification
+            </span>
+            <div className="space-y-1 text-[10px]">
+              {incident.verification.firms && (
+                <div className="flex items-center gap-1.5 text-orange-400/80">
+                  <span className="text-neutral-500">FIRMS:</span>
+                  <span className="font-mono">{incident.verification.firms.hotspotCount}</span>
+                  <span className="text-neutral-600">hotspots</span>
+                  <span className="text-neutral-700">|</span>
+                  <span className="font-mono">{incident.verification.firms.maxFRP.toFixed(0)}</span>
+                  <span className="text-neutral-600">MW</span>
+                </div>
+              )}
+              {incident.verification.seismic && (
+                <div className="flex items-center gap-1.5 text-yellow-400/80">
+                  <span className="text-neutral-500">Seismic:</span>
+                  <span className="font-mono">M{incident.verification.seismic.magnitude.toFixed(1)}</span>
+                  <span className="text-neutral-600">at {incident.verification.seismic.distanceKm.toFixed(0)}km</span>
+                  <span className="text-neutral-700">|</span>
+                  <span className="font-mono">{incident.verification.seismic.depth.toFixed(0)}km</span>
+                  <span className="text-neutral-600">deep</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -362,7 +419,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
             <div />
             <button
               onClick={onClose}
-              className="w-9 h-9 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-base"
+              className="w-9 h-9 flex items-center justify-center bg-black/60 rounded-full text-red-400 hover:text-red-300 text-base"
             >
               ✕
             </button>
@@ -385,7 +442,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden max-h-[70vh] flex flex-col">
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-xs transition-colors"
+          className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center bg-black/60 rounded-full text-red-400 hover:text-red-300 text-xs transition-colors"
         >
           ✕
         </button>

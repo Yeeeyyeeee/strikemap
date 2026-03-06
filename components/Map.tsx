@@ -54,6 +54,10 @@ interface MapProps {
   showProxies?: boolean;
   showFirms?: boolean;
   firmsGeoJSON?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
+  showAircraft?: boolean;
+  aircraftGeoJSON?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
+  showVessels?: boolean;
+  vesselGeoJSON?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
   rangeWeapon?: { lat: number; lng: number; radiusKm: number } | null;
   onRangeWeaponClear?: () => void;
   initialCenter?: [number, number];
@@ -66,6 +70,8 @@ interface MapProps {
   flashCountry?: string | null;
   sirenCountries?: string[];
   showCountries?: boolean;
+  showSeismic?: boolean;
+  seismicGeoJSON?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
 }
 
 function getIncidentColor(incident: Incident): string {
@@ -90,6 +96,7 @@ const LAYER_CLUSTER_COUNT = "incident-cluster-count";
 const LAYER_POINTS = "incident-points";
 const LAYER_SELECTED = "incident-selected";
 const SRC_SELECTED = "incident-selected-src";
+const COUNTRY_BOUNDARIES_SRC = "country-boundaries-src";
 
 function buildGeoJSON(
   incidents: Incident[],
@@ -134,6 +141,10 @@ export default function MapView({
   showProxies = false,
   showFirms = false,
   firmsGeoJSON = null,
+  showAircraft = false,
+  aircraftGeoJSON = null,
+  showVessels = false,
+  vesselGeoJSON = null,
   rangeWeapon = null,
   onRangeWeaponClear,
   initialCenter,
@@ -146,6 +157,8 @@ export default function MapView({
   flashCountry = null,
   sirenCountries = [],
   showCountries = false,
+  showSeismic = false,
+  seismicGeoJSON = null,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -165,6 +178,10 @@ export default function MapView({
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const layersReady = useRef(false);
   const [styleRevision, setStyleRevision] = useState(0);
+
+  // Stable refs for values used in init useEffect (prevent map re-creation)
+  const onMapReadyRef = useRef(onMapReady);
+  onMapReadyRef.current = onMapReady;
 
   const clearBaseMarkers = useCallback(() => {
     baseMarkersRef.current.forEach((m) => m.remove());
@@ -303,8 +320,21 @@ export default function MapView({
       },
     });
 
+    // Shared country-boundaries vector source (used by country overlay, flash, siren)
+    // Single source avoids 3x tile fetches for the same tileset
+    if (!m.getSource(COUNTRY_BOUNDARIES_SRC)) {
+      m.addSource(COUNTRY_BOUNDARIES_SRC, {
+        type: "vector",
+        url: "mapbox://mapbox.country-boundaries-v1",
+      });
+    }
+
     layersReady.current = true;
   }, [markerSize]);
+
+  // Stable ref so init useEffect doesn't re-run when markerSize changes
+  const addIncidentLayersRef = useRef(addIncidentLayers);
+  addIncidentLayersRef.current = addIncidentLayers;
 
   // Initialize map
   useEffect(() => {
@@ -342,8 +372,8 @@ export default function MapView({
     });
 
     m.on("load", () => {
-      addIncidentLayers(m);
-      onMapReady?.(m);
+      addIncidentLayersRef.current(m);
+      onMapReadyRef.current?.(m);
     });
 
     // Click on individual point — select incident
@@ -421,7 +451,7 @@ export default function MapView({
       map.current?.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearBaseMarkers, clearProxyLabels, onMapReady, addIncidentLayers]);
+  }, []);
 
   // Handle map style changes
   const initialStyleRef = useRef(mapStyleUrl);
@@ -799,7 +829,7 @@ export default function MapView({
     return cleanup;
   }, [rangeWeapon, onRangeWeaponClear, styleRevision]);
 
-  // FIRMS thermal hotspot overlay
+  // FIRMS thermal hotspot overlay — uses setData + visibility to avoid source recreation
   useEffect(() => {
     const m = map.current;
     if (!m) return;
@@ -808,22 +838,31 @@ export default function MapView({
     const firmsLayerId = "firms-points";
     const firmsGlowId = "firms-glow";
 
-    const cleanup = () => {
+    const hideLayers = () => {
       try {
-        if (m.getLayer(firmsGlowId)) m.removeLayer(firmsGlowId);
-        if (m.getLayer(firmsLayerId)) m.removeLayer(firmsLayerId);
-        if (m.getSource(firmsSourceId)) m.removeSource(firmsSourceId);
+        if (m.getLayer(firmsGlowId)) m.setLayoutProperty(firmsGlowId, "visibility", "none");
+        if (m.getLayer(firmsLayerId)) m.setLayoutProperty(firmsLayerId, "visibility", "none");
       } catch { /* ignore */ }
     };
 
     if (!showFirms || !firmsGeoJSON) {
-      cleanup();
+      hideLayers();
       return;
     }
 
-    const addFirms = () => {
-      cleanup();
+    const ensureFirms = () => {
+      // If source already exists, just update data and show layers
+      const existingSrc = m.getSource(firmsSourceId) as mapboxgl.GeoJSONSource | undefined;
+      if (existingSrc) {
+        existingSrc.setData(firmsGeoJSON);
+        try {
+          if (m.getLayer(firmsGlowId)) m.setLayoutProperty(firmsGlowId, "visibility", "visible");
+          if (m.getLayer(firmsLayerId)) m.setLayoutProperty(firmsLayerId, "visibility", "visible");
+        } catch { /* ignore */ }
+        return;
+      }
 
+      // First time: create source and layers
       m.addSource(firmsSourceId, {
         type: "geojson",
         data: firmsGeoJSON,
@@ -926,9 +965,9 @@ export default function MapView({
     };
 
     if (m.isStyleLoaded()) {
-      addFirms();
+      ensureFirms();
     } else {
-      m.once("idle", addFirms);
+      m.once("idle", ensureFirms);
     }
 
     m.on("mousemove", firmsLayerId, onFirmsMouseMove);
@@ -936,32 +975,411 @@ export default function MapView({
     m.on("click", firmsLayerId, onFirmsClick);
 
     return () => {
-      cleanup();
+      hideLayers();
       m.off("mousemove", firmsLayerId, onFirmsMouseMove);
       m.off("mouseleave", firmsLayerId, onFirmsMouseLeave);
       m.off("click", firmsLayerId, onFirmsClick);
     };
   }, [showFirms, firmsGeoJSON, styleRevision]);
 
+  // Seismic event overlay
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const seismicSourceId = "seismic-events";
+    const seismicLayerId = "seismic-points";
+    const seismicGlowId = "seismic-glow";
+
+    const hideLayers = () => {
+      try {
+        if (m.getLayer(seismicGlowId)) m.setLayoutProperty(seismicGlowId, "visibility", "none");
+        if (m.getLayer(seismicLayerId)) m.setLayoutProperty(seismicLayerId, "visibility", "none");
+      } catch { /* ignore */ }
+    };
+
+    if (!showSeismic || !seismicGeoJSON) {
+      hideLayers();
+      return;
+    }
+
+    const ensureSeismic = () => {
+      const existingSrc = m.getSource(seismicSourceId) as mapboxgl.GeoJSONSource | undefined;
+      if (existingSrc) {
+        existingSrc.setData(seismicGeoJSON);
+        try {
+          if (m.getLayer(seismicGlowId)) m.setLayoutProperty(seismicGlowId, "visibility", "visible");
+          if (m.getLayer(seismicLayerId)) m.setLayoutProperty(seismicLayerId, "visibility", "visible");
+        } catch { /* ignore */ }
+        return;
+      }
+
+      m.addSource(seismicSourceId, {
+        type: "geojson",
+        data: seismicGeoJSON,
+      });
+
+      // Glow layer
+      m.addLayer({
+        id: seismicGlowId,
+        type: "circle",
+        source: seismicSourceId,
+        paint: {
+          "circle-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#22c55e",
+            "#eab308",
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3, 10,
+            6, 18,
+            10, 26,
+            14, 40,
+          ],
+          "circle-opacity": 0.2,
+          "circle-blur": 1,
+        },
+      });
+
+      // Main points
+      m.addLayer({
+        id: seismicLayerId,
+        type: "circle",
+        source: seismicSourceId,
+        paint: {
+          "circle-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#22c55e",
+            "#eab308",
+          ],
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3, 4,
+            6, 7,
+            10, 10,
+            14, 15,
+          ],
+          "circle-opacity": 0.85,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": [
+            "case",
+            ["==", ["get", "correlated"], "1"],
+            "#86efac",
+            "#fde047",
+          ],
+          "circle-stroke-opacity": 0.6,
+        },
+      });
+    };
+
+    const onSeismicMouseMove = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      m.getCanvas().style.cursor = "pointer";
+      const props = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      const isCorrelated = props.correlated === "1";
+      const statusColor = isCorrelated ? "#22c55e" : "#eab308";
+      const statusLabel = isCorrelated ? "STRIKE MATCH" : "SEISMIC EVENT";
+      const time = new Date(props.timestamp).toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" });
+      popupRef.current!
+        .setLngLat(coords)
+        .setHTML(
+          `<div>
+            <div style="font-weight:700;color:${statusColor};font-size:11px;margin-bottom:4px;letter-spacing:0.5px;">${statusLabel}</div>
+            <div style="color:#ccc;font-size:11px;">M<b>${props.magnitude}</b> · Depth: <b>${props.depth} km</b></div>
+            <div style="color:#999;font-size:11px;margin-top:3px;">${escapeHtml(props.place)}</div>
+            <div style="color:#999;font-size:10px;margin-top:3px;">${time} UTC · ${escapeHtml(props.type)}</div>
+            <div style="color:#666;font-size:10px;margin-top:3px;">${coords[1].toFixed(3)}°N, ${coords[0].toFixed(3)}°E</div>
+          </div>`
+        )
+        .addTo(m);
+    };
+
+    const onSeismicMouseLeave = () => {
+      m.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    };
+
+    const onSeismicClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      const incId = e.features[0].properties?.incidentId;
+      if (incId) {
+        const incident = incidentMapRef.current.get(incId);
+        if (incident) onSelectIncidentRef.current(incident);
+      }
+    };
+
+    if (m.isStyleLoaded()) {
+      ensureSeismic();
+    } else {
+      m.once("idle", ensureSeismic);
+    }
+
+    m.on("mousemove", seismicLayerId, onSeismicMouseMove);
+    m.on("mouseleave", seismicLayerId, onSeismicMouseLeave);
+    m.on("click", seismicLayerId, onSeismicClick);
+
+    return () => {
+      hideLayers();
+      m.off("mousemove", seismicLayerId, onSeismicMouseMove);
+      m.off("mouseleave", seismicLayerId, onSeismicMouseLeave);
+      m.off("click", seismicLayerId, onSeismicClick);
+    };
+  }, [showSeismic, seismicGeoJSON, styleRevision]);
+
+  // ── Aircraft tracking layer ──────────────────────────────────────────────
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const srcId = "aircraft-tracking-src";
+    const layerId = "aircraft-points";
+    const glowId = "aircraft-glow";
+
+    const hideLayers = () => {
+      try {
+        if (m.getLayer(glowId)) m.setLayoutProperty(glowId, "visibility", "none");
+        if (m.getLayer(layerId)) m.setLayoutProperty(layerId, "visibility", "none");
+      } catch { /* ignore */ }
+    };
+
+    if (!showAircraft || !aircraftGeoJSON) {
+      hideLayers();
+      return;
+    }
+
+    const ensureAircraft = () => {
+      const existingSrc = m.getSource(srcId) as mapboxgl.GeoJSONSource | undefined;
+      if (existingSrc) {
+        existingSrc.setData(aircraftGeoJSON);
+        try {
+          if (m.getLayer(glowId)) m.setLayoutProperty(glowId, "visibility", "visible");
+          if (m.getLayer(layerId)) m.setLayoutProperty(layerId, "visibility", "visible");
+        } catch { /* ignore */ }
+        return;
+      }
+
+      m.addSource(srcId, { type: "geojson", data: aircraftGeoJSON });
+
+      // Glow layer
+      m.addLayer({
+        id: glowId,
+        type: "circle",
+        source: srcId,
+        paint: {
+          "circle-color": "#00ff88",
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 6, 16, 10, 24],
+          "circle-opacity": 0.2,
+          "circle-blur": 1,
+        },
+      });
+
+      // Main points
+      m.addLayer({
+        id: layerId,
+        type: "circle",
+        source: srcId,
+        paint: {
+          "circle-color": "#00ff88",
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 4, 6, 6, 10, 9, 14, 12],
+          "circle-opacity": 0.85,
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "#00cc66",
+          "circle-stroke-opacity": 0.6,
+        },
+      });
+    };
+
+    const buildAircraftPopup = (p: Record<string, unknown>) => {
+      const e = (v: unknown) => escapeHtml(String(v ?? ""));
+      return `<div>
+        <div style="font-weight:700;color:#00ff88;font-size:12px;margin-bottom:4px;letter-spacing:0.5px;">${e(p.callsign) || "UNKNOWN"}</div>
+        <div style="color:#ccc;font-size:11px;">Country: <b>${e(p.country) || "Unknown"}</b></div>
+        <div style="color:#ccc;font-size:11px;">Type: <b>Military${p.type ? ` (${e(p.type)})` : ""}</b></div>
+        <div style="color:#ccc;font-size:11px;">Alt: <b>${p.alt ? `FL${Math.round(Number(p.alt) / 100)}` : "N/A"}</b> · Speed: <b>${p.speed ? `${Math.round(Number(p.speed))}kts` : "N/A"}</b></div>
+        <div style="color:#999;font-size:10px;margin-top:3px;">Heading: ${p.heading ? `${Math.round(Number(p.heading))}°` : "N/A"}</div>
+        <div style="color:#666;font-size:10px;margin-top:3px;">ICAO: ${e(p.hex)} ${p.registration ? `· ${e(p.registration)}` : ""}</div>
+      </div>`;
+    };
+
+    const onMouseMove = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      m.getCanvas().style.cursor = "pointer";
+      const p = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      popupRef.current!.setLngLat(coords).setHTML(buildAircraftPopup(p)).addTo(m);
+    };
+
+    const onMouseLeave = () => {
+      m.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    };
+
+    const onClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      const p = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      new mapboxgl.Popup({ closeButton: true, closeOnClick: true, className: "dark-popup", maxWidth: "260px" })
+        .setLngLat(coords)
+        .setHTML(buildAircraftPopup(p))
+        .addTo(m);
+    };
+
+    if (m.isStyleLoaded()) {
+      ensureAircraft();
+    } else {
+      m.once("idle", ensureAircraft);
+    }
+
+    m.on("mousemove", layerId, onMouseMove);
+    m.on("mouseleave", layerId, onMouseLeave);
+    m.on("click", layerId, onClick);
+
+    return () => {
+      hideLayers();
+      m.off("mousemove", layerId, onMouseMove);
+      m.off("mouseleave", layerId, onMouseLeave);
+      m.off("click", layerId, onClick);
+    };
+  }, [showAircraft, aircraftGeoJSON, styleRevision]);
+
+  // ── Vessel tracking layer ────────────────────────────────────────────────
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const srcId = "vessel-tracking-src";
+    const layerId = "vessel-points";
+
+    const hideLayers = () => {
+      try {
+        if (m.getLayer(layerId)) m.setLayoutProperty(layerId, "visibility", "none");
+      } catch { /* ignore */ }
+    };
+
+    if (!showVessels || !vesselGeoJSON) {
+      hideLayers();
+      return;
+    }
+
+    const ensureVessels = () => {
+      const existingSrc = m.getSource(srcId) as mapboxgl.GeoJSONSource | undefined;
+      if (existingSrc) {
+        existingSrc.setData(vesselGeoJSON);
+        try {
+          if (m.getLayer(layerId)) m.setLayoutProperty(layerId, "visibility", "visible");
+        } catch { /* ignore */ }
+        return;
+      }
+
+      m.addSource(srcId, { type: "geojson", data: vesselGeoJSON });
+
+      m.addLayer({
+        id: layerId,
+        type: "circle",
+        source: srcId,
+        paint: {
+          "circle-color": [
+            "match",
+            ["get", "shipType"],
+            "military", "#ff4444",
+            "tanker", "#f59e0b",
+            "cargo", "#8b5cf6",
+            "passenger", "#3b82f6",
+            "fishing", "#22c55e",
+            "tug", "#6b7280",
+            "#38bdf8", // default: other
+          ],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 2, 6, 4, 10, 7, 14, 10],
+          "circle-opacity": 0.75,
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "rgba(255,255,255,0.3)",
+        },
+      });
+    };
+
+    const vesselTypeColors: Record<string, string> = {
+      military: "#ff4444", tanker: "#f59e0b", cargo: "#8b5cf6",
+      passenger: "#3b82f6", fishing: "#22c55e", tug: "#6b7280", other: "#38bdf8",
+    };
+
+    const buildVesselPopup = (p: Record<string, unknown>) => {
+      const e = (v: unknown) => escapeHtml(String(v ?? ""));
+      const color = vesselTypeColors[p.shipType as string] || "#38bdf8";
+      return `<div>
+        <div style="font-weight:700;color:${color};font-size:12px;margin-bottom:4px;letter-spacing:0.5px;">${e(p.name) || "UNKNOWN"}</div>
+        <div style="color:#ccc;font-size:11px;">Country: <b>${e(p.country) || "Unknown"}</b></div>
+        <div style="color:#ccc;font-size:11px;">Type: <b>${e((p.shipType as string || "other").toUpperCase())}</b></div>
+        <div style="color:#ccc;font-size:11px;">Speed: <b>${p.sog != null ? `${Number(p.sog).toFixed(1)}kts` : "N/A"}</b> · Course: <b>${p.cog != null ? `${Math.round(Number(p.cog))}°` : "N/A"}</b></div>
+        <div style="color:#666;font-size:10px;margin-top:3px;">MMSI: ${e(p.mmsi)}</div>
+      </div>`;
+    };
+
+    const onMouseMove = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      m.getCanvas().style.cursor = "pointer";
+      const p = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      popupRef.current!.setLngLat(coords).setHTML(buildVesselPopup(p)).addTo(m);
+    };
+
+    const onMouseLeave = () => {
+      m.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    };
+
+    const onClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+      if (!e.features || e.features.length === 0) return;
+      const p = e.features[0].properties!;
+      const coords = (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      new mapboxgl.Popup({ closeButton: true, closeOnClick: true, className: "dark-popup", maxWidth: "260px" })
+        .setLngLat(coords)
+        .setHTML(buildVesselPopup(p))
+        .addTo(m);
+    };
+
+    if (m.isStyleLoaded()) {
+      ensureVessels();
+    } else {
+      m.once("idle", ensureVessels);
+    }
+
+    m.on("mousemove", layerId, onMouseMove);
+    m.on("mouseleave", layerId, onMouseLeave);
+    m.on("click", layerId, onClick);
+
+    return () => {
+      hideLayers();
+      m.off("mousemove", layerId, onMouseMove);
+      m.off("mouseleave", layerId, onMouseLeave);
+      m.off("click", layerId, onClick);
+    };
+  }, [showVessels, vesselGeoJSON, styleRevision]);
+
   // Country border/fill overlay toggle
   useEffect(() => {
     const m = map.current;
     if (!m) return;
 
-    const srcId = "country-overlay-src";
     const fillId = "country-overlay-fill";
     const lineId = "country-overlay-line";
 
-    const cleanup = () => {
+    const removeLayers = () => {
       try {
         if (m.getLayer(lineId)) m.removeLayer(lineId);
         if (m.getLayer(fillId)) m.removeLayer(fillId);
-        if (m.getSource(srcId)) m.removeSource(srcId);
       } catch { /* ignore */ }
     };
 
     if (!showCountries) {
-      cleanup();
+      removeLayers();
       return;
     }
 
@@ -971,19 +1389,16 @@ export default function MapView({
     ];
 
     const addLayers = () => {
-      cleanup();
+      removeLayers();
 
-      m.addSource(srcId, {
-        type: "vector",
-        url: "mapbox://mapbox.country-boundaries-v1",
-      });
+      if (!m.getSource(COUNTRY_BOUNDARIES_SRC)) return;
 
       const beforeLayer = m.getLayer("incident-clusters") ? "incident-clusters" : undefined;
 
       m.addLayer({
         id: fillId,
         type: "fill",
-        source: srcId,
+        source: COUNTRY_BOUNDARIES_SRC,
         "source-layer": "country_boundaries",
         filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
         paint: {
@@ -1011,7 +1426,7 @@ export default function MapView({
       m.addLayer({
         id: lineId,
         type: "line",
-        source: srcId,
+        source: COUNTRY_BOUNDARIES_SRC,
         "source-layer": "country_boundaries",
         filter: ["in", ["get", "iso_3166_1_alpha_3"], ["literal", ISO_CODES]],
         paint: {
@@ -1027,7 +1442,7 @@ export default function MapView({
       m.once("idle", addLayers);
     }
 
-    return cleanup;
+    return removeLayers;
   }, [showCountries, styleRevision]);
 
   // Country name → ISO 3166-1 alpha-3 mapping for flash/siren effects
@@ -1043,23 +1458,19 @@ export default function MapView({
     return map[name] ?? null;
   }, []);
 
-  // One-shot flash for strike on a country (fade out over 3s) — uses Mapbox vector tileset
+  // One-shot flash for strike on a country (fade out over 3s) — uses shared country vector source
   useEffect(() => {
     const m = map.current;
     if (!m || !flashCountry) return;
     const iso = countryToISO(flashCountry);
     if (!iso) return;
 
-    const srcId = "flash-country-src";
     const fillId = "country-flash-fill";
     const lineId = "country-flash-line";
 
     const addFlash = () => {
       try {
-        // Add source if not present
-        if (!m.getSource(srcId)) {
-          m.addSource(srcId, { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
-        }
+        if (!m.getSource(COUNTRY_BOUNDARIES_SRC)) return;
 
         // Remove old layers if present
         if (m.getLayer(fillId)) m.removeLayer(fillId);
@@ -1070,7 +1481,7 @@ export default function MapView({
         m.addLayer({
           id: fillId,
           type: "fill",
-          source: srcId,
+          source: COUNTRY_BOUNDARIES_SRC,
           "source-layer": "country_boundaries",
           filter: isoFilter,
           paint: { "fill-color": "#ef4444", "fill-opacity": 0.35 },
@@ -1078,7 +1489,7 @@ export default function MapView({
         m.addLayer({
           id: lineId,
           type: "line",
-          source: srcId,
+          source: COUNTRY_BOUNDARIES_SRC,
           "source-layer": "country_boundaries",
           filter: isoFilter,
           paint: { "line-color": "#ef4444", "line-width": 2, "line-opacity": 0.8 },
@@ -1125,25 +1536,23 @@ export default function MapView({
     };
   }, [flashCountry, sirenCountries, countryToISO, styleRevision]);
 
-  // Sustained pulsing flash for siren countries — uses Mapbox vector tileset
+  // Sustained pulsing flash for siren countries — uses shared country vector source
   useEffect(() => {
     const m = map.current;
     if (!m) return;
 
-    const srcId = "siren-country-src";
     const sirenFillId = "country-siren-fill";
     const sirenLineId = "country-siren-line";
 
-    const cleanup = () => {
+    const removeLayers = () => {
       try {
         if (m.getLayer(sirenFillId)) m.removeLayer(sirenFillId);
         if (m.getLayer(sirenLineId)) m.removeLayer(sirenLineId);
-        if (m.getSource(srcId)) m.removeSource(srcId);
       } catch { /* ignore */ }
     };
 
     if (sirenCountries.length === 0) {
-      cleanup();
+      removeLayers();
       return;
     }
 
@@ -1153,14 +1562,14 @@ export default function MapView({
       .filter((c): c is string => c !== null);
 
     if (isoCodes.length === 0) {
-      cleanup();
+      removeLayers();
       return;
     }
 
     const addSiren = () => {
-      cleanup();
+      removeLayers();
 
-      m.addSource(srcId, { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
+      if (!m.getSource(COUNTRY_BOUNDARIES_SRC)) return;
 
       const isoFilter: mapboxgl.FilterSpecification = [
         "in", ["get", "iso_3166_1_alpha_3"],
@@ -1170,7 +1579,7 @@ export default function MapView({
       m.addLayer({
         id: sirenFillId,
         type: "fill",
-        source: srcId,
+        source: COUNTRY_BOUNDARIES_SRC,
         "source-layer": "country_boundaries",
         filter: isoFilter,
         paint: { "fill-color": "#ef4444", "fill-opacity": 0.08 },
@@ -1178,7 +1587,7 @@ export default function MapView({
       m.addLayer({
         id: sirenLineId,
         type: "line",
-        source: srcId,
+        source: COUNTRY_BOUNDARIES_SRC,
         "source-layer": "country_boundaries",
         filter: isoFilter,
         paint: { "line-color": "#ef4444", "line-width": 2.5, "line-opacity": 0.3 },
@@ -1206,7 +1615,7 @@ export default function MapView({
 
     return () => {
       clearInterval(pulseTimer);
-      cleanup();
+      removeLayers();
     };
   }, [sirenCountries, countryToISO, styleRevision]);
 

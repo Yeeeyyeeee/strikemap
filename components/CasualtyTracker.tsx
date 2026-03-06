@@ -9,11 +9,18 @@ interface SideCasualties {
   civilian: number;
 }
 
+interface ISWCorroboration {
+  usIsraelStrikes: number;
+  iranRetaliationStrikes: number;
+  fetchedAt: string;
+}
+
 interface CasualtyData {
   iran: SideCasualties;
   usIsrael: SideCasualties;
   source: string;
   articles: string[];
+  isw?: ISWCorroboration;
 }
 
 export default memo(function CasualtyTracker() {
@@ -76,15 +83,43 @@ export default memo(function CasualtyTracker() {
           <span className="text-neutral-300 font-semibold font-mono text-[11px]">{grandTotal.toLocaleString()}</span>
         </div>
 
+        {/* ISW corroboration */}
+        {data.isw && (data.isw.usIsraelStrikes > 0 || data.isw.iranRetaliationStrikes > 0) && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-neutral-600 border-t border-[#2a2a2a] pt-2">
+            <span className="text-neutral-500">ISW/CTP confirms:</span>
+            {data.isw.usIsraelStrikes > 0 && (
+              <span><span className="text-blue-400/70 font-mono">{data.isw.usIsraelStrikes.toLocaleString()}</span> US/IL strikes</span>
+            )}
+            {data.isw.iranRetaliationStrikes > 0 && (
+              <span><span className="text-red-400/70 font-mono">{data.isw.iranRetaliationStrikes.toLocaleString()}</span> Iran strikes</span>
+            )}
+          </div>
+        )}
+
         {/* Source attribution */}
-        <a
-          href="https://en.wikipedia.org/wiki/2026_Iran_conflict"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors block text-right"
-        >
-          Source: Wikipedia
-        </a>
+        <div className="flex items-center justify-end gap-2">
+          <a
+            href="https://en.wikipedia.org/wiki/2026_Iran_war"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
+          >
+            Wikipedia
+          </a>
+          {data.isw && (
+            <>
+              <span className="text-[9px] text-neutral-700">|</span>
+              <a
+                href="https://storymaps.arcgis.com/stories/089bc1a2fe684405a67d67f13bd31324"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] text-neutral-600 hover:text-neutral-400 transition-colors"
+              >
+                ISW/CTP
+              </a>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

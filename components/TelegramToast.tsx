@@ -43,7 +43,7 @@ export default function TelegramToast() {
         </a>
         <button
           onClick={dismiss}
-          className="shrink-0 p-1 text-neutral-600 hover:text-neutral-400 transition-colors"
+          className="shrink-0 p-1 text-red-400/70 hover:text-red-400 transition-colors"
           aria-label="Dismiss"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

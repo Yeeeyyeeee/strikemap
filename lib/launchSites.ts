@@ -81,8 +81,8 @@ export interface LaunchOriginResult {
  *
  * Algorithm:
  * 1. Classify threat from countdown
- * 2. Filter sites by threat capability + range
- * 3. Geographic heuristic (northern targets → prefer Lebanon/Syria)
+ * 2. Default to Iran sites unless originCountry explicitly set (e.g. "lebanon" for Hezbollah)
+ * 3. Filter sites by threat capability + range
  * 4. Pick by priority, then nearest
  */
 export function selectLaunchOrigin(
@@ -94,43 +94,33 @@ export function selectLaunchOrigin(
 ): LaunchOriginResult {
   const threatClasses = classifyThreat(countdown, threatType);
 
-  // If origin country is specified, filter sites to that region first
-  const sitesToConsider = originCountry
-    ? LAUNCH_SITES.filter((s) => s.region === originCountry.toLowerCase())
-    : LAUNCH_SITES;
+  // If origin country is specified, filter sites to that region
+  // Otherwise default to Iran-only (Lebanon/Gaza/Syria/etc. require explicit originCountry)
+  const region = originCountry?.toLowerCase();
+  const sitesToConsider = region
+    ? LAUNCH_SITES.filter((s) => s.region === region)
+    : LAUNCH_SITES.filter((s) => s.region === "iran");
 
   // Filter: site must support at least one matching threat class AND target must be in range
   const candidates = sitesToConsider.filter((site) => {
     const hasCapability = site.threats.some((t) => threatClasses.includes(t));
     if (!hasCapability) return false;
     // Skip range check when origin is explicitly chosen
-    if (originCountry) return true;
+    if (region) return true;
     const dist = haversineKm(site.lat, site.lng, targetLat, targetLng);
     return dist <= site.maxRangeKm;
   });
 
   if (candidates.length === 0) {
-    // Fallback: Isfahan for ballistic, Bekaa for rockets, Khorramabad for drones
-    if (threatClasses.includes("rocket")) {
-      return { lat: 33.3800, lng: 35.4800, siteName: "Nabatieh", threatClass: "rocket" };
-    }
+    // Fallback: always Iran — Isfahan for ballistic/rocket, Khorramabad for drones
     if (threatClasses.includes("drone")) {
       return { lat: 33.4900, lng: 48.3500, siteName: "Khorramabad", threatClass: "drone" };
     }
     return { lat: 32.6546, lng: 51.6680, siteName: "Isfahan", threatClass: "ballistic" };
   }
 
-  // Geographic heuristic: northern Israel targets prefer Lebanon/Syria origins for short/medium range
-  let filtered = candidates;
-  if (targetLat > 32.5 && (countdown === undefined || countdown <= 60)) {
-    const nearby = candidates.filter((s) => {
-      const dist = haversineKm(s.lat, s.lng, targetLat, targetLng);
-      return dist < 400; // Lebanon/Syria range
-    });
-    if (nearby.length > 0) filtered = nearby;
-  }
-
   // Sort by priority (lower first), then by distance to target
+  let filtered = candidates;
   filtered.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     const distA = haversineKm(a.lat, a.lng, targetLat, targetLng);

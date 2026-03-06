@@ -16,6 +16,7 @@ import {
   FIRMS_CONFIDENCE_THRESHOLD,
   FIRMS_CORRELATION_RADIUS_KM,
   FIRMS_BBOX,
+  FIRMS_CORRELATION_WINDOW_MS,
 } from "./constants";
 
 const FIRMS_API = "https://firms.modaps.eosdis.nasa.gov/api/area/csv";
@@ -121,6 +122,15 @@ export async function fetchFIRMSData(): Promise<FIRMSHotspot[]> {
 
 // ─── Correlation with known incidents ───────────────────────────
 
+/** Parse FIRMS acq_date + acq_time into epoch ms */
+function parseHotspotTime(acq_date: string, acq_time: string): number {
+  if (!acq_date) return 0;
+  // acq_date = "2026-03-03", acq_time = "0130" (HHMM UTC)
+  const hh = acq_time.slice(0, 2) || "00";
+  const mm = acq_time.slice(2, 4) || "00";
+  return new Date(`${acq_date}T${hh}:${mm}:00Z`).getTime();
+}
+
 export async function correlateWithIncidents(
   hotspots: FIRMSHotspot[],
 ): Promise<FIRMSHotspot[]> {
@@ -130,11 +140,18 @@ export async function correlateWithIncidents(
   );
 
   return hotspots.map((h) => {
-    const match = geoIncidents.find(
-      (i) =>
-        haversineKm(h.latitude, h.longitude, i.lat, i.lng) <=
-        FIRMS_CORRELATION_RADIUS_KM,
-    );
+    const hTime = parseHotspotTime(h.acq_date, h.acq_time);
+    const match = geoIncidents.find((i) => {
+      if (haversineKm(h.latitude, h.longitude, i.lat, i.lng) > FIRMS_CORRELATION_RADIUS_KM) {
+        return false;
+      }
+      // Temporal check: hotspot must be within 2h of incident
+      if (hTime && i.timestamp) {
+        const iTime = new Date(i.timestamp).getTime();
+        if (Math.abs(hTime - iTime) > FIRMS_CORRELATION_WINDOW_MS) return false;
+      }
+      return true;
+    });
     return match
       ? { ...h, correlatedIncidentId: match.id }
       : h;

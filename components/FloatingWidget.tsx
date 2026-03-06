@@ -335,7 +335,7 @@ export default memo(function FloatingWidget({
             )}
             <button
               onClick={() => onClose(id)}
-              className="text-neutral-600 hover:text-red-400 transition-colors p-0.5"
+              className="text-red-400/70 hover:text-red-400 transition-colors p-0.5"
               onMouseDown={(e) => e.stopPropagation()}
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

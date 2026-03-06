@@ -4,8 +4,6 @@ import { getRedis } from "@/lib/redis";
 import { REDIS_AIRSPACE_OVERRIDES_KEY } from "@/lib/constants";
 import { RegionAirspace, AirspaceStatus } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-
 /** Read admin overrides from Redis and apply to regions */
 async function applyOverrides(regions: RegionAirspace[]): Promise<RegionAirspace[]> {
   try {
@@ -62,7 +60,7 @@ export async function GET(req: NextRequest) {
         error: false,
       },
       {
-        headers: { "Cache-Control": "no-store" },
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" },
       }
     );
   } catch (e) {
@@ -77,7 +75,7 @@ export async function GET(req: NextRequest) {
         error: true,
       },
       {
-        headers: { "Cache-Control": "no-store" },
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" },
       }
     );
   }

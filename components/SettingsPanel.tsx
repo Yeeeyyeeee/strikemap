@@ -14,7 +14,7 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
   const update = (patch: Partial<UserSettings>) => onChange({ ...settings, ...patch });
 
   return (
-    <div className="fixed top-14 left-0 right-0 z-45 settings-panel">
+    <div className="fixed top-14 left-0 right-0 z-[51] settings-panel">
       <div className="bg-[#111] border-b border-[#2a2a2a] px-4 md:px-6 py-4">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
@@ -101,10 +101,19 @@ export default memo(function SettingsPanel({ settings, onChange }: SettingsPanel
             </h3>
             <div className="space-y-2">
               <ToggleRow label="Gauges" checked={settings.showGauges} onChange={(v) => update({ showGauges: v })} />
-
               <ToggleRow label="Legend" checked={settings.showLegend} onChange={(v) => update({ showLegend: v })} />
               <ToggleRow label="Sound Effects" checked={settings.soundEnabled} onChange={(v) => update({ soundEnabled: v })} />
+              {settings.soundEnabled && (
+                <div className="pl-3 border-l border-[#2a2a2a] space-y-2">
+                  <ToggleRow label="Missile Alerts" checked={settings.soundAlerts ?? true} onChange={(v) => update({ soundAlerts: v })} />
+                  <ToggleRow label="Air-Raid Siren" checked={settings.soundSiren ?? true} onChange={(v) => update({ soundSiren: v })} />
+                  <ToggleRow label="Strike Impacts" checked={settings.soundImpacts ?? true} onChange={(v) => update({ soundImpacts: v })} />
+                  <ToggleRow label="A10 Strafing" checked={settings.soundBrrt ?? true} onChange={(v) => update({ soundBrrt: v })} />
+                </div>
+              )}
               <ToggleRow label="Notifications" checked={settings.notificationsEnabled} onChange={(v) => update({ notificationsEnabled: v })} />
+              <ToggleRow label="Auto-Zoom Strikes" checked={settings.autoZoomStrikes ?? true} onChange={(v) => update({ autoZoomStrikes: v })} />
+              <ToggleRow label="Auto-Zoom Missiles" checked={settings.autoZoomAlerts ?? true} onChange={(v) => update({ autoZoomAlerts: v })} />
             </div>
           </div>
 

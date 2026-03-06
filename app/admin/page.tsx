@@ -151,15 +151,24 @@ export default function AdminPage() {
   const [changelogEntries, setChangelogEntries] = useState<{ id: string; text: string; createdAt: number }[]>([]);
   const [changelogText, setChangelogText] = useState("");
   const [changelogLoading, setChangelogLoading] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   // Chat bans state
   const [chatBans, setChatBans] = useState<string[]>([]);
   const [banInput, setBanInput] = useState("");
   const [bansLoading, setBansLoading] = useState(false);
+  const [bansOpen, setBansOpen] = useState(false);
+
+  // Moderators state
+  const [moderators, setModerators] = useState<{ name: string; createdAt: number }[]>([]);
+  const [modNameInput, setModNameInput] = useState("");
+  const [modPasswordInput, setModPasswordInput] = useState("");
+  const [modsLoading, setModsLoading] = useState(false);
 
   // Suggestions state
   const [suggestions, setSuggestions] = useState<{ id: string; title: string; device: string; description: string; status: string; votes: number; nickname: string; createdAt: number }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   // Airspace override state
   const [airspaceOverrides, setAirspaceOverrides] = useState<Record<string, { status: string; setAt: string }>>({});
@@ -516,6 +525,58 @@ export default function AdminPage() {
       await loadBans();
     } catch {}
     setBansLoading(false);
+  };
+
+  // Load moderators
+  const loadModerators = useCallback(async () => {
+    try {
+      const res = await fetch("/api/mod/manage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list" }),
+      });
+      const data = await res.json();
+      setModerators(data.moderators || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    loadModerators();
+  }, [authed, loadModerators]);
+
+  const createMod = async () => {
+    if (!modNameInput.trim() || !modPasswordInput.trim()) return;
+    setModsLoading(true);
+    try {
+      const res = await fetch("/api/mod/manage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", name: modNameInput.trim(), password: modPasswordInput.trim() }),
+      });
+      if (res.ok) {
+        setModNameInput("");
+        setModPasswordInput("");
+        await loadModerators();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to create moderator");
+      }
+    } catch {}
+    setModsLoading(false);
+  };
+
+  const deleteMod = async (name: string) => {
+    setModsLoading(true);
+    try {
+      await fetch("/api/mod/manage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", name }),
+      });
+      await loadModerators();
+    } catch {}
+    setModsLoading(false);
   };
 
   // Poll suggestions
@@ -901,7 +962,10 @@ export default function AdminPage() {
 
         {/* ── Changelog ── */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setChangelogOpen(!changelogOpen)}
+            className="flex items-center justify-between w-full mb-4 group"
+          >
             <h2
               className="text-xs font-bold uppercase tracking-wider text-neutral-500"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -913,61 +977,66 @@ export default function AdminPage() {
                 </span>
               )}
             </h2>
-          </div>
+            <svg className={`w-4 h-4 text-neutral-600 transition-transform ${changelogOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
 
-          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
-            <p
-              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              Add Change
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Describe the change..."
-                value={changelogText}
-                onChange={(e) => setChangelogText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addChangelogEntry()}
-                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <button
-                onClick={addChangelogEntry}
-                disabled={!changelogText.trim() || changelogLoading}
-                className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-sm font-medium hover:bg-green-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          {changelogEntries.length === 0 ? (
-            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <p className="text-neutral-600 text-sm text-center">No changelog entries yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {changelogEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 flex items-start gap-4"
+          {changelogOpen && (
+            <>
+              <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
+                <p
+                  className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-neutral-200">{entry.text}</p>
-                    <span className="text-[10px] text-neutral-600 mt-1 block">
-                      {new Date(entry.createdAt).toLocaleString()}
-                    </span>
-                  </div>
+                  Add Change
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Describe the change..."
+                    value={changelogText}
+                    onChange={(e) => setChangelogText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addChangelogEntry()}
+                    className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                  />
                   <button
-                    onClick={() => deleteChangelogEntry(entry.id)}
-                    disabled={changelogLoading}
-                    className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-xs font-bold uppercase hover:bg-red-500/30 disabled:opacity-30 transition-colors shrink-0"
+                    onClick={addChangelogEntry}
+                    disabled={!changelogText.trim() || changelogLoading}
+                    className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-sm font-medium hover:bg-green-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    Delete
+                    Add
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
+
+              {changelogEntries.length === 0 ? (
+                <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
+                  <p className="text-neutral-600 text-sm text-center">No changelog entries yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {changelogEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 flex items-start gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-neutral-200">{entry.text}</p>
+                        <span className="text-[10px] text-neutral-600 mt-1 block">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => deleteChangelogEntry(entry.id)}
+                        disabled={changelogLoading}
+                        className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-xs font-bold uppercase hover:bg-red-500/30 disabled:opacity-30 transition-colors shrink-0"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -1321,7 +1390,10 @@ export default function AdminPage() {
 
         {/* ── Chat Bans (Shadow) ── */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setBansOpen(!bansOpen)}
+            className="flex items-center justify-between w-full mb-4 group"
+          >
             <h2
               className="text-xs font-bold uppercase tracking-wider text-neutral-500"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -1333,53 +1405,134 @@ export default function AdminPage() {
                 </span>
               )}
             </h2>
-          </div>
+            <svg className={`w-4 h-4 text-neutral-600 transition-transform ${bansOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
 
-          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
-            <p
-              className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+          {bansOpen && (
+            <>
+              <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-lg p-4 mb-4">
+                <p
+                  className="text-[10px] uppercase tracking-wider text-neutral-600 mb-3 font-bold"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
+                  Ban Username
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. ABCD-1234"
+                    value={banInput}
+                    onChange={(e) => setBanInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && banUser()}
+                    className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
+                  />
+                  <button
+                    onClick={banUser}
+                    disabled={!banInput.trim() || bansLoading}
+                    className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Ban
+                  </button>
+                </div>
+                <p className="text-[10px] text-neutral-600 mt-2">User can still send messages but they won&apos;t appear for anyone else.</p>
+              </div>
+
+              {chatBans.length === 0 ? (
+                <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
+                  <p className="text-neutral-600 text-sm text-center">No banned users</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {chatBans.map((nick) => (
+                    <div
+                      key={nick}
+                      className="bg-[#151515] border border-red-500/20 rounded-lg p-4 flex items-center justify-between"
+                    >
+                      <span className="text-sm font-semibold text-neutral-200 uppercase" style={{ fontFamily: "JetBrains Mono, monospace" }}>{nick}</span>
+                      <button
+                        onClick={() => unbanUser(nick)}
+                        disabled={bansLoading}
+                        className="px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-xs font-bold uppercase hover:bg-green-500/30 disabled:opacity-30 transition-colors"
+                      >
+                        Unban
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* ── Moderators ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider text-neutral-500"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
-              Ban Username
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g. ABCD-1234"
-                value={banInput}
-                onChange={(e) => setBanInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && banUser()}
-                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500 transition-colors"
-              />
-              <button
-                onClick={banUser}
-                disabled={!banInput.trim() || bansLoading}
-                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-sm font-medium hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Ban
-              </button>
-            </div>
-            <p className="text-[10px] text-neutral-600 mt-2">User can still send messages but they won&apos;t appear for anyone else.</p>
+              Moderators
+              {moderators.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">
+                  {moderators.length} ACTIVE
+                </span>
+              )}
+            </h2>
           </div>
 
-          {chatBans.length === 0 ? (
+          <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 mb-4">
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                placeholder="Mod name"
+                value={modNameInput}
+                onChange={(e) => setModNameInput(e.target.value)}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500"
+              />
+              <input
+                type="text"
+                placeholder="Password"
+                value={modPasswordInput}
+                onChange={(e) => setModPasswordInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createMod()}
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 outline-none focus:border-neutral-500"
+              />
+              <button
+                onClick={createMod}
+                disabled={modsLoading || !modNameInput.trim() || !modPasswordInput.trim()}
+                className="px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-xs font-bold uppercase hover:bg-green-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Create
+              </button>
+            </div>
+            <p className="text-[10px] text-neutral-600">
+              Mod login page: <span className="text-neutral-400">{typeof window !== "undefined" ? window.location.origin : ""}/mod</span>
+            </p>
+          </div>
+
+          {moderators.length === 0 ? (
             <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <p className="text-neutral-600 text-sm text-center">No banned users</p>
+              <p className="text-neutral-600 text-sm text-center">No moderators</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {chatBans.map((nick) => (
+              {moderators.map((mod) => (
                 <div
-                  key={nick}
-                  className="bg-[#151515] border border-red-500/20 rounded-lg p-4 flex items-center justify-between"
+                  key={mod.name}
+                  className="bg-[#151515] border border-green-500/20 rounded-lg p-4 flex items-center justify-between"
                 >
-                  <span className="text-sm font-semibold text-neutral-200 uppercase" style={{ fontFamily: "JetBrains Mono, monospace" }}>{nick}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-neutral-200 uppercase" style={{ fontFamily: "JetBrains Mono, monospace" }}>{mod.name}</span>
+                    <span className="text-[10px] text-neutral-600 ml-2">
+                      {mod.createdAt ? new Date(mod.createdAt).toLocaleDateString() : ""}
+                    </span>
+                  </div>
                   <button
-                    onClick={() => unbanUser(nick)}
-                    disabled={bansLoading}
-                    className="px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-md text-xs font-bold uppercase hover:bg-green-500/30 disabled:opacity-30 transition-colors"
+                    onClick={() => deleteMod(mod.name)}
+                    disabled={modsLoading}
+                    className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-xs font-bold uppercase hover:bg-red-500/30 disabled:opacity-30 transition-colors"
                   >
-                    Unban
+                    Delete
                   </button>
                 </div>
               ))}
@@ -1389,7 +1542,10 @@ export default function AdminPage() {
 
         {/* ── Suggestions ── */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setSuggestionsOpen(!suggestionsOpen)}
+            className="flex items-center justify-between w-full mb-4 group"
+          >
             <h2
               className="text-xs font-bold uppercase tracking-wider text-neutral-500"
               style={{ fontFamily: "JetBrains Mono, monospace" }}
@@ -1401,9 +1557,10 @@ export default function AdminPage() {
                 </span>
               )}
             </h2>
-          </div>
+            <svg className={`w-4 h-4 text-neutral-600 transition-transform ${suggestionsOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
 
-          {suggestions.length === 0 ? (
+          {suggestionsOpen && (suggestions.length === 0 ? (
             <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
               <p className="text-neutral-600 text-sm text-center">No suggestions yet</p>
             </div>
@@ -1482,7 +1639,7 @@ export default function AdminPage() {
                 );
               })}
             </div>
-          )}
+          ))}
         </section>
 
         {/* ── Live News ── */}

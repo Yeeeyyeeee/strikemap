@@ -324,11 +324,6 @@ export async function fetchS1SAR(
 export async function superResolve(
   input: Buffer,
 ): Promise<{ buffer: Buffer; method: "sen2sr" | "lanczos3" }> {
-  // Skip Python on Vercel — only Sharp fallback available
-  if (process.env.VERCEL === "1") {
-    return sharpUpscale(input);
-  }
-
   const tmpId = randomBytes(8).toString("hex");
   const inputPath = join(tmpdir(), `sr_in_${tmpId}.png`);
   const outputPath = join(tmpdir(), `sr_out_${tmpId}.png`);

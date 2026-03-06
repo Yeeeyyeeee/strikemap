@@ -11,6 +11,10 @@
     {
       "path": "/api/satellite/cron",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/tracking/vessels/cron",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

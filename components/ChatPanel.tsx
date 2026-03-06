@@ -12,28 +12,51 @@ interface ReplyTo {
   text: string;
 }
 
+interface PollData {
+  question: string;
+  options: string[];
+  votes: number[];
+  totalVotes: number;
+}
+
 interface ChatMessage {
   id: string;
   text: string;
   nickname: string;
   timestamp: number;
   flag?: string;
-  role?: "dev";
+  role?: "dev" | "mod";
+  platform?: "mobile" | "desktop";
   replyTo?: ReplyTo;
+  poll?: PollData;
 }
 
-export type ChatTab = "chat" | "suggestions" | "changes";
+export type ChatTab = "chat" | "suggestions" | "changes" | "about";
 
 interface ChatPanelProps {
   open: boolean;
   onClose: () => void;
   defaultTab?: ChatTab;
+  modMode?: boolean;
+  modName?: string;
 }
 
 const NICK_STORAGE_KEY = "strikemap-chat-nick-v2";
 const CLIENT_ID_KEY = "strikemap-client-id";
 const MUTED_USERS_KEY = "strikemap-chat-muted";
 const FLAG_STORAGE_KEY = "strikemap-chat-flag";
+const POLL_VOTES_KEY = "strikemap-chat-poll-votes";
+const RULES_ACCEPTED_KEY = "strikemap-chat-rules-accepted";
+
+const CHAT_RULES = [
+  { title: "Be respectful", desc: "No hate speech, racism, slurs, or personal attacks." },
+  { title: "No spam", desc: "No flooding, repeated messages, or self-promotion." },
+  { title: "No doxxing", desc: "Never share anyone's personal information." },
+  { title: "No glorifying violence", desc: "Do not celebrate or encourage attacks on civilians." },
+  { title: "Verify before sharing", desc: "Don't present rumors or unverified claims as facts." },
+  { title: "English preferred", desc: "Use English so moderators can review messages." },
+  { title: "Mods are final", desc: "Moderator decisions are not up for debate." },
+];
 
 // All sovereign nation flags, organized by region
 const FLAGS = [
@@ -103,6 +126,8 @@ const MAX_W = 500;
 const DEFAULT_H = 480;
 const MIN_H = 300;
 const MAX_H = 800;
+const GRID = 16;
+const snap = (v: number) => Math.round(v / GRID) * GRID;
 
 function getSavedNickname(): string | null {
   if (typeof window === "undefined") return null;
@@ -125,7 +150,7 @@ function getClientId(): string {
 }
 
 function isValidNickname(nick: string): boolean {
-  return /^[A-Za-z]{4}-\d{4}$/.test(nick);
+  return /^[A-Za-z]{1,6}-\d{4}$/.test(nick);
 }
 
 function relativeTime(ts: number): string {
@@ -147,12 +172,15 @@ function useIsMobile() {
   return mobile;
 }
 
-export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelProps) {
+export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, modName }: ChatPanelProps) {
   const [activeTab, setActiveTab] = useState<ChatTab>(defaultTab || "chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
+  const [rulesAccepted, setRulesAccepted] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem(RULES_ACCEPTED_KEY) === "1" : false
+  );
   const [nicknameReady, setNicknameReady] = useState(() => !!getSavedNickname());
   const [changingNick, setChangingNick] = useState(false);
   const [nickInput, setNickInput] = useState({ letters: "", numbers: "" });
@@ -184,6 +212,19 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   });
   const [heartAnimId, setHeartAnimId] = useState<string | null>(null);
 
+  // ── Poll creator state ──
+  const [pollCreatorOpen, setPollCreatorOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollCreating, setPollCreating] = useState(false);
+  const [votedPolls, setVotedPolls] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem(POLL_VOTES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+
   // ── Position & size state (desktop only) ──
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [width, setWidth] = useState(DEFAULT_W);
@@ -208,9 +249,9 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   openRef.current = open;
 
   const getDefaultPos = useCallback(() => {
-    if (typeof window === "undefined") return { x: 100, y: 80 };
+    if (typeof window === "undefined") return { x: 96, y: 80 };
     return {
-      x: window.innerWidth - DEFAULT_W - 300,
+      x: snap(window.innerWidth - DEFAULT_W - 300),
       y: 64,
     };
   }, []);
@@ -230,8 +271,8 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     const dx = clientX - moveStartX.current;
     const dy = clientY - moveStartY.current;
     setPos({
-      x: Math.max(0, Math.min(window.innerWidth - 100, moveStartPos.current.x + dx)),
-      y: Math.max(0, Math.min(window.innerHeight - 40, moveStartPos.current.y + dy)),
+      x: snap(Math.max(0, Math.min(window.innerWidth - 100, moveStartPos.current.x + dx))),
+      y: snap(Math.max(0, Math.min(window.innerHeight - 40, moveStartPos.current.y + dy))),
     });
   }, []);
 
@@ -257,8 +298,8 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     if (!resizing.current) return;
     const dx = clientX - resizeStartX.current;
     const dy = clientY - resizeStartY.current;
-    setWidth(Math.min(MAX_W, Math.max(MIN_W, resizeStartW.current + dx)));
-    setHeight(Math.min(MAX_H, Math.max(MIN_H, resizeStartH.current + dy)));
+    setWidth(snap(Math.min(MAX_W, Math.max(MIN_W, resizeStartW.current + dx))));
+    setHeight(snap(Math.min(MAX_H, Math.max(MIN_H, resizeStartH.current + dy))));
   }, []);
 
   const onResizeEnd = useCallback(() => {
@@ -369,18 +410,29 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   }, []);
 
   // Poll for new messages + pinned + likes
+  // Every 3rd poll does a full refresh to catch deletions & poll vote updates
+  const pollCount = useRef(0);
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/chat?since=${lastTimestamp.current}`);
+        pollCount.current++;
+        const isFullRefresh = pollCount.current % 3 === 0;
+        const url = isFullRefresh ? "/api/chat?since=0" : `/api/chat?since=${lastTimestamp.current}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (data.messages?.length > 0) {
-          setMessages((prev) => {
-            const ids = new Set(prev.map((m) => m.id));
-            const newMsgs = data.messages.filter((m: ChatMessage) => !ids.has(m.id));
-            if (newMsgs.length === 0) return prev;
-            return [...prev, ...newMsgs];
-          });
+          if (isFullRefresh) {
+            // Full refresh: replace all messages to catch deletions & poll updates
+            setMessages(data.messages);
+          } else {
+            // Delta: append new messages only
+            setMessages((prev) => {
+              const ids = new Set(prev.map((m) => m.id));
+              const newMsgs = data.messages.filter((m: ChatMessage) => !ids.has(m.id));
+              if (newMsgs.length === 0) return prev;
+              return [...prev, ...newMsgs];
+            });
+          }
           lastTimestamp.current = data.messages[data.messages.length - 1].timestamp;
         }
         if (data.pinned !== undefined) setPinnedMessage(data.pinned);
@@ -403,17 +455,21 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
 
   // Auto-scroll only when user is near bottom, or on tab switch / initial open
   const prevMessages = useRef(messages);
+  const prevOpen = useRef(open);
   useEffect(() => {
     if (open && activeTab === "chat" && scrollRef.current) {
       const el = scrollRef.current;
+      const justOpened = open && !prevOpen.current;
       const isNewMessage = messages.length !== prevMessages.current.length;
       prevMessages.current = messages;
-      if (!isNewMessage || isNearBottom.current) {
+      prevOpen.current = open;
+      if (justOpened || !isNewMessage || isNearBottom.current) {
         requestAnimationFrame(() => {
           el.scrollTop = el.scrollHeight;
         });
       }
     }
+    prevOpen.current = open;
   }, [messages, open, activeTab]);
 
   const claimAndSaveNick = useCallback(async (nick: string, flag?: string | null) => {
@@ -537,8 +593,10 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
     }
   }, []);
 
-  // Derive admin status from own messages
+  // Derive admin/mod status from own messages
   const isAdmin = messages.some((m) => m.nickname === nicknameRef.current && m.role === "dev");
+  const isMod = !!modMode || messages.some((m) => m.nickname === nicknameRef.current && m.role === "mod");
+  const canModerate = isAdmin || isMod;
 
   const handlePin = useCallback(async (msg: ChatMessage) => {
     setMenuOpenId(null);
@@ -564,25 +622,96 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
   }, []);
 
   const handleLike = useCallback(async (msgId: string) => {
-    if (likedIds.has(msgId)) return;
+    const alreadyLiked = likedIds.has(msgId);
+    if (alreadyLiked) {
+      // Unlike — optimistic
+      setLikes((prev) => ({ ...prev, [msgId]: Math.max(0, (prev[msgId] || 0) - 1) }));
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(msgId);
+        try { localStorage.setItem("strikemap-chat-liked", JSON.stringify([...next])); } catch {}
+        return next;
+      });
+      try {
+        await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unlike", messageId: msgId, clientId: getClientId() }),
+        });
+      } catch {}
+    } else {
+      // Like — optimistic
+      setLikes((prev) => ({ ...prev, [msgId]: (prev[msgId] || 0) + 1 }));
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        next.add(msgId);
+        try { localStorage.setItem("strikemap-chat-liked", JSON.stringify([...next])); } catch {}
+        return next;
+      });
+      setHeartAnimId(msgId);
+      setTimeout(() => setHeartAnimId((prev) => (prev === msgId ? null : prev)), 600);
+      try {
+        await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "like", messageId: msgId, clientId: getClientId() }),
+        });
+      } catch {}
+    }
+  }, [likedIds]);
+
+  const handleCreatePoll = useCallback(async () => {
+    const q = pollQuestion.trim();
+    const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
+    if (!q || opts.length < 2) return;
+    setPollCreating(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create-poll",
+          question: q,
+          options: opts,
+          nickname: nicknameRef.current,
+          flag: flagRef.current || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.message) {
+        setMessages((prev) => [...prev, data.message]);
+        lastTimestamp.current = data.message.timestamp;
+        setPollCreatorOpen(false);
+        setPollQuestion("");
+        setPollOptions(["", ""]);
+      }
+    } catch {} finally {
+      setPollCreating(false);
+    }
+  }, [pollQuestion, pollOptions]);
+
+  const handleVote = useCallback(async (pollId: string, optionIndex: number) => {
+    if (votedPolls[pollId] !== undefined) return;
     // Optimistic update
-    setLikes((prev) => ({ ...prev, [msgId]: (prev[msgId] || 0) + 1 }));
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      next.add(msgId);
-      try { localStorage.setItem("strikemap-chat-liked", JSON.stringify([...next])); } catch {}
+    setVotedPolls((prev) => {
+      const next = { ...prev, [pollId]: optionIndex };
+      try { localStorage.setItem(POLL_VOTES_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
-    setHeartAnimId(msgId);
-    setTimeout(() => setHeartAnimId((prev) => (prev === msgId ? null : prev)), 600);
+    setMessages((prev) => prev.map((m) => {
+      if (m.id !== pollId || !m.poll) return m;
+      const newVotes = [...m.poll.votes];
+      newVotes[optionIndex]++;
+      return { ...m, poll: { ...m.poll, votes: newVotes, totalVotes: m.poll.totalVotes + 1 } };
+    }));
     try {
       await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "like", messageId: msgId, clientId: getClientId() }),
+        body: JSON.stringify({ action: "vote-poll", pollId, optionIndex, clientId: getClientId() }),
       });
     } catch {}
-  }, [likedIds]);
+  }, [votedPolls]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -612,6 +741,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
           text,
           nickname: nicknameRef.current,
           clientId: getClientId(),
+          platform: window.innerWidth < 768 ? "mobile" : "desktop",
           ...(currentFlag ? { flag: currentFlag } : {}),
           ...(currentReply ? { replyTo: currentReply } : {}),
         }),
@@ -695,6 +825,17 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
             >
               Changes
             </button>
+            <button
+              onClick={() => setActiveTab("about")}
+              className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
+                activeTab === "about"
+                  ? "bg-neutral-700 text-white"
+                  : "text-neutral-500 hover:text-neutral-300"
+              }`}
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
+              About
+            </button>
           </div>
           <div className="flex items-center gap-2">
             {nicknameReady && !changingNick && (
@@ -710,9 +851,20 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                 </button>
               </div>
             )}
+            {isAdmin && activeTab === "chat" && (
+              <button
+                onClick={() => setPollCreatorOpen((v) => !v)}
+                className="text-neutral-500 hover:text-neutral-300 p-1 transition-colors"
+                title="Create poll"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="text-neutral-500 hover:text-neutral-300 p-1"
+              className="text-red-400/70 hover:text-red-400 p-1 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -722,10 +874,75 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
         </div>
       </div>
 
-      {activeTab === "suggestions" ? (
+      {activeTab === "about" ? (
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 text-xs text-neutral-400 leading-relaxed">
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-2" style={{ fontFamily: "JetBrains Mono, monospace" }}>About StrikeMap</h3>
+            <p>StrikeMap is an independent, real-time military conflict tracker. Data is aggregated from public sources including Telegram channels, RSS feeds, NASA FIRMS, USGS, and Wikipedia. All data is processed, enriched, and verified automatically.</p>
+          </div>
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-2" style={{ fontFamily: "JetBrains Mono, monospace" }}>Terms of Use</h3>
+            <div className="space-y-2 text-neutral-500">
+              <p>By using this site you agree to the following terms:</p>
+              <ul className="list-disc pl-4 space-y-1.5">
+                <li><span className="text-neutral-300">No scraping or automated data collection.</span> You may not use bots, crawlers, scrapers, or any automated means to access, extract, or download data from this site.</li>
+                <li><span className="text-neutral-300">No redistribution.</span> Content, data, maps, and imagery displayed on StrikeMap may not be copied, reproduced, republished, or redistributed without explicit written permission.</li>
+                <li><span className="text-neutral-300">Personal use only.</span> This site is provided for personal, non-commercial, informational purposes. Commercial use of any kind is prohibited.</li>
+                <li><span className="text-neutral-300">No warranty.</span> Data is provided as-is. StrikeMap makes no guarantees about accuracy, completeness, or timeliness. Do not rely on this data for safety-critical decisions.</li>
+                <li><span className="text-neutral-300">API access prohibited.</span> Directly accessing API endpoints programmatically or reverse-engineering the data pipeline is strictly prohibited.</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-2" style={{ fontFamily: "JetBrains Mono, monospace" }}>Data Sources</h3>
+            <ul className="list-disc pl-4 space-y-1 text-neutral-500">
+              <li>Telegram OSINT channels (real-time ingestion)</li>
+              <li>RSS news feeds</li>
+              <li>NASA FIRMS thermal hotspots</li>
+              <li>USGS seismic data</li>
+              <li>Copernicus Sentinel-2 satellite imagery</li>
+              <li>Wikipedia (casualty figures)</li>
+              <li>ISW / Critical Threats Project (strike corroboration)</li>
+            </ul>
+          </div>
+          <p className="text-[10px] text-neutral-600 pt-2 border-t border-[#2a2a2a]">
+            Violation of these terms may result in IP bans and legal action. For inquiries, reach out via the Suggestions tab.
+          </p>
+        </div>
+      ) : activeTab === "suggestions" ? (
         <SuggestionsPanel />
       ) : activeTab === "changes" ? (
         <ChangelogPanel />
+      ) : !rulesAccepted ? (
+        /* Rules acceptance screen */
+        <div className="flex-1 flex flex-col px-5 py-4 overflow-y-auto">
+          <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 text-center mb-3" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+            Chat Rules
+          </p>
+          <div className="space-y-2.5 flex-1">
+            {CHAT_RULES.map((rule, i) => (
+              <div key={i} className="flex gap-2.5">
+                <span className="text-[10px] font-bold text-red-500/70 mt-0.5 shrink-0 w-4 text-right" style={{ fontFamily: "JetBrains Mono, monospace" }}>{i + 1}.</span>
+                <div>
+                  <p className="text-[11px] font-semibold text-neutral-300">{rule.title}</p>
+                  <p className="text-[10px] text-neutral-500 leading-relaxed">{rule.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] text-neutral-600 text-center mt-3 mb-2">
+            Violating these rules will result in a mute or ban.
+          </p>
+          <button
+            onClick={() => {
+              localStorage.setItem(RULES_ACCEPTED_KEY, "1");
+              setRulesAccepted(true);
+            }}
+            className="w-full py-2.5 text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/30 transition-colors"
+          >
+            I Agree
+          </button>
+        </div>
       ) : !nicknameReady || changingNick ? (
         /* Username setup screen */
         <div className="flex-1 flex items-center justify-center px-6">
@@ -734,7 +951,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
               <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                 Choose a Username
               </p>
-              <p className="text-[10px] text-neutral-600">Format: 4 letters + 4 numbers</p>
+              <p className="text-[10px] text-neutral-600">Format: 1-6 letters + 4 numbers (e.g. ABCD-1234)</p>
             </div>
             <div className="flex items-center gap-1.5 justify-center">
               <input
@@ -823,7 +1040,10 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
         <>
           {/* Pinned message */}
           {pinnedMessage && (
-            <div className="px-3 py-2 border-b border-red-500/30 bg-red-500/10">
+            <div
+              className="px-3 py-2 border-b border-red-500/30 bg-red-500/10 cursor-pointer hover:bg-red-500/15 transition-colors"
+              onClick={() => scrollToMessage(pinnedMessage.id)}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-0.5">
@@ -833,11 +1053,11 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                     <span className="text-[9px] font-bold uppercase tracking-wider text-red-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>Pinned</span>
                     <span className="text-[10px] font-semibold text-neutral-400">{pinnedMessage.nickname}</span>
                   </div>
-                  <p className="text-[11px] text-red-200/80 break-words leading-relaxed">{pinnedMessage.text}</p>
+                  <p className="text-[11px] text-red-200/80 break-words leading-relaxed">{pinnedMessage.poll ? `POLL: ${pinnedMessage.poll.question}` : pinnedMessage.text}</p>
                 </div>
-                {isAdmin && (
+                {canModerate && (
                   <button
-                    onClick={handleUnpin}
+                    onClick={(e) => { e.stopPropagation(); handleUnpin(); }}
                     className="shrink-0 text-red-400/50 hover:text-red-400 transition-colors p-0.5 mt-0.5"
                     title="Unpin"
                   >
@@ -846,6 +1066,78 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                     </svg>
                   </button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Poll creator */}
+          {pollCreatorOpen && (
+            <div className="px-3 py-2 border-b border-amber-500/30 bg-amber-500/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400" style={{ fontFamily: "JetBrains Mono, monospace" }}>Create Poll</span>
+                <button onClick={() => setPollCreatorOpen(false)} className="text-red-400/70 hover:text-red-400 p-0.5 transition-colors">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <input
+                type="text"
+                value={pollQuestion}
+                onChange={(e) => setPollQuestion(e.target.value.slice(0, 200))}
+                placeholder="Ask a question..."
+                maxLength={200}
+                className="w-full bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-1.5 text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-neutral-500"
+              />
+              {pollOptions.map((opt, i) => (
+                <div key={i} className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={opt}
+                    onChange={(e) => {
+                      const next = [...pollOptions];
+                      next[i] = e.target.value.slice(0, 100);
+                      setPollOptions(next);
+                    }}
+                    placeholder={`Option ${i + 1}`}
+                    maxLength={100}
+                    className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-md px-2 py-1 text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-neutral-500"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      onClick={() => setPollOptions((prev) => prev.filter((_, j) => j !== i))}
+                      className="text-red-400/70 hover:text-red-400 p-0.5 transition-colors"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                {pollOptions.length < 6 && (
+                  <button
+                    onClick={() => setPollOptions((prev) => [...prev, ""])}
+                    className="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    + Add option
+                  </button>
+                )}
+                <div className="flex-1" />
+                <button
+                  onClick={() => { setPollCreatorOpen(false); setPollQuestion(""); setPollOptions(["", ""]); }}
+                  className="px-2 py-1 text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePoll}
+                  disabled={!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2 || pollCreating}
+                  className="px-2.5 py-1 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md hover:bg-amber-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  {pollCreating ? "Creating..." : "Create Poll"}
+                </button>
               </div>
             </div>
           )}
@@ -884,7 +1176,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
               const highlightMe = mentionsMe || repliesToMe;
               const isMenuOpen = menuOpenId === msg.id;
               const likeCount = likes[msg.id] || 0;
-              const showMenu = !isMe || isAdmin;
+              const showMenu = !isMe || canModerate;
               return (
                 <div
                   key={msg.id}
@@ -923,6 +1215,14 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                       {msg.role === "dev" && (
                         <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">dev</span>
                       )}
+                      {msg.role === "mod" && (
+                        <span className="ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30">mod</span>
+                      )}
+                      {msg.platform && (
+                        <span className={`ml-1 text-[9px] font-bold uppercase px-1 py-0.5 rounded ${msg.platform === "mobile" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" : "bg-neutral-500/20 text-neutral-400 border border-neutral-500/30"}`}>
+                          {msg.platform === "mobile" ? "📱" : "🖥️"}
+                        </span>
+                      )}
                       <span className="text-neutral-600 text-[10px] ml-1.5">{relativeTime(msg.timestamp)}</span>
                       {likeCount > 0 && (
                         <span className="text-red-400/70 text-[10px] ml-1.5 inline-flex items-center gap-0.5">
@@ -930,13 +1230,54 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                           {likeCount}
                         </span>
                       )}
-                      <p className="text-neutral-400 text-sm md:text-xs mt-0.5 break-words">
-                        {msg.text.split(/(@[A-Za-z]{4}-\d{4})/g).map((part, i) =>
-                          /^@[A-Za-z]{4}-\d{4}$/.test(part)
-                            ? <span key={i} className={`font-semibold ${part.slice(1) === nicknameRef.current ? "text-blue-400" : "text-neutral-300"}`}>{part}</span>
-                            : part
-                        )}
-                      </p>
+                      {msg.poll ? (
+                        <div className="mt-1.5 space-y-1.5">
+                          <p className="text-amber-400 text-xs font-semibold">{msg.poll.question}</p>
+                          {msg.poll.options.map((opt, oi) => {
+                            const hasVoted = votedPolls[msg.id] !== undefined;
+                            const myVote = votedPolls[msg.id];
+                            const count = msg.poll!.votes[oi] || 0;
+                            const total = msg.poll!.totalVotes || 0;
+                            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                            return (
+                              <button
+                                key={oi}
+                                onClick={() => !hasVoted && handleVote(msg.id, oi)}
+                                disabled={hasVoted}
+                                className={`w-full text-left rounded-md border transition-colors relative overflow-hidden ${
+                                  hasVoted
+                                    ? myVote === oi
+                                      ? "border-amber-500/40 bg-amber-500/10"
+                                      : "border-[#2a2a2a] bg-[#111]"
+                                    : "border-[#2a2a2a] bg-[#111] hover:border-amber-500/30 hover:bg-amber-500/5 cursor-pointer"
+                                }`}
+                              >
+                                {hasVoted && (
+                                  <div
+                                    className="absolute inset-0 bg-amber-500/10 transition-all"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                )}
+                                <div className="relative px-2 py-1.5 flex items-center justify-between gap-2">
+                                  <span className="text-[11px] text-neutral-300 truncate">{opt}</span>
+                                  {hasVoted && (
+                                    <span className="text-[10px] text-neutral-500 shrink-0 tabular-nums">{count} ({pct}%)</span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                          <p className="text-[10px] text-neutral-600">{msg.poll.totalVotes} vote{msg.poll.totalVotes !== 1 ? "s" : ""}</p>
+                        </div>
+                      ) : (
+                        <p className="text-neutral-400 text-sm md:text-xs mt-0.5 break-words">
+                          {msg.text.split(/(@[A-Za-z]{1,6}-\d{4})/g).map((part, i) =>
+                            /^@[A-Za-z]{1,6}-\d{4}$/.test(part)
+                              ? <span key={i} className={`font-semibold ${part.slice(1) === nicknameRef.current ? "text-blue-400" : "text-neutral-300"}`}>{part}</span>
+                              : part
+                          )}
+                        </p>
+                      )}
                     </div>
                     {/* Action buttons */}
                     <div className="flex items-center shrink-0 relative">
@@ -979,7 +1320,48 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
                                   Mute {msg.nickname}
                                 </button>
                               )}
-                              {isAdmin && (
+                              {canModerate && !isMe && (
+                                <button
+                                  onClick={async () => {
+                                    setMenuOpenId(null);
+                                    try {
+                                      await fetch("/api/chat", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ action: "ban", nickname: msg.nickname }),
+                                      });
+                                    } catch {}
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                  </svg>
+                                  Shadow Ban
+                                </button>
+                              )}
+                              {canModerate && msg.role !== "dev" && msg.text !== "[message deleted]" && (
+                                <button
+                                  onClick={async () => {
+                                    setMenuOpenId(null);
+                                    try {
+                                      await fetch("/api/chat", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ action: "delete-message", messageId: msg.id }),
+                                      });
+                                    } catch {}
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                  Delete
+                                </button>
+                              )}
+                              {canModerate && (
                                 <button
                                   onClick={() => handlePin(msg)}
                                   className="w-full text-left px-3 py-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/50 transition-colors flex items-center gap-2"
@@ -1012,7 +1394,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab }: ChatPanelP
               </div>
               <button
                 onClick={cancelReply}
-                className="text-neutral-600 hover:text-neutral-400 p-0.5 shrink-0"
+                className="text-red-400/70 hover:text-red-400 p-0.5 shrink-0 transition-colors"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

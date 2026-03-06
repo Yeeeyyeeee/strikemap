@@ -3,7 +3,7 @@
 
 const BLOCKED_WORDS = [
   // Racial slurs (+ misspelling variants)
-  "nigga", "nigg", "niga", "nigr", "negro", "nigar",
+  "nigga", "nigg", "nig", "niga", "nigr", "negro", "nigar",
   "nigl", "nikk", "niqq", "negr", "neger", "nugga", "niglet",
   "nigler", "niger",
   "chink", "gook", "spic", "spik", "wetback", "kike",

@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+.vercel
+.env
+.env.*
+!.env.example
+scripts/video/
+video/
+*.md
+__tests__
+components/__tests__
+vitest.config.ts
+.claude

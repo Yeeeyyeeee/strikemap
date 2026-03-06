@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, ReactPortal } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import IncidentCard from "@/components/IncidentCard";
@@ -9,6 +10,7 @@ import { MilitaryBase } from "@/lib/militaryBases";
 import Legend from "@/components/Legend";
 import AccuracyGauge from "@/components/AccuracyGauge";
 import FeedSidebar from "@/components/FeedSidebar";
+import NewsSidebar from "@/components/NewsSidebar";
 import { Incident, MissileAlert, ViewMode } from "@/lib/types";
 import MissileOverlay from "@/components/MissileOverlay";
 import A10Overlay from "@/components/A10Overlay";
@@ -21,6 +23,7 @@ import MapOverlayControls from "@/components/MapOverlayControls";
 import CasualtyTracker from "@/components/CasualtyTracker";
 import StrikeCounter from "@/components/StrikeCounter";
 import CyberStatus from "@/components/CyberStatus";
+import MarketTicker from "@/components/MarketTicker";
 import ConflictClock from "@/components/ConflictClock";
 import EscalationMeter from "@/components/EscalationMeter";
 import LiveFeedMobile, { LiveFeedDesktop } from "@/components/LiveFeedPlayer";
@@ -40,11 +43,12 @@ import Timeline from "@/components/Timeline";
 import { useTimeline } from "@/hooks/useTimeline";
 import { useShare } from "@/components/ShareButton";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useIncidentPolling } from "@/hooks/useIncidentPolling";
-import { useAlertPolling } from "@/hooks/useAlertPolling";
+import { useUnifiedPolling } from "@/hooks/useUnifiedPolling";
 import { useNotamPolling } from "@/hooks/useNotamPolling";
-import { useSirenPolling } from "@/hooks/useSirenPolling";
 import { useFIRMSPolling } from "@/hooks/useFIRMSPolling";
+import { useSeismicPolling } from "@/hooks/useSeismicPolling";
+import { useAircraftPolling } from "@/hooks/useAircraftPolling";
+import { useVesselPolling } from "@/hooks/useVesselPolling";
 import SatellitePanel from "@/components/SatellitePanel";
 import SirenBanner from "@/components/SirenBanner";
 import InterceptionBanner from "@/components/InterceptionBanner";
@@ -60,6 +64,23 @@ const MapView = dynamic(() => import("@/components/Map"), { ssr: false });
 const isMapView = (mode: ViewMode) =>
   !["leadership", "stats", "weapons", "killchain", "airspace"].includes(mode);
 
+function LayerBtn({ label, active, onClick, color, badge }: { label: string; active: boolean; onClick: () => void; color: string; badge?: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+        active ? "text-white shadow-lg" : "bg-[#1a1a1a] border-[#2a2a2a] text-neutral-500 hover:text-neutral-300"
+      }`}
+      style={active ? { background: `${color}20`, borderColor: `${color}50`, color } : undefined}
+    >
+      {label}
+      {badge != null && badge > 0 && (
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: `${color}30`, color }}>{badge}</span>
+      )}
+    </button>
+  );
+}
+
 export default function Home() {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [selectedBase, setSelectedBase] = useState<MilitaryBase | null>(null);
@@ -69,7 +90,10 @@ export default function Home() {
   const [showBases, setShowBases] = useState(false);
   const [showProxies, setShowProxies] = useState(false);
   const [showFirms, setShowFirms] = useState(false);
+  const [showSeismic, setShowSeismic] = useState(false);
   const [showCountries, setShowCountries] = useState(false);
+  const [showAircraft, setShowAircraft] = useState(false);
+  const [showVessels, setShowVessels] = useState(false);
   const [rangeWeapon, setRangeWeapon] = useState<{ lat: number; lng: number; radiusKm: number } | null>(null);
   const [mapStyle, setMapStyle] = useState("dark");
   const [settings, setSettings] = useState<UserSettings>(loadSettings);
@@ -91,6 +115,7 @@ export default function Home() {
   const [testSirenCountries, setTestSirenCountries] = useState<string[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [liveVideoOpen, setLiveVideoOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
   const [chatTab, setChatTab] = useState<ChatTab>("chat");
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
   const chatMsgCountRef = useRef(0);
@@ -101,7 +126,7 @@ export default function Home() {
     const s = loadSettings();
     const saved = s.activeWidgets ?? DEFAULT_ACTIVE_WIDGETS;
     // Auto-add new widgets for existing users
-    const toAdd = ["feed", "strike-counter"].filter((id) => !saved.includes(id));
+    const toAdd = ["feed", "strike-counter", "markets"].filter((id) => !saved.includes(id));
     if (toAdd.length > 0) return [...saved, ...toAdd];
     return saved;
   });
@@ -215,20 +240,31 @@ export default function Home() {
     if (savedStyle !== "dark") setMapStyle(savedStyle);
   }, []);
 
-  // Polling hooks
+  // Unified polling hook — replaces separate incident/alert/siren hooks
   const {
     incidents,
     loading,
-    flashActive: incidentFlashActive,
-    flashKey: incidentFlashKey,
+    incidentFlashActive,
+    incidentFlashKey,
     lastIranStrikeAt,
     lastUSStrikeAt,
     lastIsraelStrikeAt,
-  } = useIncidentPolling({
+    alerts,
+    outcomes,
+    alertFlashActive,
+    alertFlashKey,
+    activeIsraelRegions,
+    sirenAlerts,
+  } = useUnifiedPolling({
     soundEnabled: settingsRef.current.soundEnabled,
+    soundAlerts: settingsRef.current.soundAlerts,
+    soundImpacts: settingsRef.current.soundImpacts,
     notificationsEnabled: settingsRef.current.notificationsEnabled,
     sendNotification: sendNotificationRef.current,
     mapInstance,
+    autoZoomStrikes: settingsRef.current.autoZoomStrikes,
+    autoZoomAlerts: settingsRef.current.autoZoomAlerts,
+    alertCountries: settingsRef.current.alertCountries,
     onNewStrikes: (newIncs) => {
       let hasA10 = false;
       for (const inc of newIncs) {
@@ -253,34 +289,13 @@ export default function Home() {
         setTimeout(() => setSelectedIncident(newIncs[0]), delay);
       }
     },
-  });
-
-  const {
-    alerts,
-    outcomes,
-    flashActive: alertFlashActive,
-    flashKey: alertFlashKey,
-    activeIsraelRegions,
-  } = useAlertPolling({
-    soundEnabled: settingsRef.current.soundEnabled,
-    notificationsEnabled: settingsRef.current.notificationsEnabled,
-    sendNotification: sendNotificationRef.current,
-    mapInstance,
-    alertCountries: settingsRef.current.alertCountries,
-  });
-
-  const notams = useNotamPolling();
-
-  const { sirenAlerts } = useSirenPolling({
-    soundEnabled: settingsRef.current.soundEnabled,
-    notificationsEnabled: settingsRef.current.notificationsEnabled,
-    sendNotification: sendNotificationRef.current,
     onNewSiren: (country) => {
       setFlashCountryName(country);
       setTimeout(() => setFlashCountryName(null), 4000);
     },
-    alertCountries: settingsRef.current.alertCountries,
   });
+
+  const notams = useNotamPolling();
 
   // Jordan sirens mirror Israel — whenever Israel has active alerts, inject Jordan siren
   const sirenAlertsWithJordan = useMemo(() => {
@@ -329,6 +344,9 @@ export default function Home() {
 
   const firmsEnabled = showFirms || viewMode === "satellite";
   const { geojson: firmsGeoJSON, counts: firmsCounts } = useFIRMSPolling(firmsEnabled);
+  const { geojson: seismicGeoJSON, counts: seismicCounts } = useSeismicPolling(showSeismic);
+  const { geojson: aircraftGeoJSON, count: aircraftCount } = useAircraftPolling(showAircraft);
+  const { geojson: vesselGeoJSON, count: vesselCount } = useVesselPolling(showVessels);
 
   const flashActive = incidentFlashActive || alertFlashActive || timelineFlashKey > 0;
   const flashKeyTotal = incidentFlashKey + alertFlashKey + timelineFlashKey;
@@ -505,7 +523,7 @@ export default function Home() {
     setTimelineFlashKey((k) => k + 1);
 
     // Play impact sound if sound enabled
-    if (settingsRef.current.soundEnabled) {
+    if (settingsRef.current.soundEnabled && settingsRef.current.soundImpacts !== false) {
       playImpactSound();
     }
 
@@ -716,6 +734,8 @@ export default function Home() {
   const handleToggleProxies = useCallback(() => setShowProxies((p) => !p), []);
   const handleToggleFirms = useCallback(() => setShowFirms((p) => !p), []);
   const handleToggleCountries = useCallback(() => setShowCountries((p) => !p), []);
+  const handleToggleAircraft = useCallback(() => setShowAircraft((p) => !p), []);
+  const handleToggleVessels = useCallback(() => setShowVessels((p) => !p), []);
   const handleMapStyleChange = useCallback((id: string) => {
     setStoredStyle(id);
     setMapStyle(id);
@@ -882,30 +902,34 @@ export default function Home() {
   const renderWidgetContent = useCallback((widgetId: string) => {
     switch (getBaseWidgetId(widgetId)) {
       case "escalation":
-        return <EscalationMeter incidents={incidents} notams={notams} />;
+        return <EscalationMeter incidents={filteredIncidents} notams={notams} />;
       case "currentcam":
         return <CurrentCam />;
       case "airspace":
         return <AirspaceStatus />;
       case "accuracy-iran":
-        return <AccuracyGauge incidents={incidents} side="iran" />;
+        return <AccuracyGauge incidents={filteredIncidents} side="iran" />;
       case "accuracy-us":
-        return <AccuracyGauge incidents={incidents} side="us_israel" />;
+        return <AccuracyGauge incidents={filteredIncidents} side="us_israel" />;
       case "casualties":
         return <CasualtyTracker />;
       case "clock":
-        return <ConflictClock incidents={incidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />;
+        return <ConflictClock incidents={filteredIncidents} lastIranStrikeAt={lastIranStrikeAt} lastUSStrikeAt={lastUSStrikeAt} lastIsraelStrikeAt={lastIsraelStrikeAt} />;
       case "strike-counter":
-        return <StrikeCounter incidents={incidents} />;
+        return <StrikeCounter incidents={filteredIncidents} />;
       case "cyber-status":
         return <CyberStatus />;
+      case "markets":
+        return <MarketTicker />;
+      case "news":
+        return <NewsSidebar />;
       case "feed":
-        return <FeedSidebar incidents={incidents} onSelectIncident={handleSelectIncident} />;
+        return <FeedSidebar incidents={filteredIncidents} onSelectIncident={handleSelectIncident} />;
       default:
         return null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidents, notams, lastIranStrikeAt, lastUSStrikeAt, lastIsraelStrikeAt]);
+  }, [filteredIncidents, notams, lastIranStrikeAt, lastUSStrikeAt, lastIsraelStrikeAt]);
 
   const mapStyleUrl = MAP_STYLES.find((s) => s.id === mapStyle)?.url;
 
@@ -915,13 +939,95 @@ export default function Home() {
     selectedIncidentId: selectedIncident?.id,
   });
 
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => setPortalMounted(true), []);
+
+  const desktopLayersPortal: ReactPortal | null = portalMounted ? createPortal(
+    <div
+      className="fixed z-[99999] hidden md:flex flex-col items-center"
+      style={{ bottom: "8.5rem", left: "50%", transform: "translateX(-50%)", fontFamily: "JetBrains Mono, monospace" }}
+    >
+      <div className="bg-[#111]/95 border border-[#2a2a2a] rounded-xl p-3 backdrop-blur-md shadow-2xl">
+        <div className="flex flex-wrap gap-2 justify-center max-w-md">
+          <LayerBtn label="Bases" active={showBases} onClick={handleToggleBases} color="#f97316" />
+          <LayerBtn label="Proxies" active={showProxies} onClick={handleToggleProxies} color="#22c55e" />
+          <LayerBtn label="Thermal" active={showFirms} onClick={handleToggleFirms} color="#f97316" badge={showFirms ? firmsCounts.total : 0} />
+          <LayerBtn label="Seismic" active={showSeismic} onClick={() => setShowSeismic((p) => !p)} color="#eab308" badge={showSeismic ? seismicCounts.total : 0} />
+          <LayerBtn label="Aircraft" active={showAircraft} onClick={handleToggleAircraft} color="#00ff88" badge={showAircraft ? aircraftCount : 0} />
+          <LayerBtn label="Vessels" active={showVessels} onClick={handleToggleVessels} color="#38bdf8" badge={showVessels ? vesselCount : 0} />
+          <LayerBtn label="Borders" active={showCountries} onClick={handleToggleCountries} color="#8b5cf6" />
+        </div>
+        <div className="flex gap-1 mt-3 justify-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1">
+          {MAP_STYLES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleMapStyleChange(s.id)}
+              className={`px-2.5 py-1.5 text-[10px] font-medium rounded-md transition-colors ${
+                mapStyle === s.id ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300"
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  ) : null;
+
+  const desktopBottomBar: ReactPortal | null = portalMounted ? createPortal(
+    <div
+      className="fixed z-[99999] hidden md:flex items-center gap-2"
+      style={{ bottom: "5rem", left: "50%", transform: "translateX(-50%)", fontFamily: "JetBrains Mono, monospace" }}
+    >
+      <button
+        onClick={() => setLiveVideoOpen(true)}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full border bg-[#1a1a1a] border-red-500/40 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:bg-red-500/10 backdrop-blur-sm transition-all"
+      >
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+        </span>
+        <span className="text-xs font-bold uppercase tracking-wider">Live</span>
+      </button>
+      <button
+        onClick={() => setLayersOpen((p) => !p)}
+        className={`flex items-center gap-2 px-5 py-2.5 rounded-full border backdrop-blur-sm transition-all ${
+          layersOpen
+            ? "bg-orange-500/15 border-orange-500/40 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.25)]"
+            : "bg-[#1a1a1a] border-neutral-600/40 text-neutral-400 shadow-[0_0_15px_rgba(150,150,150,0.1)] hover:text-neutral-200 hover:border-neutral-500/50"
+        }`}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" strokeLinejoin="round" />
+          <path d="M2 17l10 5 10-5" strokeLinejoin="round" />
+          <path d="M2 12l10 5 10-5" strokeLinejoin="round" />
+        </svg>
+        <span className="text-xs font-bold uppercase tracking-wider">Layers</span>
+      </button>
+      {!chatOpen && (
+        <button
+          onClick={() => { setChatTab("chat"); setChatOpen(true); }}
+          className="relative flex items-center gap-2 px-5 py-2.5 rounded-full border bg-[#1a1a1a] border-blue-500/40 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)] hover:shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:bg-blue-500/10 backdrop-blur-sm transition-all"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+          <span className="text-xs font-bold uppercase tracking-wider">Chat</span>
+          {hasUnreadChat && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+          )}
+        </button>
+      )}
+    </div>,
+    document.body,
+  ) : null;
+
   return (
     <div className="h-screen w-screen overflow-hidden">
       <StrikeFlash key={flashKeyTotal} active={flashActive} />
       <SirenBanner alerts={filteredSirenAlerts} israelRegions={activeIsraelRegions} />
       <InterceptionBanner outcomes={outcomes} />
       <Header
-        incidents={incidents}
+        incidents={filteredIncidents}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         activeAlertCount={activeAlertCount}
@@ -949,7 +1055,7 @@ export default function Home() {
         onResetWidgets={handleResetWidgets}
       />
 
-      <NewsTicker incidents={incidents} customText={tickerText} briefingHeadlines={briefingHeadlines} />
+      <NewsTicker incidents={filteredIncidents} customText={tickerText} briefingHeadlines={briefingHeadlines} />
 
       {settingsOpen && (
         <SettingsPanel settings={settings} onChange={handleSettingsChange} />
@@ -957,7 +1063,7 @@ export default function Home() {
 
       {/* Announcement banner */}
       {announcement && announcementDismissed !== announcement && (
-        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 z-[43] w-[calc(100%-2rem)] max-w-xl pointer-events-auto">
+        <div className="fixed top-[88px] left-1/2 -translate-x-1/2 z-[53] w-[calc(100%-2rem)] max-w-xl pointer-events-auto">
           <div className="bg-[#1a1a1a] border border-red-500/50 rounded-lg px-4 py-3 flex items-start gap-3 shadow-[0_4px_20px_rgba(239,68,68,0.15)]">
             <span className="text-red-400 text-base mt-px shrink-0">!</span>
             <p className="text-sm text-neutral-200 leading-relaxed flex-1">{announcement}</p>
@@ -976,7 +1082,7 @@ export default function Home() {
 
       {/* Info banner */}
       {!disclaimerAccepted && (
-        <div className={`fixed ${announcement && announcementDismissed !== announcement ? "top-[140px]" : "top-[88px]"} left-1/2 -translate-x-1/2 z-[42] w-[calc(100%-2rem)] max-w-xl transition-all`}>
+        <div className={`fixed ${announcement && announcementDismissed !== announcement ? "top-[140px]" : "top-[88px]"} left-1/2 -translate-x-1/2 z-[52] w-[calc(100%-2rem)] max-w-xl transition-all`}>
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-start gap-3 shadow-lg">
             <p className="text-xs text-neutral-400 leading-relaxed flex-1">
               All data is aggregated from publicly available OSINT sources and presented for informational purposes only. Content does not reflect the views of the site operator. Use at your own discretion.
@@ -1033,6 +1139,12 @@ export default function Home() {
                 flashCountry={flashCountryName}
                 sirenCountries={sirenCountryList}
                 showCountries={showCountries}
+                showSeismic={showSeismic}
+                seismicGeoJSON={seismicGeoJSON}
+                showAircraft={showAircraft}
+                aircraftGeoJSON={aircraftGeoJSON}
+                showVessels={showVessels}
+                vesselGeoJSON={vesselGeoJSON}
               />
               {selectedIncident && mapInstance && (
                 <IncidentCard
@@ -1049,34 +1161,19 @@ export default function Home() {
                 />
               )}
             </div>
-            <MapOverlayControls
-              showBases={showBases}
-              onToggleBases={handleToggleBases}
-              showProxies={showProxies}
-              onToggleProxies={handleToggleProxies}
-              showFirms={showFirms}
-              onToggleFirms={handleToggleFirms}
-              showCountries={showCountries}
-              onToggleCountries={handleToggleCountries}
-              firmsCount={firmsCounts.total}
-              mapStyle={mapStyle}
-              onMapStyleChange={handleMapStyleChange}
-              onOpenChat={() => { setChatTab("chat"); setChatOpen(true); }}
-              hasUnreadChat={hasUnreadChat}
-            />
             {mapInstance && (alerts.length > 0 || testAlerts.length > 0 || timelineMissiles.length > 0) && (
               <MissileOverlay
                 alerts={[...alerts, ...testAlerts, ...timelineMissiles]}
                 map={mapInstance}
                 onAlertClick={handleAlertClick}
-                soundEnabled={settings.soundEnabled}
+                soundEnabled={settings.soundEnabled && settings.soundSiren !== false}
               />
             )}
             {mapInstance && (a10Trigger || timelineA10) && (
               <A10Overlay
                 incident={(a10Trigger || timelineA10)!}
                 map={mapInstance}
-                soundEnabled={settings.soundEnabled}
+                soundEnabled={settings.soundEnabled && settings.soundBrrt !== false}
               />
             )}
             {timelineActive && (
@@ -1096,6 +1193,34 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* Map overlay controls — layers, bases, style etc. */}
+      {!loading && (
+        <MapOverlayControls
+          showBases={showBases}
+          onToggleBases={handleToggleBases}
+          showProxies={showProxies}
+          onToggleProxies={handleToggleProxies}
+          showFirms={showFirms}
+          onToggleFirms={handleToggleFirms}
+          showCountries={showCountries}
+          onToggleCountries={handleToggleCountries}
+          firmsCount={firmsCounts.total}
+          showSeismic={showSeismic}
+          onToggleSeismic={() => setShowSeismic((p) => !p)}
+          seismicCount={seismicCounts.total}
+          showAircraft={showAircraft}
+          onToggleAircraft={handleToggleAircraft}
+          aircraftCount={aircraftCount}
+          showVessels={showVessels}
+          onToggleVessels={handleToggleVessels}
+          vesselCount={vesselCount}
+          mapStyle={mapStyle}
+          onMapStyleChange={handleMapStyleChange}
+          onOpenChat={() => { setChatTab("chat"); setChatOpen(true); }}
+          hasUnreadChat={hasUnreadChat}
+        />
+      )}
 
       {/* Left column — Satellite panel when in satellite mode, gauges otherwise */}
       {isMapView(viewMode) && viewMode === "satellite" && (
@@ -1153,7 +1278,7 @@ export default function Home() {
       {mobileTab === "feed" && <MobileFeedPanel onClose={() => setMobileTab("map")} />}
       {mobileTab === "stats" && (
         <MobileStatsPanel
-          incidents={incidents}
+          incidents={filteredIncidents}
           notams={notams}
           lastIranStrikeAt={lastIranStrikeAt}
           lastUSStrikeAt={lastUSStrikeAt}
@@ -1365,7 +1490,7 @@ export default function Home() {
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} defaultTab={chatTab} />
 
       {/* Live video panel */}
-      <LiveVideoPanel open={liveVideoOpen} onToggle={() => setLiveVideoOpen((p) => !p)} hideTrigger={chatOpen} />
+      <LiveVideoPanel open={liveVideoOpen} onToggle={() => setLiveVideoOpen((p) => !p)} hideTrigger={chatOpen} desktopTriggerHidden />
 
       {/* Mobile chat FAB — next to Live button */}
       {!chatOpen && !liveVideoOpen && (
@@ -1381,6 +1506,12 @@ export default function Home() {
           )}
         </button>
       )}
+
+      {/* Desktop layers panel — separate portal above bottom bar */}
+      {layersOpen && !liveVideoOpen && desktopLayersPortal}
+
+      {/* Desktop bottom center — Live + Layers + Chat buttons */}
+      {!liveVideoOpen && desktopBottomBar}
 
       {/* Mobile bottom tab bar */}
       <MobileTabBar

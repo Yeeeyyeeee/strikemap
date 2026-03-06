@@ -55,7 +55,7 @@ export async function GET() {
     const count = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
     return NextResponse.json(
       { count },
-      { headers: { "Cache-Control": "no-store" } }
+      { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }
     );
   } catch {
     return NextResponse.json({ count: 0 });

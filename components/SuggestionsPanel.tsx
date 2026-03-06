@@ -10,6 +10,7 @@ interface Suggestion {
   status: "wip" | "completed";
   votes: number;
   voterIds: string[];
+  downvoterIds?: string[];
   createdAt: number;
   nickname: string;
 }
@@ -144,7 +145,30 @@ export default function SuggestionsPanel() {
     setVotingId(null);
   }, [votingId]);
 
+  const handleDownvote = useCallback(async (id: string) => {
+    if (votingId) return;
+    setVotingId(id);
+    try {
+      const res = await fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "downvote", id, voterId: voterId.current }),
+      });
+      if (res.ok) {
+        setSuggestions((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? { ...s, votes: s.votes - 1, downvoterIds: [...(s.downvoterIds || []), voterId.current] }
+              : s
+          )
+        );
+      }
+    } catch {/* ignore */}
+    setVotingId(null);
+  }, [votingId]);
+
   const hasVoted = (sug: Suggestion) => sug.voterIds.includes(voterId.current);
+  const hasDownvoted = (sug: Suggestion) => (sug.downvoterIds || []).includes(voterId.current);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -161,13 +185,15 @@ export default function SuggestionsPanel() {
           const sug = suggestions.find((s) => s.id === selectedId);
           if (!sug) return null;
           const voted = hasVoted(sug);
+          const downvoted = hasDownvoted(sug);
+          const anyVote = voted || downvoted;
           const badge = DEVICE_BADGE[sug.device] || DEVICE_BADGE.all;
           const isDeployed = sug.status === "completed";
           return (
             <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4 relative">
               <button
                 onClick={() => setSelectedId(null)}
-                className="absolute top-3 right-3 text-neutral-500 hover:text-neutral-300 transition-colors"
+                className="absolute top-3 right-3 text-red-400/70 hover:text-red-400 transition-colors"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M18 6L6 18" /><path d="M6 6l12 12" />
@@ -194,22 +220,37 @@ export default function SuggestionsPanel() {
                   <span>{sug.nickname}</span>
                   <span>{relativeTime(sug.createdAt)}</span>
                 </div>
-                <button
-                  onClick={() => !voted && !isDeployed && handleVote(sug.id)}
-                  disabled={voted || isDeployed || votingId === sug.id}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    isDeployed
-                      ? "text-green-500/50 cursor-default"
-                      : voted
-                        ? "text-red-400 bg-red-500/10 cursor-default"
-                        : "text-neutral-500 bg-[#1a1a1a] hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
-                  </svg>
-                  {sug.votes}
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => !anyVote && !isDeployed && handleVote(sug.id)}
+                    disabled={anyVote || isDeployed || votingId === sug.id}
+                    className={`p-1 rounded transition-colors ${
+                      isDeployed ? "text-green-500/50 cursor-default"
+                        : voted ? "text-red-400 cursor-default"
+                        : anyVote ? "text-neutral-600 cursor-default"
+                        : "text-neutral-500 hover:text-red-400 cursor-pointer"
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                    </svg>
+                  </button>
+                  <span className={`text-xs font-bold tabular-nums ${sug.votes > 0 ? "text-red-400" : sug.votes < 0 ? "text-blue-400" : "text-neutral-500"}`}>{sug.votes}</span>
+                  <button
+                    onClick={() => !anyVote && !isDeployed && handleDownvote(sug.id)}
+                    disabled={anyVote || isDeployed || votingId === sug.id}
+                    className={`p-1 rounded transition-colors ${
+                      isDeployed ? "text-green-500/50 cursor-default"
+                        : downvoted ? "text-blue-400 cursor-default"
+                        : anyVote ? "text-neutral-600 cursor-default"
+                        : "text-neutral-500 hover:text-blue-400 cursor-pointer"
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5 rotate-180" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -218,6 +259,8 @@ export default function SuggestionsPanel() {
         {/* List view */}
         {!selectedId && sorted.map((sug) => {
           const voted = hasVoted(sug);
+          const downvoted = hasDownvoted(sug);
+          const anyVote = voted || downvoted;
           const badge = DEVICE_BADGE[sug.device] || DEVICE_BADGE.all;
           const isDeployed = sug.status === "completed";
           return (
@@ -231,23 +274,38 @@ export default function SuggestionsPanel() {
               onClick={() => setSelectedId(sug.id)}
             >
               <div className="flex items-start gap-2">
-                {/* Vote button */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); !voted && !isDeployed && handleVote(sug.id); }}
-                  disabled={voted || isDeployed || votingId === sug.id}
-                  className={`flex flex-col items-center pt-0.5 shrink-0 transition-colors ${
-                    isDeployed
-                      ? "text-green-500/50 cursor-default"
-                      : voted
-                        ? "text-red-400 cursor-default"
+                {/* Vote buttons */}
+                <div className="flex flex-col items-center pt-0.5 shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); !anyVote && !isDeployed && handleVote(sug.id); }}
+                    disabled={anyVote || isDeployed || votingId === sug.id}
+                    className={`transition-colors ${
+                      isDeployed ? "text-green-500/50 cursor-default"
+                        : voted ? "text-red-400 cursor-default"
+                        : anyVote ? "text-neutral-700 cursor-default"
                         : "text-neutral-600 hover:text-red-400 cursor-pointer"
-                  }`}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
-                  </svg>
-                  <span className="text-[10px] font-bold">{sug.votes}</span>
-                </button>
+                    }`}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                    </svg>
+                  </button>
+                  <span className={`text-[10px] font-bold tabular-nums ${sug.votes > 0 ? "text-red-400" : sug.votes < 0 ? "text-blue-400" : "text-neutral-500"}`}>{sug.votes}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); !anyVote && !isDeployed && handleDownvote(sug.id); }}
+                    disabled={anyVote || isDeployed || votingId === sug.id}
+                    className={`transition-colors ${
+                      isDeployed ? "text-green-500/50 cursor-default"
+                        : downvoted ? "text-blue-400 cursor-default"
+                        : anyVote ? "text-neutral-700 cursor-default"
+                        : "text-neutral-600 hover:text-blue-400 cursor-pointer"
+                    }`}
+                  >
+                    <svg className="w-4 h-4 rotate-180" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                    </svg>
+                  </button>
+                </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { scrapeChannel, isIranRelated, getConfiguredChannels, ChannelPost } from "@/lib/telegram";
+import { scrapeChannel, isIranRelated, getConfiguredChannels, classifyPost, ChannelPost } from "@/lib/telegram";
 import { enrichWithKeywords } from "@/lib/keywordEnricher";
 import { processSirenPosts } from "@/lib/sirenDetector";
 import { getRedis } from "@/lib/redis";
@@ -78,8 +78,11 @@ export async function GET() {
     // Process ALL posts for siren detection (before dedup, so we don't miss alerts)
     await processSirenPosts(posts);
 
-    // Enrich deduped posts with coordinates so feed clicks can navigate the map
+    // Enrich deduped posts with coordinates and category
     for (const post of dedupedPosts) {
+      // Classify post category
+      post.category = classifyPost(post.text);
+
       if (isIranRelated(post.text)) {
         const kwResult = enrichWithKeywords(post.text);
         if (kwResult) {

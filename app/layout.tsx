@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/I18nContext";
-import { Analytics } from "@vercel/analytics/react";
 import TelegramToast from "@/components/TelegramToast";
 
 export const metadata: Metadata = {
@@ -16,13 +15,18 @@ export const metadata: Metadata = {
     title: "StrikeMap — Live US/Israel Iran Tracker",
     description: "Live map tracking US/Israel and Iran military activity in real-time",
     siteName: "StrikeMap",
+    url: "https://strikemap.live",
     type: "website",
-    images: [{ url: "/og-image.png", width: 1500, height: 500 }],
+    images: [
+      { url: "https://strikemap.live/og-banner.jpg", width: 1500, height: 500, alt: "StrikeMap — Live Military Conflict Tracker" },
+      { url: "https://strikemap.live/og-square.jpg", width: 1000, height: 1000, alt: "StrikeMap Logo" },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "StrikeMap — Live US/Israel Iran Tracker",
     description: "Live map tracking US/Israel and Iran military activity in real-time",
+    images: ["https://strikemap.live/og-banner.jpg"],
   },
 };
 
@@ -55,7 +59,6 @@ export default function RootLayout({
           {children}
           <TelegramToast />
         </I18nProvider>
-        <Analytics />
       </body>
     </html>
   );

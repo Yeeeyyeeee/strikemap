@@ -15,6 +15,7 @@ export interface SirenAlertClient {
 
 interface SirenPollingOptions {
   soundEnabled: boolean;
+  soundAlerts?: boolean;
   notificationsEnabled: boolean;
   sendNotification?: (title: string, options: NotificationOptions) => void;
   onNewSiren?: (country: string) => void;
@@ -35,8 +36,6 @@ export function useSirenPolling(options: SirenPollingOptions): SirenPollingResul
     let firstPoll = true;
 
     const poll = async () => {
-      if (document.hidden && !firstPoll) return;
-
       try {
         const res = await fetch("/api/siren-alerts");
         const data = await res.json();
@@ -52,7 +51,7 @@ export function useSirenPolling(options: SirenPollingOptions): SirenPollingResul
             if (!prevSet.has(country)) {
               const countryEnabled = !ac || ac === "all" || ac.includes(country);
               if (countryEnabled) {
-                if (optionsRef.current.soundEnabled) {
+                if (optionsRef.current.soundEnabled && optionsRef.current.soundAlerts !== false) {
                   playAlertSound();
                 }
                 if (optionsRef.current.notificationsEnabled && optionsRef.current.sendNotification) {

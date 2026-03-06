@@ -112,7 +112,7 @@ export default memo(function Timeline({
             </span>
             <button
               onClick={onClose}
-              className="text-neutral-600 hover:text-neutral-300 transition-colors text-xs leading-none"
+              className="text-red-400/70 hover:text-red-400 transition-colors text-xs leading-none"
             >
               \u2715
             </button>

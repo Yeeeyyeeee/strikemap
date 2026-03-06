@@ -4,7 +4,7 @@
  */
 
 import { getRedis } from "./redis";
-import { REDIS_MANUAL_SIRENS_KEY } from "./constants";
+import { REDIS_MANUAL_SIRENS_KEY, SIREN_EXPIRY_MS } from "./constants";
 
 export interface SirenAlert {
   id: string;
@@ -98,9 +98,23 @@ const ISRAEL_KEYWORDS = [
 
 // --- Server-side active siren state ---
 
+// --- Reporting context (news reports ABOUT sirens, not live alerts) ---
+const REPORTING_CONTEXT = [
+  "reported", "according to", "sources say", "reports say", "sources indicate",
+  "media reports", "local media", "state media", "news agency",
+  "confirmed that", "officials say", "witnesses say", "earlier today",
+  "yesterday", "last night", "hours ago", "were heard",
+];
+
+// --- Urgency indicators (suggest a live alert, not a news report) ---
+const URGENCY_INDICATORS = [
+  "now", "right now", "just now", "breaking", "urgent", "alert",
+  "warning", "live", "happening", "ongoing", "currently", "immediately",
+  "الآن", "عاجل", "فوری", "هم اکنون",
+];
+
 const activeSirens = new Map<string, SirenAlert & { expiresAt: number }>();
 
-const SIREN_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes auto-expire
 const SUPPRESS_DURATION_MS = 60 * 60 * 1000; // 1 hour suppress after admin clear
 
 // Countries suppressed by admin — won't be auto-recreated from Telegram
@@ -158,9 +172,28 @@ function extractCountry(text: string): string | null {
   return matches[0].name;
 }
 
-function hasSirenKeywords(text: string): boolean {
+export function hasSirenKeywords(text: string): boolean {
   const lower = text.toLowerCase();
-  return SIREN_ACTIVATE_KEYWORDS.some((kw) => lower.includes(kw));
+  const sirenHits = SIREN_ACTIVATE_KEYWORDS.filter((kw) => lower.includes(kw));
+  if (sirenHits.length === 0) return false;
+
+  // Deduplicate overlapping keywords (e.g., "siren" inside "sirens")
+  const dedupedHits = sirenHits.filter((kw) =>
+    !sirenHits.some((other) => other !== kw && other.includes(kw))
+  );
+  const hitCount = dedupedHits.length;
+  if (hitCount === 0) return false;
+
+  const hasReporting = REPORTING_CONTEXT.some((kw) => lower.includes(kw));
+  const hasUrgency = URGENCY_INDICATORS.some((kw) => lower.includes(kw));
+
+  // If reporting context detected, require 2+ distinct siren keywords
+  if (hasReporting) {
+    return hitCount >= 2;
+  }
+
+  // Otherwise: 2+ distinct siren keywords, OR 1 keyword + urgency indicator
+  return hitCount >= 2 || (hitCount === 1 && hasUrgency);
 }
 
 function hasClearKeywords(text: string): boolean {

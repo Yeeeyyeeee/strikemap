@@ -121,7 +121,7 @@ export default function IncidentPanel({
         {/* Handle bar */}
         <div className="sticky top-0 bg-[#1a1a1a] pt-3 pb-2 px-6 flex items-center justify-between border-b border-[#2a2a2a]/50 rounded-t-2xl z-10">
           <div className="w-10 h-1 bg-[#333] rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className="text-red-400 text-xs font-semibold uppercase tracking-wider">
               {incident.weapon || "Strike"}
             </span>
@@ -141,10 +141,33 @@ export default function IncidentPanel({
                 VIDEO
               </span>
             )}
+            {incident.confidence && (
+              <span
+                className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                  incident.confidence === "verified"
+                    ? "bg-green-500/20 text-green-400"
+                    : incident.confidence === "confirmed"
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-neutral-500/20 text-neutral-400"
+                }`}
+              >
+                {incident.confidence}
+              </span>
+            )}
+            {incident.firmsBacked && (
+              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400/80" title="Corroborated by FIRMS thermal hotspot">
+                FIRMS
+              </span>
+            )}
+            {incident.seismicBacked && (
+              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400/80" title="Corroborated by seismic activity">
+                SEISMIC
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-neutral-300 mt-2 text-lg"
+            className="text-red-400/70 hover:text-red-400 mt-2 text-lg transition-colors"
           >
             ✕
           </button>
@@ -187,6 +210,46 @@ export default function IncidentPanel({
               <p className="text-sm text-neutral-300 leading-relaxed">
                 {incident.damage_assessment}
               </p>
+            </div>
+          )}
+
+          {/* Verification evidence */}
+          {incident.verification && (incident.verification.firms || incident.verification.seismic) && (
+            <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4">
+              <h3
+                className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                Sensor Verification
+              </h3>
+              <div className="space-y-1.5 text-xs">
+                {incident.verification.firms && (
+                  <div className="flex items-center gap-2 text-orange-400/80">
+                    <span className="text-neutral-500">FIRMS:</span>
+                    <span className="font-mono">{incident.verification.firms.hotspotCount}</span>
+                    <span className="text-neutral-600">hotspots</span>
+                    <span className="text-neutral-700">|</span>
+                    <span className="font-mono">{incident.verification.firms.maxFRP.toFixed(0)}</span>
+                    <span className="text-neutral-600">MW peak</span>
+                    <span className="text-neutral-700">|</span>
+                    <span className="font-mono">{incident.verification.firms.maxConfidence}%</span>
+                    <span className="text-neutral-600">conf</span>
+                  </div>
+                )}
+                {incident.verification.seismic && (
+                  <div className="flex items-center gap-2 text-yellow-400/80">
+                    <span className="text-neutral-500">Seismic:</span>
+                    <span className="font-mono">M{incident.verification.seismic.magnitude.toFixed(1)}</span>
+                    <span className="text-neutral-600">at {incident.verification.seismic.distanceKm.toFixed(0)}km</span>
+                    <span className="text-neutral-700">|</span>
+                    <span className="font-mono">{incident.verification.seismic.depth.toFixed(0)}km</span>
+                    <span className="text-neutral-600">deep</span>
+                    <span className="text-neutral-700">|</span>
+                    <span className="font-mono">{incident.verification.seismic.timeDeltaMin.toFixed(0)}min</span>
+                    <span className="text-neutral-600">delta</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

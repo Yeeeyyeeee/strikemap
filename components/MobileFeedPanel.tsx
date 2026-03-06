@@ -2,6 +2,7 @@
 
 import { memo, useState, useEffect, useCallback, useRef } from "react";
 import { isDirectVideoUrl } from "@/lib/videoUtils";
+import type { FeedCategory } from "@/lib/telegram";
 
 interface FeedPost {
   id: string;
@@ -14,7 +15,15 @@ interface FeedPost {
   lat?: number;
   lng?: number;
   location?: string;
+  category?: FeedCategory;
 }
+
+const CATEGORY_FILTERS: { label: string; value: FeedCategory | "all"; color: string; bg: string }[] = [
+  { label: "All", value: "all", color: "text-neutral-400", bg: "bg-neutral-500/20" },
+  { label: "STRIKE", value: "strike", color: "text-red-400", bg: "bg-red-500/20" },
+  { label: "GOV", value: "government", color: "text-sky-400", bg: "bg-sky-500/20" },
+  { label: "INTEL", value: "analysis", color: "text-amber-400", bg: "bg-amber-500/20" },
+];
 
 const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "All", keywords: [] },
@@ -49,6 +58,7 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [youtubeIds, setYoutubeIds] = useState<string[]>([]);
   const [countryFilter, setCountryFilter] = useState(COUNTRY_FILTERS[0]);
+  const [categoryFilter, setCategoryFilter] = useState<FeedCategory | "all">("all");
   const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set());
   const knownIdsRef = useRef<Set<string>>(new Set());
 
@@ -122,7 +132,7 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
         {onClose && (
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-neutral-300 p-1.5 transition-colors shrink-0"
+            className="text-red-400/70 hover:text-red-400 p-1.5 transition-colors shrink-0"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -177,13 +187,33 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
               </svg>
             </div>
           </div>
+          {/* Category filter chips */}
+          <div className="px-3 py-1.5 border-b border-[#2a2a2a]/50 shrink-0 flex gap-1.5">
+            {CATEGORY_FILTERS.map((cf) => (
+              <button
+                key={cf.value}
+                onClick={() => setCategoryFilter(cf.value)}
+                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${
+                  categoryFilter === cf.value
+                    ? `${cf.bg} ${cf.color} border border-current/30`
+                    : "text-neutral-600 hover:text-neutral-400"
+                }`}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {cf.label}
+              </button>
+            ))}
+          </div>
           <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50" style={{ WebkitOverflowScrolling: "touch" }}>
           {posts.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <span className="text-neutral-600 text-sm">Loading feed...</span>
             </div>
           ) : (
-            posts.filter((p) => matchesCountryFilter(p.text, countryFilter)).map((post) => {
+            posts
+              .filter((p) => matchesCountryFilter(p.text, countryFilter))
+              .filter((p) => categoryFilter === "all" || p.category === categoryFilter)
+              .map((post) => {
               const isExpanded = expandedId === post.id;
               const isNew = newPostIds.has(post.id);
               const msgId = post.id.split("/").pop() || "";
@@ -207,6 +237,21 @@ export default memo(function MobileFeedPanel({ onClose }: { onClose?: () => void
                       {(post.imageUrls || []).length > 0 && !post.videoUrl && (
                         <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 shrink-0">
                           IMG
+                        </span>
+                      )}
+                      {post.category === "strike" && (
+                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
+                          STRIKE
+                        </span>
+                      )}
+                      {post.category === "government" && (
+                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 shrink-0">
+                          GOV
+                        </span>
+                      )}
+                      {post.category === "analysis" && (
+                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
+                          INTEL
                         </span>
                       )}
                       <span className="text-neutral-600 text-[11px] ml-auto shrink-0">

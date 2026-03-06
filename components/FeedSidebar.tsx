@@ -2,8 +2,15 @@
 
 import { memo, useState, useEffect, useCallback, useRef } from "react";
 import { Incident } from "@/lib/types";
-import { ChannelPost } from "@/lib/telegram";
+import { ChannelPost, FeedCategory } from "@/lib/telegram";
 import { isDirectVideoUrl } from "@/lib/videoUtils";
+
+const CATEGORY_FILTERS: { label: string; value: FeedCategory | "all"; color: string; bg: string }[] = [
+  { label: "All", value: "all", color: "text-neutral-400", bg: "bg-neutral-500/20" },
+  { label: "STRIKE", value: "strike", color: "text-red-400", bg: "bg-red-500/20" },
+  { label: "GOV", value: "government", color: "text-sky-400", bg: "bg-sky-500/20" },
+  { label: "INTEL", value: "analysis", color: "text-amber-400", bg: "bg-amber-500/20" },
+];
 
 const COUNTRY_FILTERS: { label: string; keywords: string[] }[] = [
   { label: "All", keywords: [] },
@@ -48,6 +55,7 @@ export default memo(function FeedSidebar({
   const [posts, setPosts] = useState<ChannelPost[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<FeedCategory | "all">("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [newPostIds, setNewPostIds] = useState<Set<string>>(new Set());
@@ -218,8 +226,28 @@ export default memo(function FeedSidebar({
               )}
             </div>
           </div>
+          {/* Category filter chips */}
+          <div className="px-2 py-1 border-b border-[#2a2a2a]/50 shrink-0 flex gap-1">
+            {CATEGORY_FILTERS.map((cf) => (
+              <button
+                key={cf.value}
+                onClick={() => setCategoryFilter(cf.value)}
+                className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded transition-colors ${
+                  categoryFilter === cf.value
+                    ? `${cf.bg} ${cf.color} border border-current/30`
+                    : "text-neutral-600 hover:text-neutral-400"
+                }`}
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {cf.label}
+              </button>
+            ))}
+          </div>
           <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-[#2a2a2a]/50" style={{ WebkitOverflowScrolling: "touch" }}>
-          {posts.filter((p) => matchesCountryFilter(p.text, selectedCountries)).map((post) => {
+          {posts
+            .filter((p) => matchesCountryFilter(p.text, selectedCountries))
+            .filter((p) => categoryFilter === "all" || p.category === categoryFilter)
+            .map((post) => {
             const isExpanded = expandedId === post.id;
             const onMap = hasMapPoint(post);
             const msgId = post.id.split("/").pop() || "";
@@ -260,6 +288,21 @@ export default memo(function FeedSidebar({
                     {onMap && (
                       <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
                         MAP
+                      </span>
+                    )}
+                    {post.category === "strike" && (
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-red-500/20 text-red-400 shrink-0">
+                        STRIKE
+                      </span>
+                    )}
+                    {post.category === "government" && (
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-sky-500/20 text-sky-400 shrink-0">
+                        GOV
+                      </span>
+                    )}
+                    {post.category === "analysis" && (
+                      <span className="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
+                        INTEL
                       </span>
                     )}
                     <span className="text-neutral-600 text-[10px] ml-auto shrink-0">

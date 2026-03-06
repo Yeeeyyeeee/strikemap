@@ -231,10 +231,7 @@ export async function GET(request: Request) {
     const errorStack = err instanceof Error ? err.stack : undefined;
     console.error("[api/satellite/imagery] Error:", errorMsg, errorStack);
     return NextResponse.json(
-      {
-        error: "Failed to fetch satellite imagery",
-        ...(debug ? { detail: errorMsg, stack: errorStack } : {}),
-      },
+      { error: "Failed to fetch satellite imagery" },
       { status: 500 },
     );
   }

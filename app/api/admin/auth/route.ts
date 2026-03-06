@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { checkRateLimit, recordFailure, clearFailures } from "@/lib/rateLimit";
 
 const COOKIE_NAME = "admin_token";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -12,13 +13,23 @@ function getToken(): string {
 
 /** POST — login with password */
 export async function POST(req: Request) {
+  const { blocked, retryAfterSecs } = checkRateLimit(req);
+  if (blocked) {
+    return NextResponse.json(
+      { ok: false, error: `Too many attempts. Try again in ${retryAfterSecs}s` },
+      { status: 429, headers: { "Retry-After": String(retryAfterSecs) } },
+    );
+  }
+
   const { password } = await req.json().catch(() => ({ password: "" }));
   const expected = process.env.ADMIN_PASSWORD;
 
   if (!expected || password !== expected) {
+    recordFailure(req);
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
+  clearFailures(req);
   const token = getToken();
   const res = NextResponse.json({ ok: true });
   res.cookies.set(COOKIE_NAME, token, {

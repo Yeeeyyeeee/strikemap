@@ -2,6 +2,7 @@ import { Incident, MediaItem } from "./types";
 import { enrichBatch } from "./geocodeWithAI";
 import { enrichWithKeywords } from "./keywordEnricher";
 import { applyEnrichment } from "./enrichmentUtils";
+import { neutralizeText, hasBiasIndicators, neutralizeWithAI } from "./neutralize";
 
 const IRAN_KEYWORDS = [
   "iran",
@@ -52,6 +53,8 @@ const IRAN_KEYWORDS = [
   "bandar abbas",
 ];
 
+export type FeedCategory = "government" | "analysis" | "strike" | "general";
+
 export interface ChannelPost {
   id: string;
   channel: string;
@@ -64,6 +67,7 @@ export interface ChannelPost {
   lat?: number;
   lng?: number;
   location?: string;
+  category?: FeedCategory;
 }
 
 // Blocklist: reject messages about Russia/Ukraine conflict even if they match generic keywords
@@ -84,11 +88,173 @@ const RUSSIA_UKRAINE_BLOCKLIST = [
   "зсу", "всу", "збройні сили",
 ];
 
+// Non-military content blocklist: reject entertainment, sports, cultural, and political news
+// that match generic keywords like "strike", "attack", "gaza" but are not military events
+const NON_MILITARY_BLOCKLIST = [
+  "oscar", "oscars", "academy award", "nominated", "nomination",
+  "film", "movie", "documentary", "cinema", "director", "actress", "actor",
+  "box office", "premiere", "screenplay", "brad pitt", "joaquin phoenix",
+  "netflix", "hbo", "disney",
+  "football", "soccer", "cricket", "tennis", "olympic", "world cup",
+  "fifa", "championship", "tournament", "playoff",
+  "election", "ballot", "vote count", "polling station", "campaign rally",
+  "smear campaign", "defamation", "lawsuit", "court ruling",
+  "concert", "album", "spotify", "grammy", "billboard",
+  "stock market", "nasdaq", "dow jones", "wall street", "ipo",
+  "earthquake", "tsunami", "hurricane", "wildfire", "flood",
+  "covid", "pandemic", "vaccine", "vaccination",
+];
+
+// High-specificity military keywords that override the non-military blocklist
+const HIGH_SPECIFICITY_MILITARY = [
+  "missile", "ballistic", "cruise missile", "warhead", "intercept",
+  "airstrike", "air strike", "bombing", "bombardment", "shelling",
+  "idf", "irgc", "centcom", "pentagon", "military base",
+  "casualties", "killed", "wounded", "destroyed",
+  "siren", "sirens", "iron dome", "arrow", "david's sling",
+  "air defense", "air defence", "anti-aircraft",
+  "drone strike", "uav", "shahed", "fateh",
+];
+
+// High-specificity Iran keywords that always pass even with Russia/Ukraine present
+const HIGH_SPECIFICITY_IRAN = [
+  "tehran", "isfahan", "esfahan", "irgc", "shahed", "fateh", "fattah",
+  "emad", "ghadr", "sejjil", "kharg island", "bandar abbas", "natanz",
+  "fordow", "parchin", "bushehr", "tabriz", "shiraz", "qom", "mashhad",
+  "bavar-373", "khordad", "islamic republic", "ayatollah",
+  "hezbollah", "houthi", "ansar allah",
+];
+
 export function isIranRelated(text: string): boolean {
   const lower = text.toLowerCase();
-  // Reject Russia/Ukraine conflict messages
-  if (RUSSIA_UKRAINE_BLOCKLIST.some((kw) => lower.includes(kw))) return false;
+
+  // Non-military content filter: reject entertainment/sports/cultural posts
+  // that only match generic keywords like "strike", "attack", "gaza"
+  const nonMilHits = NON_MILITARY_BLOCKLIST.filter((kw) => lower.includes(kw)).length;
+  if (nonMilHits > 0) {
+    // Allow if high-specificity military terms are present
+    if (HIGH_SPECIFICITY_MILITARY.some((kw) => lower.includes(kw))) {
+      // genuinely military, continue
+    } else if (HIGH_SPECIFICITY_IRAN.some((kw) => lower.includes(kw))) {
+      // Iran-specific, continue
+    } else {
+      return false;
+    }
+  }
+
+  // Count Russia/Ukraine keyword hits
+  const ruHits = RUSSIA_UKRAINE_BLOCKLIST.filter((kw) => lower.includes(kw)).length;
+
+  if (ruHits > 0) {
+    // High-specificity Iran keywords always pass
+    if (HIGH_SPECIFICITY_IRAN.some((kw) => lower.includes(kw))) return true;
+
+    // Count Iran keyword hits
+    const iranHits = IRAN_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+
+    // Block if zero Iran keywords
+    if (iranHits === 0) return false;
+
+    // Block if Russia/Ukraine keywords dominate (> 2x Iran keywords)
+    if (ruHits > iranHits * 2) return false;
+  }
+
   return IRAN_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// --- Feed category classification ---
+
+const GOVERNMENT_KEYWORDS = [
+  "statement", "official statement", "press release", "press conference",
+  "ministry", "minister", "foreign minister", "defense minister", "prime minister",
+  "president", "spokesperson", "government", "decree", "resolution",
+  "ambassador", "embassy", "diplomatic", "diplomacy", "envoy",
+  "supreme leader", "ayatollah", "khamenei", "raisi", "pezeshkian",
+  "white house", "state department", "national security council",
+  "netanyahu", "gallant", "katz", "gantz",
+  "un security council", "united nations", "iaea",
+  "communiqué", "communique", "summit", "bilateral", "treaty",
+  "sanctions", "sanction", "executive order",
+  "parliament", "knesset", "majlis", "congress",
+  "ceasefire", "truce", "peace deal", "peace talks", "negotiations",
+  "condemned", "condemns", "denounced", "denounces",
+  "urges", "calls on", "demands", "warns",
+  "declared", "announces", "announced", "proclamation",
+];
+
+const STRIKE_KEYWORDS = [
+  "airstrike", "air strike", "airstrikes", "air strikes",
+  "missile strike", "missile attack", "missile launch", "missiles fired",
+  "drone strike", "drone attack", "drone launched",
+  "strike on", "strikes on", "struck", "targeted", "hit by",
+  "explosion", "explosions", "blast", "detonation",
+  "bombardment", "bombing", "bombed", "shelling", "shelled",
+  "rocket attack", "rocket fire", "rockets fired",
+  "intercept", "intercepted", "interception",
+  "iron dome", "arrow-3", "arrow 3", "david's sling", "thaad",
+  "air defense", "air defence", "anti-aircraft",
+  "projectile", "warhead", "ballistic", "cruise missile",
+  "shahed", "fateh", "fattah", "emad", "ghadr", "sejjil",
+  "incoming missile", "incoming drone", "incoming rocket",
+  "casualties", "killed", "wounded", "injured", "dead",
+  "destroyed", "damaged", "crater", "impact site",
+  "military operation", "operation underway",
+  "siren", "sirens", "red alert", "take cover",
+];
+
+const ANALYSIS_KEYWORDS = [
+  "osint", "open source intelligence", "geolocation", "geolocated",
+  "assessment", "analysis", "intelligence report", "intel report",
+  "satellite shows", "satellite image", "satellite imagery",
+  "confirmed via", "verified by", "cross-referenced",
+  "according to sources", "sources say", "sources report",
+  "thread", "🧵", "breakdown", "deep dive",
+  "evidence suggests", "indicators", "pattern of life",
+  "before and after", "damage assessment", "bda",
+  "flight data", "flight tracking", "ads-b", "adsb",
+  "ship tracking", "vessel tracking", "ais data",
+  "radar data", "sigint", "elint", "imint", "humint",
+  "situation report", "sitrep", "sit rep",
+  "update:", "summary:", "recap",
+  "expert says", "analyst", "researchers",
+  "investigation", "findings", "reveals",
+];
+
+/**
+ * Classify a feed post into a category based on keyword matching.
+ * Priority: strike > government > analysis > general.
+ */
+export function classifyPost(text: string): FeedCategory {
+  const lower = text.toLowerCase();
+
+  let strikeScore = 0;
+  for (const kw of STRIKE_KEYWORDS) {
+    if (lower.includes(kw)) strikeScore++;
+  }
+
+  let govScore = 0;
+  for (const kw of GOVERNMENT_KEYWORDS) {
+    if (lower.includes(kw)) govScore++;
+  }
+
+  let analysisScore = 0;
+  for (const kw of ANALYSIS_KEYWORDS) {
+    if (lower.includes(kw)) analysisScore++;
+  }
+
+  // Strike takes priority — these are the most actionable posts
+  if (strikeScore >= 2) return "strike";
+  if (strikeScore === 1 && lower.match(/\b(airstrike|air strike|missile strike|drone strike|bombardment|intercept(?:ed|ion)|iron dome|arrow-?3|thaad|shahed|fateh|fattah|red alert|sirens?)\b/)) return "strike";
+
+  // Government/official statements
+  if (govScore >= 2 && govScore >= analysisScore) return "government";
+  if (govScore === 1 && lower.match(/\b(ministry|minister|decree|sanctions?|ceasefire|ambassador|embassy|parliament|knesset|majlis|press release|communiqu[ée])\b/)) return "government";
+
+  // Analysis/OSINT
+  if (analysisScore >= 2) return "analysis";
+  if (analysisScore === 1 && lower.match(/\b(osint|sitrep|sit rep|geoloca|sigint|elint|imint|bda|ads-?b|situation report)\b/)) return "analysis";
+
+  return "general";
 }
 
 /**
@@ -308,6 +474,10 @@ export function postToIncident(post: ChannelPost): Incident {
     media.push({ type: "image", url });
   }
 
+  // Neutralize description text (rule-based, instant)
+  const neutralized = neutralizeText(post.text);
+  const displayText = neutralized.text;
+
   return {
     id: `tg-${post.id.replace("/", "-")}`,
     date: post.date || "",
@@ -315,8 +485,8 @@ export function postToIncident(post: ChannelPost): Incident {
     location: "",
     lat: 0,
     lng: 0,
-    description: `${post.text.slice(0, 200)}${post.text.length > 200 ? "..." : ""}`,
-    details: post.text,
+    description: `${displayText.slice(0, 200)}${displayText.length > 200 ? "..." : ""}`,
+    details: post.text, // Keep original for enrichment analysis
     weapon: "",
     target_type: "",
     video_url: post.videoUrl,
@@ -402,6 +572,17 @@ export async function fetchTelegramIncidents(): Promise<Incident[]> {
           if (enrichment.casualties_military && !inc.casualties_military) inc.casualties_military = enrichment.casualties_military;
           if (enrichment.casualties_description && !inc.casualties_description) inc.casualties_description = enrichment.casualties_description;
         }
+      }
+    }
+  }
+
+  // Third pass: AI neutralization for descriptions with remaining bias
+  if (process.env.GEMINI_API_KEY) {
+    const flagged = allIncidents.filter((inc) => hasBiasIndicators(inc.description));
+    if (flagged.length > 0) {
+      console.log(`[telegram] AI-neutralizing ${flagged.length} biased descriptions`);
+      for (const inc of flagged) {
+        inc.description = await neutralizeWithAI(inc.description);
       }
     }
   }

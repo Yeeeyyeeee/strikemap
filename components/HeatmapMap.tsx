@@ -18,6 +18,8 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const onAreaSelectRef = useRef(onAreaSelect);
+  onAreaSelectRef.current = onAreaSelect;
 
   const fetchAndSetData = useCallback(async (m: mapboxgl.Map) => {
     try {
@@ -112,13 +114,13 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
       const features = m.queryRenderedFeatures(e.point, { layers: ["media-points", "media-heatmap"] });
       if (features.length > 0) {
         const coords = e.lngLat;
-        onAreaSelect({
+        onAreaSelectRef.current({
           lat: coords.lat,
           lng: coords.lng,
           name: `${coords.lat.toFixed(2)}, ${coords.lng.toFixed(2)}`,
         });
       } else {
-        onAreaSelect(null);
+        onAreaSelectRef.current(null);
       }
     });
 
@@ -132,7 +134,8 @@ export default function HeatmapMap({ onAreaSelect, className }: HeatmapMapProps)
       m.remove();
       map.current = null;
     };
-  }, [onAreaSelect, fetchAndSetData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Poll for data updates
   useEffect(() => {

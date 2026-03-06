@@ -36,6 +36,11 @@ export interface Incident {
   casualties_description?: string; // AI-generated casualty summary
   media?: MediaItem[]; // images and videos from Telegram
   isStatement?: boolean; // true = political statement/news, not an actual strike — still shown on map but excluded from strike counts
+  confidence?: "unconfirmed" | "confirmed" | "verified";
+  sourceCount?: number;
+  firmsBacked?: boolean;
+  seismicBacked?: boolean;
+  verification?: VerificationEvidence;
 }
 
 export interface MissileAlert {
@@ -138,6 +143,39 @@ export interface BriefingReport {
   feedPostCount: number;
 }
 
+// --- Seismic types ---
+
+export interface SeismicEvent {
+  id: string;
+  magnitude: number;
+  lat: number;
+  lng: number;
+  depth: number; // km
+  timestamp: string; // ISO 8601
+  place: string;
+  type: string; // "earthquake", "explosion", etc.
+  correlatedIncidentId?: string;
+}
+
+// --- Verification types ---
+
+export interface VerificationEvidence {
+  firms?: {
+    hotspotCount: number;
+    maxFRP: number;
+    maxConfidence: number;
+    matchedAt: string;
+  };
+  seismic?: {
+    eventId: string;
+    magnitude: number;
+    depth: number;
+    distanceKm: number;
+    timeDeltaMin: number;
+    matchedAt: string;
+  };
+}
+
 // --- Satellite / FIRMS types ---
 
 export interface FIRMSHotspot {
@@ -151,6 +189,47 @@ export interface FIRMSHotspot {
   satellite: string; // "N20" etc.
   daynight: "D" | "N";
   correlatedIncidentId?: string; // set if matched to a known incident
+}
+
+// --- Aircraft tracking types ---
+
+export interface TrackedAircraft {
+  hex: string;          // ICAO24 hex address
+  callsign: string;     // flight callsign (trimmed)
+  lat: number;
+  lng: number;
+  alt: number;          // altitude in feet (alt_baro)
+  heading: number;      // track in degrees (0-360)
+  speed: number;        // ground speed in knots
+  type: string;         // aircraft type designator (e.g. "C17", "F35")
+  registration: string; // aircraft registration
+  onGround: boolean;
+  seen: number;         // seconds since last message
+  lastSeen: string;     // ISO timestamp when snapshot was taken
+}
+
+// --- Maritime vessel tracking types ---
+
+export type VesselType =
+  | "cargo"
+  | "tanker"
+  | "military"
+  | "passenger"
+  | "fishing"
+  | "tug"
+  | "other";
+
+export interface TrackedVessel {
+  mmsi: string;         // Maritime Mobile Service Identity
+  name: string;         // vessel name
+  lat: number;
+  lng: number;
+  cog: number;          // course over ground (degrees)
+  sog: number;          // speed over ground (knots)
+  heading: number;      // true heading
+  shipType: VesselType; // classified vessel type
+  shipTypeRaw: number;  // raw AIS ship type code
+  lastSeen: string;     // ISO timestamp
 }
 
 export interface SatelliteImagery {

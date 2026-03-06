@@ -26,8 +26,6 @@ const LOCATIONS: LocationEntry[] = [
   { keywords: ["haifa naval", "haifa port", "haifa base"], location: "Haifa Naval Base, Israel", lat: 32.82, lng: 34.98, military: true },
   { keywords: ["tel nof"], location: "Tel Nof Air Base, Israel", lat: 31.84, lng: 34.82, military: true },
   { keywords: ["sdot micha", "jericho missile"], location: "Sdot Micha Base, Israel", lat: 31.73, lng: 34.96, military: true },
-  { keywords: ["iron dome"], location: "Iron Dome Battery, Israel", lat: 31.80, lng: 34.78, military: true },
-
   // ---- Israeli cities ----
   { keywords: ["tel aviv"], location: "Tel Aviv, Israel", lat: 32.085, lng: 34.782, military: false },
   { keywords: ["jerusalem", "al-quds"], location: "Jerusalem, Israel", lat: 31.769, lng: 35.216, military: false },
@@ -147,6 +145,7 @@ const LOCATIONS: LocationEntry[] = [
   { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
   { keywords: ["salalah"], location: "Salalah, Oman", lat: 17.02, lng: 54.09, military: false },
   { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.70, military: true },
+  { keywords: ["musandam"], location: "Musandam, Oman", lat: 26.20, lng: 56.25, military: false },
   { keywords: ["oman"], location: "Oman", lat: 23.59, lng: 58.14, military: false },
 
   // ---- Saudi Arabia ----
@@ -187,11 +186,6 @@ const LOCATIONS: LocationEntry[] = [
 
   // ---- Djibouti ----
   { keywords: ["camp lemonnier", "djibouti"], location: "Camp Lemonnier, Djibouti", lat: 11.55, lng: 43.15, military: true },
-
-  // ---- Oman ----
-  { keywords: ["duqm"], location: "Duqm, Oman", lat: 19.67, lng: 57.71, military: false },
-  { keywords: ["muscat"], location: "Muscat, Oman", lat: 23.59, lng: 58.54, military: false },
-  { keywords: ["musandam"], location: "Musandam, Oman", lat: 26.20, lng: 56.25, military: false },
 
   // ---- Region-level fallbacks (AFTER specific cities so "Tel Aviv" matches before "central Israel") ----
 
@@ -314,6 +308,111 @@ const ISRAEL_ONLY_KEYWORDS = [
   "iaf", "israel defense", "mossad",
 ];
 
+/** Word-boundary match: prevents "arak" matching inside "Iraq", "oman" inside "woman" */
+function wordBoundaryMatch(text: string, keyword: string): number {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`\\b${escaped}\\b`, "i");
+  const m = regex.exec(text);
+  return m ? m.index : -1;
+}
+
+/** Specificity tier for location scoring: military=4, city=3, region=2, country=1 */
+function locationSpecificity(entry: LocationEntry): number {
+  if (entry.military) return 4;
+  const loc = entry.location.toLowerCase();
+  // Country-level entries (no comma or just country name)
+  if (!loc.includes(",") && !loc.includes(" ")) return 1;
+  // Region-level (e.g. "Central Israel", "South Lebanon")
+  if (loc.startsWith("central ") || loc.startsWith("northern ") || loc.startsWith("southern ") ||
+      loc.startsWith("western ") || loc.startsWith("eastern ") || loc.startsWith("north ") ||
+      loc.startsWith("south ") || loc.startsWith("mount ")) return 2;
+  // City-level
+  return 3;
+}
+
+const STRIKE_TARGET_VERBS = [
+  "struck", "hit", "attack on", "attacked", "bombed", "bombing",
+  "shelled", "shelling", "targeted", "destroyed", "explosion in",
+  "blast in", "impact in", "airstrike on", "airstrikes on",
+  "strike on", "strikes on", "rockets hit", "missiles hit",
+];
+
+const SOURCE_INDICATORS = [
+  "from", "launched by", "launched from", "fired from", "originated from",
+  "sent from", "came from",
+];
+
+/** Check if the keyword at this position is in a target context (struck X) vs source (from X) */
+function isTargetContext(text: string, position: number, kwLength: number): boolean {
+  const lower = text.toLowerCase();
+  // Check 60 chars before the keyword for strike verbs → target context
+  const before = lower.slice(Math.max(0, position - 60), position);
+  const hasStrikeVerb = STRIKE_TARGET_VERBS.some((v) => before.includes(v));
+
+  // Check for source indicators right before the keyword
+  const beforeImmediate = lower.slice(Math.max(0, position - 25), position).trimEnd();
+  const isSource = SOURCE_INDICATORS.some((s) => beforeImmediate.endsWith(s));
+
+  if (isSource) return false;
+  if (hasStrikeVerb) return true;
+  // Default: first mention is likely the target
+  return true;
+}
+
+interface ScoredLocation {
+  entry: LocationEntry;
+  position: number;
+  specificity: number;
+  isTarget: boolean;
+  matchedKeyword: string;
+}
+
+/** Find all location matches and score them; return the best one as the target */
+export function matchBestLocation(text: string, entries: LocationEntry[]): LocationEntry | null {
+  const matches: ScoredLocation[] = [];
+
+  for (const entry of entries) {
+    for (const kw of entry.keywords) {
+      const pos = wordBoundaryMatch(text, kw);
+      if (pos >= 0) {
+        const spec = locationSpecificity(entry);
+        const target = isTargetContext(text, pos, kw.length);
+        matches.push({ entry, position: pos, specificity: spec, isTarget: target, matchedKeyword: kw });
+        break; // one match per entry is enough
+      }
+    }
+  }
+
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0].entry;
+
+  // Score and rank: target context > specificity > position
+  matches.sort((a, b) => {
+    // Target context wins over source context
+    if (a.isTarget !== b.isTarget) return a.isTarget ? -1 : 1;
+    // Higher specificity wins
+    if (a.specificity !== b.specificity) return b.specificity - a.specificity;
+    // Earlier position wins (tie-breaker)
+    return a.position - b.position;
+  });
+
+  return matches[0].entry;
+}
+
+/** Word-boundary version of matchFirst for weapons (still first-match, just with \b) */
+function matchFirstWB<T extends { keywords: string[] }>(
+  text: string,
+  entries: T[]
+): T | null {
+  for (const entry of entries) {
+    if (entry.keywords.some((kw) => wordBoundaryMatch(text, kw) >= 0)) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+// Keep original matchFirst for internal use (interception, etc.)
 function matchFirst<T extends { keywords: string[] }>(
   text: string,
   entries: T[]
@@ -515,45 +614,73 @@ const CASUALTY_PATTERNS: { regex: RegExp; group: number }[] = [
 
 function detectCasualties(text: string): CasualtyResult {
   const lower = text.toLowerCase();
-  let totalCount = 0;
 
-  // Extract the highest casualty number mentioned
+  // Collect all distinct casualty mentions with their positions
+  interface CasualtyMention {
+    count: number;
+    position: number;
+    isMilitary: boolean;
+    isCivilian: boolean;
+  }
+  const mentions: CasualtyMention[] = [];
+
   for (const { regex, group } of CASUALTY_PATTERNS) {
     regex.lastIndex = 0;
     let match;
     while ((match = regex.exec(text)) !== null) {
       const num = parseInt(match[group], 10);
-      if (num > 0 && num < 10000) { // sanity check
-        totalCount = Math.max(totalCount, num);
+      if (num <= 0 || num >= 10000) continue;
+
+      const pos = match.index;
+
+      // Skip if within 20 chars of an existing match with the same count
+      // (prevents double-counting "10 killed" matched by multiple patterns)
+      const isDuplicate = mentions.some(
+        (m) => m.count === num && Math.abs(m.position - pos) < 20
+      );
+      if (isDuplicate) continue;
+
+      // Context-aware attribution: check the match text itself first,
+      // then fall back to a surrounding window
+      const matchText = match[0].toLowerCase();
+      let isCivilian = CIVILIAN_CONTEXT.some((kw) => matchText.includes(kw));
+      let isMilitary = MILITARY_CONTEXT.some((kw) => matchText.includes(kw));
+
+      // If no clear context in match text, check surrounding window
+      if (!isCivilian && !isMilitary) {
+        const windowStart = Math.max(0, pos - 40);
+        const windowEnd = Math.min(text.length, pos + match[0].length + 40);
+        const window = text.slice(windowStart, windowEnd).toLowerCase();
+        isCivilian = CIVILIAN_CONTEXT.some((kw) => window.includes(kw));
+        isMilitary = MILITARY_CONTEXT.some((kw) => window.includes(kw));
       }
+
+      mentions.push({ count: num, position: pos, isMilitary, isCivilian });
     }
   }
 
-  if (totalCount === 0) {
+  if (mentions.length === 0) {
     return { casualties_military: 0, casualties_civilian: 0, casualties_description: "" };
   }
 
-  // Determine military vs civilian from context
-  const hasCivilian = CIVILIAN_CONTEXT.some((kw) => lower.includes(kw) || text.includes(kw));
-  const hasMilitary = MILITARY_CONTEXT.some((kw) => lower.includes(kw) || text.includes(kw));
-
+  // Sum distinct mentions, attributed by context
   let milCount = 0;
   let civCount = 0;
 
-  if (hasCivilian && !hasMilitary) {
-    civCount = totalCount;
-  } else if (hasMilitary && !hasCivilian) {
-    milCount = totalCount;
-  } else if (hasCivilian && hasMilitary) {
-    // Both mentioned — split roughly
-    milCount = Math.ceil(totalCount * 0.5);
-    civCount = totalCount - milCount;
-  } else {
-    // No context — default to civilian (most strikes hit mixed/civilian areas)
-    civCount = totalCount;
+  for (const m of mentions) {
+    if (m.isMilitary && !m.isCivilian) {
+      milCount += m.count;
+    } else if (m.isCivilian && !m.isMilitary) {
+      civCount += m.count;
+    } else {
+      // No clear context or both → default to civilian
+      civCount += m.count;
+    }
   }
 
-  const desc = `${totalCount} ${hasCivilian && !hasMilitary ? "civilian" : hasMilitary && !hasCivilian ? "military" : ""} casualties reported`.trim().replace(/\s+/g, " ");
+  const totalCount = milCount + civCount;
+  const typeLabel = milCount > 0 && civCount === 0 ? "military" : civCount > 0 && milCount === 0 ? "civilian" : "";
+  const desc = `${totalCount} ${typeLabel} casualties reported`.trim().replace(/\s+/g, " ");
 
   return {
     casualties_military: milCount,
@@ -592,10 +719,17 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
 
   const lower = text.toLowerCase();
 
-  // Require at least one military/strike indicator — filters out political announcements,
-  // press conferences, speeches, sanctions, negotiations, etc.
-  const hasStrikeIndicator = STRIKE_INDICATORS.some((kw) => lower.includes(kw) || text.includes(kw));
-  if (!hasStrikeIndicator) return null;
+  // Require 2+ military/strike indicators — filters out false positives from
+  // generic words like "fire" or "attack" appearing in non-military context.
+  // Exception: if a named weapon appears, 1 indicator suffices.
+  const NAMED_WEAPONS = [
+    "shahed", "fateh", "fattah", "emad", "ghadr", "sejjil", "tomahawk", "jdam",
+    "jassm", "delilah", "spice", "gbu-28", "gbu-39", "khorramshahr", "paveh",
+    "khalij fars", "ya ali",
+  ];
+  const matchedIndicators = STRIKE_INDICATORS.filter((kw) => lower.includes(kw) || text.includes(kw));
+  const hasNamedWeapon = NAMED_WEAPONS.some((w) => lower.includes(w));
+  if (matchedIndicators.length < 2 && !hasNamedWeapon) return null;
 
   // Filter out siren-only posts — these are tracked by sirenDetector, not as strikes
   const SIREN_ONLY = ["siren", "sirens", "alarm", "alarms", "alert sounded", "red alert", "tzeva adom", "אזעקה", "צבע אדום"];
@@ -607,48 +741,52 @@ export function enrichWithKeywords(text: string): EnrichmentResult | null {
     if (!hasStrikeConfirmation) return null;
   }
 
-  // Find location
-  const loc = matchFirst(text, LOCATIONS);
+  // Find location (word-boundary, multi-location scoring)
+  const loc = matchBestLocation(text, LOCATIONS);
   if (!loc) return null; // Can't place it on the map without coordinates
 
-  // Find weapon
-  const wpn = matchFirst(text, WEAPONS);
+  // Find weapon (word-boundary, first match)
+  const wpn = matchFirstWB(text, WEAPONS);
 
-  // Determine side based on location context + keyword analysis
+  // Determine side: keyword evidence FIRST, location fallback when inconclusive
   let side: "iran" | "us" | "israel" = "iran";
-  const targetInIran = loc.location.includes("Iran");
-  const targetInIsrael = loc.location.includes("Israel");
-  const targetInLebanon = loc.location.includes("Lebanon");
-  const targetInYemen = loc.location.includes("Yemen");
-  const targetInSyria = loc.location.includes("Syria");
-  const targetInGaza = loc.location.includes("Gaza");
-  const targetInGulf = loc.location.includes("UAE") || loc.location.includes("Bahrain")
-    || loc.location.includes("Qatar") || loc.location.includes("Kuwait")
-    || loc.location.includes("Saudi") || loc.location.includes("Oman");
 
-  if (targetInIran) {
-    // Strikes IN Iran are by US or Israel, not by Iran on itself
-    const usOnly = US_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
-    const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
-    side = usOnly > ilOnly ? "us" : ilOnly > usOnly ? "israel" : "us";
-  } else if (targetInIsrael || targetInGulf) {
-    // Strikes on Israel or Gulf states are by Iran/proxies
-    side = "iran";
-  } else if (targetInLebanon || targetInSyria || targetInGaza) {
-    // Strikes in Lebanon/Syria/Gaza are usually by Israel
-    side = "israel";
-  } else if (targetInYemen) {
-    // Strikes in Yemen are usually by US
-    side = "us";
+  // Score keyword evidence using word boundaries
+  const iranKwHits = IRAN_ATTACKER_KEYWORDS.filter((kw) => wordBoundaryMatch(text, kw) >= 0).length;
+  const usIsraelKwHits = US_ISRAEL_ATTACKER_KEYWORDS.filter((kw) => wordBoundaryMatch(text, kw) >= 0).length;
+  const keywordDecisive = (iranKwHits > 0 || usIsraelKwHits > 0) && iranKwHits !== usIsraelKwHits;
+
+  if (keywordDecisive) {
+    // Keyword evidence is conclusive
+    if (usIsraelKwHits > iranKwHits) {
+      const usOnly = US_ONLY_KEYWORDS.filter((kw) => wordBoundaryMatch(text, kw) >= 0).length;
+      const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => wordBoundaryMatch(text, kw) >= 0).length;
+      side = usOnly > ilOnly ? "us" : ilOnly > usOnly ? "israel" : "us";
+    } else {
+      side = "iran";
+    }
   } else {
-    // Fallback: use keyword scoring
-    const iranScore = IRAN_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
-    const usScore = US_ISRAEL_ATTACKER_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+    // Fallback to location-based attribution
+    const targetInIran = loc.location.includes("Iran");
+    const targetInIsrael = loc.location.includes("Israel");
+    const targetInLebanon = loc.location.includes("Lebanon");
+    const targetInYemen = loc.location.includes("Yemen");
+    const targetInSyria = loc.location.includes("Syria");
+    const targetInGaza = loc.location.includes("Gaza");
+    const targetInGulf = loc.location.includes("UAE") || loc.location.includes("Bahrain")
+      || loc.location.includes("Qatar") || loc.location.includes("Kuwait")
+      || loc.location.includes("Saudi") || loc.location.includes("Oman");
 
-    if (usScore > iranScore) {
+    if (targetInIran) {
       const usOnly = US_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
       const ilOnly = ISRAEL_ONLY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
       side = usOnly > ilOnly ? "us" : ilOnly > usOnly ? "israel" : "us";
+    } else if (targetInIsrael || targetInGulf) {
+      side = "iran";
+    } else if (targetInLebanon || targetInSyria || targetInGaza) {
+      side = "israel";
+    } else if (targetInYemen) {
+      side = "us";
     }
   }
 

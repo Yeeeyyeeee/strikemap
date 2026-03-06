@@ -305,7 +305,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
             </div>
             <button
               onClick={onClose}
-              className="w-9 h-9 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-base"
+              className="w-9 h-9 flex items-center justify-center bg-black/60 rounded-full text-red-400 hover:text-red-300 text-base"
             >
               ✕
             </button>
@@ -326,7 +326,7 @@ export default function BaseCard({ base, map, onClose }: BaseCardProps) {
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden max-h-[70vh] flex flex-col">
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center bg-black/60 rounded-full text-neutral-400 hover:text-white text-xs transition-colors"
+          className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center bg-black/60 rounded-full text-red-400 hover:text-red-300 text-xs transition-colors"
         >
           ✕
         </button>

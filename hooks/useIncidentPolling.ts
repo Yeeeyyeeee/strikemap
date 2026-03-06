@@ -7,10 +7,12 @@ import { INCIDENT_POLL_MS, STRIKE_FLASH_DURATION_MS } from "@/lib/constants";
 
 interface IncidentPollingOptions {
   soundEnabled: boolean;
+  soundImpacts?: boolean;
   notificationsEnabled: boolean;
   onNewStrikes?: (incidents: Incident[]) => void;
   sendNotification?: (title: string, options: NotificationOptions) => void;
   mapInstance?: { flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void } | null;
+  autoZoomStrikes?: boolean;
 }
 
 interface IncidentPollingResult {
@@ -43,9 +45,6 @@ export function useIncidentPolling(options: IncidentPollingOptions): IncidentPol
 
   const loadData = useCallback(async () => {
     try {
-      // Skip polling when tab is hidden — save server load
-      if (document.hidden && !isFirstLoad.current) return;
-
       const headers: HeadersInit = {};
       if (lastEtag.current) headers["If-None-Match"] = lastEtag.current;
 
@@ -76,18 +75,20 @@ export function useIncidentPolling(options: IncidentPollingOptions): IncidentPol
           if (newIncs.some((i) => i.side === "us" || (i.side === "us_israel" && i.location?.includes("Iran")))) setLastUSStrikeAt(now);
           if (newIncs.some((i) => i.side === "israel" || (i.side === "us_israel" && !i.location?.includes("Iran")))) setLastIsraelStrikeAt(now);
 
-          if (optionsRef.current.soundEnabled) playImpactSound();
+          if (optionsRef.current.soundEnabled && optionsRef.current.soundImpacts !== false) playImpactSound();
           flashKey.current += 1;
           setFlashActive(true);
           setTimeout(() => setFlashActive(false), STRIKE_FLASH_DURATION_MS);
 
           // Fly to the new strike
           const first = newIncs[0];
-          optionsRef.current.mapInstance?.flyTo({
-            center: [first.lng, first.lat],
-            zoom: 7,
-            duration: 1500,
-          });
+          if (optionsRef.current.autoZoomStrikes !== false) {
+            optionsRef.current.mapInstance?.flyTo({
+              center: [first.lng, first.lat],
+              zoom: 7,
+              duration: 1500,
+            });
+          }
 
           // Push notification
           if (optionsRef.current.notificationsEnabled && optionsRef.current.sendNotification) {

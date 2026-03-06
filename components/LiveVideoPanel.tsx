@@ -21,10 +21,12 @@ export default memo(function LiveVideoPanel({
   open,
   onToggle,
   hideTrigger,
+  desktopTriggerHidden,
 }: {
   open: boolean;
   onToggle: () => void;
   hideTrigger?: boolean;
+  desktopTriggerHidden?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("news");
   const [liveNews, setLiveNews] = useState<LiveStream[]>([]);
@@ -183,7 +185,7 @@ export default memo(function LiveVideoPanel({
             zIndex: 9999,
             fontFamily: "JetBrains Mono, monospace",
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full border bg-[#1a1a1a] border-red-500/40 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:bg-red-500/10 backdrop-blur-sm transition-all ${hideTrigger ? "hidden md:flex" : ""}`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full border bg-[#1a1a1a] border-red-500/40 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:bg-red-500/10 backdrop-blur-sm transition-all ${desktopTriggerHidden ? (hideTrigger ? "hidden" : "md:hidden") : (hideTrigger ? "hidden md:flex" : "")}`}
         >
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />

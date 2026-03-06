@@ -6,7 +6,13 @@ export interface UserSettings {
   showFeed: boolean;
   showLegend: boolean;
   soundEnabled: boolean;
+  soundAlerts: boolean;   // missile alert beeps
+  soundSiren: boolean;    // air-raid siren loop
+  soundImpacts: boolean;  // strike impact thud
+  soundBrrt: boolean;     // A10 strafing
   notificationsEnabled: boolean;
+  autoZoomStrikes: boolean;
+  autoZoomAlerts: boolean;
   volume: number; // 0-100
   activeWidgets?: string[];
   widgetPositions?: Record<string, { x: number; y: number; w?: number; h?: number }>;
@@ -21,7 +27,13 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showFeed: true,
   showLegend: true,
   soundEnabled: true,
+  soundAlerts: true,
+  soundSiren: true,
+  soundImpacts: true,
+  soundBrrt: true,
   notificationsEnabled: true,
+  autoZoomStrikes: true,
+  autoZoomAlerts: true,
   volume: 80,
 };
 

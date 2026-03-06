@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { isAdminRequest } from "@/lib/adminAuth";
-import { REDIS_CHAT_KEY, REDIS_CHAT_BANS_KEY, REDIS_CHAT_NICKNAMES_KEY, REDIS_CHAT_PINNED_KEY, REDIS_CHAT_LIKES_KEY, NICKNAME_RESERVE_TTL_MS, CHAT_MAX_MESSAGES, CHAT_MESSAGE_TTL_MS } from "@/lib/constants";
+import { isModRequest } from "@/lib/modAuth";
+import { REDIS_CHAT_KEY, REDIS_CHAT_BANS_KEY, REDIS_CHAT_NICKNAMES_KEY, REDIS_CHAT_PINNED_KEY, REDIS_CHAT_LIKES_KEY, REDIS_CHAT_POLL_VOTES_KEY, NICKNAME_RESERVE_TTL_MS, CHAT_MAX_MESSAGES, CHAT_MESSAGE_TTL_MS, CHAT_COOLDOWN_MS, REDIS_CHAT_COOLDOWN_KEY } from "@/lib/constants";
 import { containsProfanity, isOffensiveNickname } from "@/lib/profanityFilter";
+
+/** Strip anything that isn't alphanumeric or hyphen, cap length at 64 chars */
+function sanitizeId(raw: string): string {
+  return raw.replace(/[^a-zA-Z0-9\-]/g, "").slice(0, 64);
+}
+
+interface PollData {
+  question: string;
+  options: string[];
+  votes: number[];
+  totalVotes: number;
+}
 
 interface ChatMessage {
   id: string;
@@ -10,12 +23,14 @@ interface ChatMessage {
   nickname: string;
   timestamp: number;
   flag?: string;
-  role?: "dev";
+  role?: "dev" | "mod";
+  platform?: "mobile" | "desktop";
   replyTo?: {
     id: string;
     nickname: string;
     text: string; // truncated preview of original message
   };
+  poll?: PollData;
 }
 
 // In-memory fallback when Redis is not configured
@@ -150,9 +165,23 @@ export async function GET(req: NextRequest) {
   const since = Number(req.nextUrl.searchParams.get("since") || "0");
   const messages = await getMessages(since);
   const pinned = await getPinnedMessage();
-  const likes = await getLikes(messages.map((m) => m.id));
+
+  // Filter out messages from shadow-banned users
+  const r = getRedis();
+  let filtered = messages;
+  if (r) {
+    try {
+      const bans = await r.smembers(REDIS_CHAT_BANS_KEY);
+      if (bans && bans.length > 0) {
+        const banSet = new Set(bans.map((b: string) => b.toLowerCase()));
+        filtered = messages.filter((m) => !banSet.has(m.nickname.toLowerCase()));
+      }
+    } catch {}
+  }
+
+  const likes = await getLikes(filtered.map((m) => m.id));
   return NextResponse.json(
-    { messages, pinned, likes },
+    { messages: filtered, pinned, likes },
     {
       headers: {
         // Brief CDN cache — chat is near-realtime but doesn't need per-request freshness
@@ -166,9 +195,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Admin ban/unban actions
+    // Admin/mod ban/unban actions
     if (body.action === "ban" || body.action === "unban" || body.action === "list-bans") {
-      if (!isAdminRequest(req)) {
+      const isAdmin = isAdminRequest(req);
+      const { isMod } = isAdmin ? { isMod: false } : await isModRequest(req);
+      if (!isAdmin && !isMod) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       const r = getRedis();
@@ -211,7 +242,7 @@ export async function POST(req: NextRequest) {
           nickname: String(message.nickname || ""),
           timestamp: Number(message.timestamp) || Date.now(),
           ...(message.flag ? { flag: String(message.flag).slice(0, 4) } : {}),
-          ...(message.role === "dev" ? { role: "dev" as const } : {}),
+          ...(message.role === "dev" ? { role: "dev" as const } : message.role === "mod" ? { role: "mod" as const } : {}),
         };
         await r.set(REDIS_CHAT_PINNED_KEY, JSON.stringify(pinned));
         return NextResponse.json({ ok: true, pinned });
@@ -222,10 +253,43 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Admin/mod delete message action
+    if (body.action === "delete-message") {
+      const isAdmin = isAdminRequest(req);
+      const { isMod } = isAdmin ? { isMod: false } : await isModRequest(req);
+      if (!isAdmin && !isMod) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const messageId = sanitizeId(String(body.messageId || "").trim());
+      if (!messageId) {
+        return NextResponse.json({ error: "messageId required" }, { status: 400 });
+      }
+      const r = getRedis();
+      if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
+
+      const raw = await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1) as (string | ChatMessage)[];
+      for (let i = 0; i < raw.length; i++) {
+        const msg: ChatMessage = typeof raw[i] === "string" ? JSON.parse(raw[i] as string) : raw[i] as ChatMessage;
+        if (msg.id === messageId) {
+          // Mods cannot delete dev messages
+          if (!isAdmin && msg.role === "dev") {
+            return NextResponse.json({ error: "Cannot delete dev messages" }, { status: 403 });
+          }
+          // Replace message content with [deleted]
+          msg.text = "[message deleted]";
+          delete msg.poll;
+          delete msg.replyTo;
+          await r.lset(REDIS_CHAT_KEY, i, JSON.stringify(msg));
+          return NextResponse.json({ ok: true, deleted: messageId });
+        }
+      }
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
     // Like action — any user
     if (body.action === "like") {
-      const messageId = String(body.messageId || "").trim();
-      const clientId = String(body.clientId || "").trim();
+      const messageId = sanitizeId(String(body.messageId || "").trim());
+      const clientId = sanitizeId(String(body.clientId || "").trim());
       if (!messageId || !clientId) {
         return NextResponse.json({ error: "messageId and clientId required" }, { status: 400 });
       }
@@ -246,11 +310,109 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, likes: newCount });
     }
 
+    // Unlike action — any user
+    if (body.action === "unlike") {
+      const messageId = sanitizeId(String(body.messageId || "").trim());
+      const clientId = sanitizeId(String(body.clientId || "").trim());
+      if (!messageId || !clientId) {
+        return NextResponse.json({ error: "messageId and clientId required" }, { status: 400 });
+      }
+      const r = getRedis();
+      if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
+
+      const likedKey = `chat_liked:${clientId}`;
+      const wasLiked = await r.sismember(likedKey, messageId);
+      if (!wasLiked) {
+        return NextResponse.json({ ok: true, alreadyUnliked: true });
+      }
+
+      await r.srem(likedKey, messageId);
+      const newCount = await r.hincrby(REDIS_CHAT_LIKES_KEY, messageId, -1);
+      // Clean up if count dropped to 0 or below
+      if (newCount <= 0) {
+        await r.hdel(REDIS_CHAT_LIKES_KEY, messageId);
+      }
+      return NextResponse.json({ ok: true, likes: Math.max(0, newCount) });
+    }
+
+    // Admin: create poll
+    if (body.action === "create-poll") {
+      if (!isAdminRequest(req)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const question = String(body.question || "").trim().slice(0, 200);
+      const options: string[] = (body.options || [])
+        .map((o: unknown) => String(o || "").trim().slice(0, 100))
+        .filter((o: string) => o.length > 0);
+      if (!question) return NextResponse.json({ error: "Question required" }, { status: 400 });
+      if (options.length < 2 || options.length > 6) {
+        return NextResponse.json({ error: "2-6 options required" }, { status: 400 });
+      }
+      const nickname = String(body.nickname || "Admin").trim().slice(0, 20);
+      const flag = body.flag ? String(body.flag).slice(0, 4) : undefined;
+      const msg: ChatMessage = {
+        id: `poll-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        text: question,
+        nickname,
+        timestamp: Date.now(),
+        role: "dev",
+        ...(flag ? { flag } : {}),
+        poll: {
+          question,
+          options,
+          votes: new Array(options.length).fill(0),
+          totalVotes: 0,
+        },
+      };
+      await addMessage(msg);
+      return NextResponse.json({ message: msg });
+    }
+
+    // Vote on poll — any user
+    if (body.action === "vote-poll") {
+      const pollId = sanitizeId(String(body.pollId || "").trim());
+      const optionIndex = Number(body.optionIndex);
+      const clientId = sanitizeId(String(body.clientId || "").trim());
+      if (!pollId || !clientId || isNaN(optionIndex) || optionIndex < 0) {
+        return NextResponse.json({ error: "pollId, optionIndex, and clientId required" }, { status: 400 });
+      }
+      const r = getRedis();
+      if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
+
+      // Check if already voted (single hash: field = pollId:clientId)
+      const voteKey = `${pollId}:${clientId}`;
+      const existing = await r.hget(REDIS_CHAT_POLL_VOTES_KEY, voteKey);
+      if (existing !== null && existing !== undefined) {
+        return NextResponse.json({ ok: true, alreadyVoted: true });
+      }
+
+      // Find the poll message in the list and update inline
+      const raw = await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1) as (string | ChatMessage)[];
+      let found = false;
+      for (let i = 0; i < raw.length; i++) {
+        const msg: ChatMessage = typeof raw[i] === "string" ? JSON.parse(raw[i] as string) : raw[i] as ChatMessage;
+        if (msg.id === pollId && msg.poll) {
+          if (optionIndex >= msg.poll.options.length) {
+            return NextResponse.json({ error: "Invalid option index" }, { status: 400 });
+          }
+          msg.poll.votes[optionIndex]++;
+          msg.poll.totalVotes++;
+          await r.lset(REDIS_CHAT_KEY, i, JSON.stringify(msg));
+          // Record the vote
+          await r.hset(REDIS_CHAT_POLL_VOTES_KEY, { [voteKey]: String(optionIndex) });
+          found = true;
+          return NextResponse.json({ ok: true, poll: msg.poll });
+        }
+      }
+      if (!found) return NextResponse.json({ error: "Poll not found" }, { status: 404 });
+    }
+
     // Nickname claim/check actions
     if (body.action === "claim-nickname") {
       const nick = String(body.nickname || "").trim().slice(0, 20);
-      const clientId = String(body.clientId || "").trim();
+      const clientId = sanitizeId(String(body.clientId || "").trim());
       if (!nick || !clientId) return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
+      if (!/^[A-Za-z]{1,6}-\d{4}$/.test(nick)) return NextResponse.json({ error: "Nickname must be XXXX-1234 format" }, { status: 400 });
       if (isOffensiveNickname(nick)) return NextResponse.json({ error: "That username is not allowed" }, { status: 400 });
 
       const taken = await isNicknameTaken(nick, clientId);
@@ -268,7 +430,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === "update-flag") {
-      const clientId = String(body.clientId || "").trim();
+      const clientId = sanitizeId(String(body.clientId || "").trim());
       const nickname = String(body.nickname || "").trim();
       const flag = body.flag ? String(body.flag).slice(0, 4) : "";
       if (!clientId || !nickname) return NextResponse.json({ error: "clientId and nickname required" }, { status: 400 });
@@ -278,18 +440,23 @@ export async function POST(req: NextRequest) {
 
     if (body.action === "check-nickname") {
       const nick = String(body.nickname || "").trim().slice(0, 20);
-      const clientId = String(body.clientId || "").trim();
+      const clientId = sanitizeId(String(body.clientId || "").trim());
       if (!nick || !clientId) return NextResponse.json({ error: "Nickname and clientId required" }, { status: 400 });
       const taken = await isNicknameTaken(nick, clientId);
       return NextResponse.json({ available: !taken });
     }
 
-    const text = String(body.text || "").trim().slice(0, 500);
-    const nickname = String(body.nickname || "Anon").trim().slice(0, 20);
+    const text = String(body.text || "").replace(/<[^>]*>/g, "").trim().slice(0, 500);
+    const nickname = String(body.nickname || "Anon").replace(/<[^>]*>/g, "").trim().slice(0, 20);
     const flag = body.flag ? String(body.flag).slice(0, 4) : undefined;
 
     if (!text) {
       return NextResponse.json({ error: "Empty message" }, { status: 400 });
+    }
+
+    // Enforce nickname format server-side
+    if (!/^[A-Za-z]{1,6}-\d{4}$/.test(nickname)) {
+      return NextResponse.json({ error: "Invalid nickname format" }, { status: 400 });
     }
 
     // Profanity filter — block offensive nicknames and messages
@@ -301,7 +468,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message contains inappropriate content" }, { status: 400 });
     }
 
+    const clientId = sanitizeId(String(body.clientId || "").trim());
+
+    // Message rate limit (3s cooldown per client)
+    if (clientId) {
+      const rl = getRedis();
+      if (rl) {
+        try {
+          const lastMsg = await rl.hget(REDIS_CHAT_COOLDOWN_KEY, clientId) as string | null;
+          if (lastMsg) {
+            const elapsed = Date.now() - Number(lastMsg);
+            if (elapsed < CHAT_COOLDOWN_MS) {
+              return NextResponse.json({ error: "Slow down" }, { status: 429 });
+            }
+          }
+          await rl.hset(REDIS_CHAT_COOLDOWN_KEY, { [clientId]: String(Date.now()) });
+        } catch {}
+      }
+    }
+
     const isDev = isAdminRequest(req);
+    const { isMod } = isDev ? { isMod: false } : await isModRequest(req);
 
     // Shadow ban check — user thinks message sent, but it's silently dropped
     const r = getRedis();
@@ -332,20 +519,22 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    const platform = body.platform === "mobile" ? "mobile" as const : body.platform === "desktop" ? "desktop" as const : undefined;
+
     const msg: ChatMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text,
       nickname,
       timestamp: Date.now(),
       ...(flag ? { flag } : {}),
-      ...(isDev ? { role: "dev" as const } : {}),
+      ...(isDev ? { role: "dev" as const } : isMod ? { role: "mod" as const } : {}),
+      ...(platform ? { platform } : {}),
       ...(replyTo ? { replyTo } : {}),
     };
 
     await addMessage(msg);
 
     // Refresh nickname reservation on activity
-    const clientId = String(body.clientId || "").trim();
     if (clientId) {
       await claimNickname(nickname, clientId, flag).catch(() => {});
     }

@@ -7,7 +7,12 @@
 import { Incident } from "./types";
 import { getRedis } from "./redis";
 import { haversineKm } from "./geo";
-import { REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY, DEDUP_RADIUS_KM, DEDUP_WINDOW_MS, TEXT_DEDUP_THRESHOLD } from "./constants";
+import {
+  REDIS_INCIDENTS_KEY, REDIS_BATCH_SIZE, REDIS_REFRESH_KEY,
+  DEDUP_RADIUS_KM, DEDUP_WINDOW_MS, TEXT_DEDUP_THRESHOLD,
+  DEDUP_SCORE_THRESHOLD, DEDUP_SPATIAL_WEIGHT, DEDUP_TEMPORAL_WEIGHT,
+  DEDUP_EVENT_TYPE_WEIGHT, DEDUP_TEXT_WEIGHT,
+} from "./constants";
 import { trigramSimilarity } from "./textDedup";
 
 const REDIS_KEY = REDIS_INCIDENTS_KEY;
@@ -69,7 +74,7 @@ function slimIncident(inc: Incident): Partial<Incident> {
     location: inc.location,
     lat: inc.lat,
     lng: inc.lng,
-    description: inc.description?.slice(0, 150) || "",
+    description: inc.description?.slice(0, 300) || "",
     details: "",
     weapon: inc.weapon,
     target_type: inc.target_type,
@@ -85,6 +90,11 @@ function slimIncident(inc: Incident): Partial<Incident> {
     damage_severity: inc.damage_severity,
     casualties_military: inc.casualties_military,
     casualties_civilian: inc.casualties_civilian,
+    confidence: inc.confidence,
+    sourceCount: inc.sourceCount,
+    firmsBacked: inc.firmsBacked,
+    seismicBacked: inc.seismicBacked,
+    verification: inc.verification,
   };
 }
 
@@ -127,6 +137,13 @@ export async function getAllIncidents(): Promise<Incident[]> {
   return Array.from(store.values());
 }
 
+/** Update a single incident in store + Redis */
+export async function updateIncident(incident: Incident): Promise<void> {
+  const store = await ensureLoaded();
+  store.set(incident.id, incident);
+  await writeToRedis([incident]);
+}
+
 /** Get current count */
 export async function getIncidentCount(): Promise<number> {
   const store = await ensureLoaded();
@@ -134,38 +151,151 @@ export async function getIncidentCount(): Promise<number> {
 }
 
 
+// --- Geographic containment for dedup ---
+const GEOGRAPHIC_CONTAINMENT: Record<string, string[]> = {
+  "central israel": ["tel aviv", "herzliya", "petah tikva", "rishon lezion", "gush dan"],
+  "northern israel": ["haifa", "tiberias", "nazareth", "kiryat shmona", "nahariya", "galilee"],
+  "southern israel": ["beer sheva", "ashkelon", "ashdod", "sderot", "negev", "dimona", "eilat"],
+  "gaza": ["gaza city", "rafah", "khan younis", "jabalia", "nuseirat", "deir al-balah"],
+  "northern gaza": ["jabalia", "gaza city"],
+  "southern gaza": ["rafah", "khan younis"],
+  "lebanon": ["beirut", "dahieh", "tyre", "sidon", "nabatieh", "baalbek", "tripoli, lebanon", "bekaa"],
+  "south lebanon": ["tyre", "nabatieh"],
+  "iran": ["tehran", "isfahan", "tabriz", "shiraz", "bushehr", "bandar abbas", "ahvaz", "mashhad", "qom", "arak", "karaj"],
+  "western iran": ["kermanshah", "khorramabad", "hamadan", "sanandaj"],
+  "syria": ["damascus", "aleppo", "homs", "latakia", "deir ez-zor"],
+  "iraq": ["baghdad", "erbil", "ain al-asad"],
+  "yemen": ["sanaa", "hodeidah", "aden", "marib"],
+};
+
+function hasGeographicContainment(locA: string, locB: string): boolean {
+  const a = locA.toLowerCase();
+  const b = locB.toLowerCase();
+  for (const [region, cities] of Object.entries(GEOGRAPHIC_CONTAINMENT)) {
+    const aIsRegion = a.includes(region);
+    const bIsRegion = b.includes(region);
+    const aIsCity = cities.some((c) => a.includes(c));
+    const bIsCity = cities.some((c) => b.includes(c));
+    if ((aIsRegion && bIsCity) || (bIsRegion && aIsCity)) return true;
+  }
+  return false;
+}
+
+/** Return the incident with the more specific location string */
+function moreSpecificLocation(incA: Incident, incB: Incident): Incident {
+  const aCommas = (incA.location.match(/,/g) || []).length;
+  const bCommas = (incB.location.match(/,/g) || []).length;
+  if (aCommas !== bCommas) return aCommas > bCommas ? incA : incB;
+  return incA.location.length > incB.location.length ? incA : incB;
+}
+
+/** Weapon category for event-type matching */
+function weaponCategory(weapon: string): string {
+  const w = weapon.toLowerCase();
+  if (w.includes("drone") || w.includes("shahed") || w.includes("uav") || w.includes("loitering")) return "drone";
+  if (w.includes("ballistic") || w.includes("fateh") || w.includes("emad") || w.includes("ghadr") || w.includes("sejjil")) return "ballistic";
+  if (w.includes("cruise") || w.includes("tomahawk") || w.includes("jassm") || w.includes("paveh")) return "cruise";
+  if (w.includes("airstrike") || w.includes("air strike") || w.includes("jdam") || w.includes("gbu") || w.includes("spice")) return "airstrike";
+  if (w.includes("rocket")) return "rocket";
+  if (w.includes("interceptor") || w.includes("iron dome") || w.includes("arrow") || w.includes("david") || w.includes("thaad")) return "interceptor";
+  if (w.includes("missile")) return "missile";
+  return "unknown";
+}
+
+/** Multi-factor dedup score (0-1) between two incidents */
+export function dedupScore(inc: Incident, existing: Incident): number {
+  let score = 0;
+
+  // --- Spatial component (0 to DEDUP_SPATIAL_WEIGHT) ---
+  if ((inc.lat !== 0 || inc.lng !== 0) && (existing.lat !== 0 || existing.lng !== 0)) {
+    const dist = haversineKm(inc.lat, inc.lng, existing.lat, existing.lng);
+    if (dist < DEDUP_RADIUS_KM) {
+      score += DEDUP_SPATIAL_WEIGHT * (1 - dist / DEDUP_RADIUS_KM);
+    } else if (dist < 50 && hasGeographicContainment(inc.location, existing.location)) {
+      // Geographic containment bonus up to 50km
+      score += DEDUP_SPATIAL_WEIGHT * 0.8;
+    }
+  }
+
+  // --- Temporal component (0 to DEDUP_TEMPORAL_WEIGHT) ---
+  const incTime = inc.timestamp ? new Date(inc.timestamp).getTime() : 0;
+  const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+  if (incTime && existTime) {
+    const timeDiff = Math.abs(incTime - existTime);
+    if (timeDiff <= DEDUP_WINDOW_MS) {
+      score += DEDUP_TEMPORAL_WEIGHT * (1 - timeDiff / DEDUP_WINDOW_MS);
+    }
+  }
+
+  // --- Event type component (0 to DEDUP_EVENT_TYPE_WEIGHT) ---
+  if (inc.weapon && existing.weapon) {
+    const catA = weaponCategory(inc.weapon);
+    const catB = weaponCategory(existing.weapon);
+    if (catA === catB) {
+      score += DEDUP_EVENT_TYPE_WEIGHT;
+    } else if (catA !== "unknown" && catB !== "unknown") {
+      score += DEDUP_EVENT_TYPE_WEIGHT * 0.3; // partial for different known weapons
+    }
+  } else if (!inc.weapon && !existing.weapon) {
+    score += DEDUP_EVENT_TYPE_WEIGHT * 0.5; // both unknown, moderate match
+  }
+
+  // --- Text similarity component (0 to DEDUP_TEXT_WEIGHT) ---
+  const incText = `${inc.description} ${inc.details || ""}`;
+  const existText = `${existing.description} ${existing.details || ""}`;
+  if (incText.length > 20 && existText.length > 20) {
+    const sim = trigramSimilarity(incText, existText);
+    score += DEDUP_TEXT_WEIGHT * sim;
+  }
+
+  // --- Side mismatch penalty ---
+  if (inc.side !== existing.side) {
+    score -= 0.1;
+  }
+
+  return Math.max(0, Math.min(1, score));
+}
+
 /** Returns the matching existing incident if duplicate, or null */
 function findDuplicate(inc: Incident, store: Map<string, Incident>): Incident | null {
   const incTime = inc.timestamp ? new Date(inc.timestamp).getTime() : 0;
   if (!incTime) return null;
 
-  // Spatial dedup for mapped incidents
+  let bestMatch: Incident | null = null;
+  let bestScore = 0;
+
+  // Multi-factor scoring for mapped incidents
   if (inc.lat !== 0 || inc.lng !== 0) {
     for (const existing of store.values()) {
       if (existing.lat === 0 && existing.lng === 0) continue;
-      if (existing.side !== inc.side) continue;
 
       const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
       if (!existTime || Math.abs(incTime - existTime) > DEDUP_WINDOW_MS) continue;
 
+      // Quick distance pre-filter: skip if > 50km (max containment range)
       const dist = haversineKm(inc.lat, inc.lng, existing.lat, existing.lng);
-      if (dist < DEDUP_RADIUS_KM) return existing;
+      if (dist > 50) continue;
+
+      const score = dedupScore(inc, existing);
+      if (score >= DEDUP_SCORE_THRESHOLD && score > bestScore) {
+        bestScore = score;
+        bestMatch = existing;
+      }
     }
-    return null;
+    return bestMatch;
   }
 
   // Text-based dedup for unmapped incidents (lat=0, lng=0)
   const incText = `${inc.description} ${inc.details || ""}`;
-  if (incText.length < 30) return null; // Too short for meaningful comparison
+  if (incText.length < 30) return null;
 
   for (const existing of store.values()) {
-    if (existing.side !== inc.side) continue;
     const existTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
     if (!existTime || Math.abs(incTime - existTime) > DEDUP_WINDOW_MS) continue;
 
     const existText = `${existing.description} ${existing.details || ""}`;
     const sim = trigramSimilarity(incText, existText);
-    if (sim > TEXT_DEDUP_THRESHOLD) return existing; // Prefer existing (may be mapped)
+    if (sim > TEXT_DEDUP_THRESHOLD) return existing;
   }
 
   return null;
@@ -186,13 +316,36 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
     const existing = findDuplicate(inc, store);
     if (existing) {
       deduped++;
-      // Update existing incident's casualties if the new report has data
       let updated = false;
-      if (inc.casualties_military && inc.casualties_military > (existing.casualties_military || 0)) {
+
+      // Confidence promotion: increment sourceCount, promote confidence level
+      const prevCount = existing.sourceCount ?? 1;
+      existing.sourceCount = prevCount + 1;
+      const prevConf = existing.confidence ?? "unconfirmed";
+      if (prevConf === "unconfirmed" && existing.sourceCount >= 2) {
+        existing.confidence = "confirmed";
+      } else if (prevConf === "confirmed" && existing.sourceCount >= 3) {
+        existing.confidence = "verified";
+      }
+      updated = true;
+
+      // Location specificity: adopt the more specific location
+      if (inc.location && existing.location && inc.lat !== 0) {
+        const moreSpecific = moreSpecificLocation(inc, existing);
+        if (moreSpecific === inc) {
+          existing.location = inc.location;
+          existing.lat = inc.lat;
+          existing.lng = inc.lng;
+          updated = true;
+        }
+      }
+
+      // Casualty direction: accept newer report's numbers (allows corrections)
+      if (inc.casualties_military != null && inc.casualties_military > 0) {
         existing.casualties_military = inc.casualties_military;
         updated = true;
       }
-      if (inc.casualties_civilian && inc.casualties_civilian > (existing.casualties_civilian || 0)) {
+      if (inc.casualties_civilian != null && inc.casualties_civilian > 0) {
         existing.casualties_civilian = inc.casualties_civilian;
         updated = true;
       }
@@ -225,6 +378,10 @@ export async function mergeIncidents(incidents: Incident[]): Promise<number> {
       }
       continue;
     }
+
+    // New incident: initialize confidence tracking
+    inc.confidence = inc.confidence ?? "unconfirmed";
+    inc.sourceCount = inc.sourceCount ?? 1;
     store.set(inc.id, inc);
     newIncidents.push(inc);
   }

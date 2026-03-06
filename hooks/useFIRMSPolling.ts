@@ -24,7 +24,6 @@ export function useFIRMSPolling(enabled: boolean): FIRMSPollingResult {
 
   const loadData = useCallback(async () => {
     if (!enabledRef.current) return;
-    if (document.hidden) return;
 
     try {
       setLoading(true);

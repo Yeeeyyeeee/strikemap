@@ -12,20 +12,27 @@ interface SideCasualties {
   civilian: number;
 }
 
+export interface ISWCorroboration {
+  usIsraelStrikes: number;
+  iranRetaliationStrikes: number;
+  fetchedAt: string;
+}
+
 export interface CasualtyData {
   iran: SideCasualties;
   usIsrael: SideCasualties;
   lastUpdated: string;
   source: string;
   articles: string[];
+  isw?: ISWCorroboration;
 }
 
 const WIKIPEDIA_ARTICLES = [
-  "2026_Iran_conflict",
+  "Template:2026_Iran_war_infobox",
 ];
 
 const ARTICLE_DISPLAY_NAMES = [
-  "2026 Iran conflict",
+  "2026 Iran war",
 ];
 
 /**
@@ -51,6 +58,8 @@ function stripWikiMarkup(text: string): string {
   s = s.replace(/<[^>]+>/g, " ");
   // Remove wiki bold/italic markers
   s = s.replace(/'{2,}/g, "");
+  // Normalize ">" and "≥" before numbers (e.g. ">3,000 killed" → "3,000 killed")
+  s = s.replace(/[>≥]\s*(?=\d)/g, "");
   // Collapse whitespace
   s = s.replace(/\s+/g, " ").trim();
   return s;
@@ -66,9 +75,9 @@ function extractKilled(text: string): number {
   if (!text) return 0;
   const clean = stripWikiMarkup(text);
 
-  // Pattern 1: "N killed" or "N dead" or "N deaths" (number directly before keyword)
-  // Take MAX of all matches (competing estimates, not additive)
-  const directPattern = /(\d[\d,]*)\+?\s*(?:–\s*(\d[\d,]*)\+?\s*)?(?:killed|dead|deaths)/gi;
+  // Pattern 1: "N killed" or "N people killed" or "N dead" or "N deaths"
+  // Also handles ranges like "N–M killed". Takes MAX of competing estimates.
+  const directPattern = /(\d[\d,]*)\+?\s*(?:–\s*(\d[\d,]*)\+?\s*)?(?:people\s+)?(?:killed|dead|deaths)/gi;
   let best = 0;
   let match;
   while ((match = directPattern.exec(clean)) !== null) {
@@ -99,15 +108,15 @@ function extractKilled(text: string): number {
 function extractInjured(text: string): number {
   if (!text) return 0;
   const clean = stripWikiMarkup(text);
-  const injuredPattern = /(\d[\d,]*)\+?\s*(?:–\s*(\d[\d,]*)\+?\s*)?(?:injured|wounded)/gi;
-  let total = 0;
+  const injuredPattern = /(\d[\d,]*)\+?\s*(?:–\s*(\d[\d,]*)\+?\s*)?(?:others?\s+)?(?:injured|wounded)/gi;
+  let best = 0;
   let match;
   while ((match = injuredPattern.exec(clean)) !== null) {
     const n1 = parseInt((match[1] || "0").replace(/,/g, ""), 10);
     const n2 = match[2] ? parseInt(match[2].replace(/,/g, ""), 10) : 0;
-    total += Math.max(n1, n2);
+    best = Math.max(best, n1, n2);
   }
-  return total;
+  return best;
 }
 
 function extractMilitary(text: string): number {
@@ -261,8 +270,8 @@ function parseInfoboxCasualties(wikitext: string): CasualtyData {
 }
 
 // Manual overrides — applied on top of Wikipedia-scraped data
+// (empty — now using live Wikipedia data from 2026 Iran war infobox)
 const MANUAL_OVERRIDES: Partial<Record<"iran" | "usIsrael", Partial<SideCasualties>>> = {
-  usIsrael: { military: 106 },
 };
 
 function applyOverrides(data: CasualtyData): CasualtyData {
@@ -328,6 +337,41 @@ async function fetchFromWikipedia(): Promise<CasualtyData> {
   return combined;
 }
 
+// --- ISW / Critical Threats Project ArcGIS strike counts ---
+// Source: https://storymaps.arcgis.com/stories/089bc1a2fe684405a67d67f13bd31324
+const ISW_US_STRIKES_URL =
+  "https://services5.arcgis.com/SaBe5HMtmnbqSWlu/arcgis/rest/services/VIEW_IranCrisisEvents2026_v3/FeatureServer/46/query";
+const ISW_IRAN_RETALIATION_URL =
+  "https://services5.arcgis.com/SaBe5HMtmnbqSWlu/arcgis/rest/services/VIEW_Iran_and_Axis_Retalitory_Strikes_v2/FeatureServer/48/query";
+
+async function fetchISWCounts(): Promise<ISWCorroboration | null> {
+  try {
+    const [usRes, iranRes] = await Promise.all([
+      fetch(`${ISW_US_STRIKES_URL}?where=1%3D1&returnCountOnly=true&f=json`, {
+        signal: AbortSignal.timeout(10000),
+      }),
+      fetch(`${ISW_IRAN_RETALIATION_URL}?where=1%3D1&returnCountOnly=true&f=json`, {
+        signal: AbortSignal.timeout(10000),
+      }),
+    ]);
+
+    if (!usRes.ok || !iranRes.ok) return null;
+    const usData = await usRes.json();
+    const iranData = await iranRes.json();
+
+    if (usData.error || iranData.error) return null;
+
+    return {
+      usIsraelStrikes: usData.count ?? 0,
+      iranRetaliationStrikes: iranData.count ?? 0,
+      fetchedAt: new Date().toISOString(),
+    };
+  } catch {
+    // ArcGIS rate limits or network errors — non-critical
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -347,8 +391,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch fresh data from Wikipedia, then apply manual overrides
-    const data = applyOverrides(await fetchFromWikipedia());
+    // Fetch Wikipedia + ISW corroboration in parallel
+    const [wikiData, iswData] = await Promise.all([
+      fetchFromWikipedia(),
+      fetchISWCounts(),
+    ]);
+
+    const data = applyOverrides(wikiData);
+    if (iswData) data.isw = iswData;
 
     // Cache in Redis
     if (redis) {

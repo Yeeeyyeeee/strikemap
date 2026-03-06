@@ -22,7 +22,7 @@ export async function GET() {
     const alerts = await getActiveSirenAlerts();
     return NextResponse.json(
       { sirenAlerts: alerts },
-      { headers: { "Cache-Control": "no-store" } }
+      { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=10" } }
     );
   } catch (err) {
     return NextResponse.json({ sirenAlerts: [], error: String(err) });

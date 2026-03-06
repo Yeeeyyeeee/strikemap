@@ -31,7 +31,7 @@ export default memo(function SirenBanner({ alerts, israelRegions = [] }: SirenBa
   const regionDisplay = classifyRegions(israelRegions);
 
   return (
-    <div className="fixed top-[56px] z-[45] pointer-events-none left-2 right-2 md:left-[17rem] md:right-[19rem] flex flex-col items-center gap-2">
+    <div className="fixed top-[56px] z-[55] pointer-events-none left-2 right-2 md:left-[17rem] md:right-[19rem] flex flex-col items-center gap-2">
       {/* Israel Tzofar siren banner */}
       {showIsrael && (
         <div className="siren-banner-inner pointer-events-auto px-3 py-2.5 md:px-6 md:py-3 rounded-lg border border-red-500/80 shadow-[0_0_40px_rgba(239,68,68,0.5)] max-w-xl w-full relative animate-pulse-border">

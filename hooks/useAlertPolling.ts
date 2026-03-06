@@ -8,9 +8,11 @@ import { ALERT_POLL_MS, STRIKE_FLASH_DURATION_MS } from "@/lib/constants";
 
 interface AlertPollingOptions {
   soundEnabled: boolean;
+  soundAlerts?: boolean;
   notificationsEnabled: boolean;
   sendNotification?: (title: string, options: NotificationOptions) => void;
   mapInstance?: { flyTo: (opts: { center: [number, number]; zoom: number; duration: number }) => void } | null;
+  autoZoomAlerts?: boolean;
   alertCountries?: string[] | "all";
 }
 
@@ -36,8 +38,6 @@ export function useAlertPolling(options: AlertPollingOptions): AlertPollingResul
   useEffect(() => {
     let firstPoll = true;
     const pollAlerts = async () => {
-      // Skip polling when tab is hidden — save server load
-      if (document.hidden && !firstPoll) return;
 
       const { alerts: newAlerts, outcomes: newOutcomes } = await fetchAlerts();
 
@@ -48,12 +48,12 @@ export function useAlertPolling(options: AlertPollingOptions): AlertPollingResul
         for (const alert of newAlerts) {
           if (!seenAlertIds.current.has(alert.id)) {
             if (israelEnabled) {
-              if (optionsRef.current.soundEnabled) playAlertSound();
+              if (optionsRef.current.soundEnabled && optionsRef.current.soundAlerts !== false) playAlertSound();
               flashKey.current += 1;
               setFlashActive(true);
               setTimeout(() => setFlashActive(false), STRIKE_FLASH_DURATION_MS);
 
-              if (alert.lat && alert.lng) {
+              if (alert.lat && alert.lng && optionsRef.current.autoZoomAlerts !== false) {
                 optionsRef.current.mapInstance?.flyTo({
                   center: [alert.lng, alert.lat],
                   zoom: 7,
