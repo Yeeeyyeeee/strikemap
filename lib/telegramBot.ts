@@ -13,6 +13,7 @@ import { Incident } from "./types";
 import { ChannelPost } from "./telegram";
 import { generateStrikeMapImage } from "./mapImage";
 import { getFIRMSHotspots, hasThermalAnomaly } from "./firms";
+import { neutralizeText } from "./neutralize";
 // sentinel is imported dynamically in sendIncident to avoid sharp loading at module level
 
 const API = "https://api.telegram.org/bot";
@@ -363,7 +364,7 @@ export function formatIncident(inc: Incident & { _firmsConfirmed?: boolean }, si
 
   if (inc.description) {
     lines.push("");
-    lines.push(esc(inc.description.slice(0, 400)));
+    lines.push(esc(neutralizeText(inc.description.slice(0, 400)).text));
   }
   if (inc.timestamp) {
     const d = new Date(inc.timestamp);
@@ -384,12 +385,12 @@ export function formatFeedPost(post: ChannelPost, siteUrl: string): string {
   lines.push(`\u{1F4F0}\u{203C}\u{FE0F} *LIVE NEWS* \u{203C}\u{FE0F}\u{1F4F0}`);
   lines.push("");
 
-  const text = post.text.slice(0, 600);
+  const text = neutralizeText(post.text.slice(0, 600)).text;
   lines.push(esc(text));
 
   if (post.location) {
     lines.push("");
-    lines.push(`\u{1F4CD} ${esc(post.location)}`);
+    lines.push(`\u{1F4CD} ${esc(neutralizeText(post.location).text)}`);
   }
 
   if (post.timestamp) {
