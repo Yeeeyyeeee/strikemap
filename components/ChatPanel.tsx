@@ -791,7 +791,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
         }}
       >
         <div className="px-3 py-2 md:px-2 md:py-1.5 flex items-center justify-between">
-          <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-0.5">
+          <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-0.5 min-w-0 overflow-x-auto">
             <button
               onClick={() => setActiveTab("chat")}
               className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded transition-colors ${
@@ -837,9 +837,9 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
               About
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
             {nicknameReady && !changingNick && (
-              <div className="relative" ref={flagDropdownRef}>
+              <div className="relative hidden md:block" ref={flagDropdownRef}>
                 <button
                   ref={flagButtonRef}
                   onClick={() => setFlagDropdownOpen((v) => !v)}
