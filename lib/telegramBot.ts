@@ -13,6 +13,7 @@ import { Incident } from "./types";
 import { ChannelPost } from "./telegram";
 import { generateStrikeMapImage } from "./mapImage";
 import { getFIRMSHotspots, hasThermalAnomaly } from "./firms";
+import { neutralizeText, hasBiasIndicators, neutralizeWithAI } from "./neutralize";
 // sentinel is imported dynamically in sendIncident to avoid sharp loading at module level
 
 const API = "https://api.telegram.org/bot";
@@ -363,7 +364,7 @@ export function formatIncident(inc: Incident & { _firmsConfirmed?: boolean }, si
 
   if (inc.description) {
     lines.push("");
-    lines.push(esc(inc.description.slice(0, 400)));
+    lines.push(esc(neutralizeText(inc.description.slice(0, 400)).text));
   }
   if (inc.timestamp) {
     const d = new Date(inc.timestamp);
@@ -384,12 +385,12 @@ export function formatFeedPost(post: ChannelPost, siteUrl: string): string {
   lines.push(`\u{1F4F0}\u{203C}\u{FE0F} *LIVE NEWS* \u{203C}\u{FE0F}\u{1F4F0}`);
   lines.push("");
 
-  const text = post.text.slice(0, 600);
+  const text = neutralizeText(post.text.slice(0, 600)).text;
   lines.push(esc(text));
 
   if (post.location) {
     lines.push("");
-    lines.push(`\u{1F4CD} ${esc(post.location)}`);
+    lines.push(`\u{1F4CD} ${esc(neutralizeText(post.location).text)}`);
   }
 
   if (post.timestamp) {
@@ -510,6 +511,14 @@ export async function sendIncident(
     }
   }
 
+  // 2b. AI neutralization for descriptions that still have bias after rule-based pass
+  if (inc.description) {
+    const rulesPassed = neutralizeText(inc.description).text;
+    if (hasBiasIndicators(rulesPassed)) {
+      inc = { ...inc, description: await neutralizeWithAI(rulesPassed) };
+    }
+  }
+
   const enrichedInc = { ...inc, _firmsConfirmed: firmsConfirmed };
   const caption = formatIncident(enrichedInc, siteUrl);
 
@@ -536,6 +545,12 @@ export async function sendIncident(
  * Send a FEED post — forward original (media), then summary text.
  */
 export async function sendFeedPost(post: ChannelPost, siteUrl: string): Promise<boolean> {
+  // 0. AI neutralization for text that still has bias after rule-based pass
+  const rulesPassed = neutralizeText(post.text).text;
+  if (hasBiasIndicators(rulesPassed)) {
+    post = { ...post, text: await neutralizeWithAI(rulesPassed) };
+  }
+
   // 1. Forward the original message with all media intact
   const msgId = post.id.split("/").pop() || "";
   let forwarded = false;
