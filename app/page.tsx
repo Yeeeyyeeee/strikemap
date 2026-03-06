@@ -1219,6 +1219,7 @@ export default function Home() {
           onMapStyleChange={handleMapStyleChange}
           onOpenChat={() => { setChatTab("chat"); setChatOpen(true); }}
           hasUnreadChat={hasUnreadChat}
+          hidden={chatOpen}
         />
       )}
 

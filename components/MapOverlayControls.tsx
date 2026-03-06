@@ -27,6 +27,7 @@ interface MapOverlayControlsProps {
   onMapStyleChange?: (id: string) => void;
   onOpenChat?: () => void;
   hasUnreadChat?: boolean;
+  hidden?: boolean;
 }
 
 export default memo(function MapOverlayControls({
@@ -52,12 +53,13 @@ export default memo(function MapOverlayControls({
   onMapStyleChange,
   onOpenChat,
   hasUnreadChat = false,
+  hidden = false,
 }: MapOverlayControlsProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) return null;
+  if (!mounted || hidden) return null;
 
   return createPortal(
     <>
