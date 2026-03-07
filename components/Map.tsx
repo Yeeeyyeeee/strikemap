@@ -376,9 +376,16 @@ export default function MapView({
       onMapReadyRef.current?.(m);
     });
 
+    // Track whether a layer-specific click handler already handled the event,
+    // so the general map click handler doesn't clear the selection on mobile
+    // (mobile touch coordinates are imprecise — queryRenderedFeatures at the
+    // exact tap point may miss the feature even though the layer handler fired).
+    let layerClickHandled = false;
+
     // Click on individual point — select incident
     m.on("click", LAYER_POINTS, (e) => {
       if (!e.features || e.features.length === 0) return;
+      layerClickHandled = true;
       const id = e.features[0].properties?.id;
       const incident = incidentMapRef.current.get(id);
       if (incident) onSelectIncidentRef.current(incident);
@@ -387,6 +394,7 @@ export default function MapView({
     // Click on cluster — zoom in
     m.on("click", LAYER_CLUSTERS, (e) => {
       if (!e.features || e.features.length === 0) return;
+      layerClickHandled = true;
       const clusterId = e.features[0].properties?.cluster_id;
       const src = m.getSource(SRC) as mapboxgl.GeoJSONSource;
       src.getClusterExpansionZoom(clusterId, (err, zoom) => {
@@ -397,13 +405,12 @@ export default function MapView({
     });
 
     // Click on empty area — deselect
-    m.on("click", (e) => {
-      const features = m.queryRenderedFeatures(e.point, {
-        layers: [LAYER_POINTS, LAYER_CLUSTERS, LAYER_SELECTED],
-      });
-      if (features.length === 0) {
-        onMapClickRef.current?.();
+    m.on("click", () => {
+      if (layerClickHandled) {
+        layerClickHandled = false;
+        return;
       }
+      onMapClickRef.current?.();
     });
 
     // Hover popup on points

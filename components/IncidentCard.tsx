@@ -408,7 +408,7 @@ export default function IncidentCard({ incident, map, onClose }: IncidentCardPro
   // --- Mobile or no coordinates: fullscreen panel ---
   if (isMobile || !hasCoords) {
     return (
-      <div className="fixed top-14 bottom-14 md:top-0 md:bottom-0 left-0 right-0 z-50 pointer-events-auto panel-enter w-full max-w-full overflow-hidden">
+      <div className="fixed top-14 bottom-14 md:top-0 md:bottom-0 left-0 right-0 z-[60] pointer-events-auto panel-enter w-full max-w-full overflow-hidden">
         <div
           ref={cardRef}
           className="bg-[#1a1a1a] md:border-t md:border-[#2a2a2a] md:rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.7)] overflow-hidden h-full md:max-h-[85vh] flex flex-col w-full"
