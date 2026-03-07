@@ -177,6 +177,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
   const [rulesAccepted, setRulesAccepted] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem(RULES_ACCEPTED_KEY) === "1" : false
@@ -718,6 +719,7 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
     if (!text || sending) return;
 
     setSending(true);
+    setSendError(null);
     setInput("");
     const currentReply = replyingTo;
     setReplyingTo(null);
@@ -747,14 +749,20 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
         }),
       });
       const data = await res.json();
-      if (data.message) {
+      if (!res.ok || data.error) {
+        // Server rejected the message — remove optimistic message and show error
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+        const errMsg = data.error === "Slow down" ? "Slow down — wait a few seconds" : data.error || "Failed to send";
+        setSendError(errMsg);
+        setTimeout(() => setSendError(null), 4000);
+      } else if (data.message) {
         setMessages((prev) =>
           prev.map((m) => (m.id === optimisticMsg.id ? data.message : m))
         );
         lastTimestamp.current = data.message.timestamp;
       }
     } catch {
-      // Keep optimistic message
+      // Network error — keep optimistic message, it will reconcile on next poll
     } finally {
       setSending(false);
     }
@@ -1400,6 +1408,16 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
+            </div>
+          )}
+
+          {/* Send error */}
+          {sendError && (
+            <div className="px-3 py-1.5 bg-red-500/10 border-t border-red-500/20 text-red-400 text-[11px] flex items-center gap-1.5">
+              <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {sendError}
             </div>
           )}
 
