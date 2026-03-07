@@ -360,32 +360,20 @@ export default function Home() {
     }
   }, [incidents]);
 
-  // Fetch announcement
+  // Fetch announcement + ticker text (merged into single request)
   useEffect(() => {
-    const fetchAnnouncement = () => {
+    const fetchAnnouncementAndTicker = () => {
       fetch("/api/announcement")
         .then((r) => r.json())
         .then((d) => {
           const text = d.announcement?.text || null;
           setAnnouncement(text);
+          setTickerText(d.tickerText || null);
         })
         .catch(() => {});
     };
-    fetchAnnouncement();
-    const interval = setInterval(fetchAnnouncement, 30_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch ticker text
-  useEffect(() => {
-    const fetchTickerText = () => {
-      fetch("/api/ticker-text")
-        .then((r) => r.json())
-        .then((d) => setTickerText(d.text || null))
-        .catch(() => {});
-    };
-    fetchTickerText();
-    const interval = setInterval(fetchTickerText, 30_000);
+    fetchAnnouncementAndTicker();
+    const interval = setInterval(fetchAnnouncementAndTicker, 30_000);
     return () => clearInterval(interval);
   }, []);
 

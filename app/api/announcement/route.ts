@@ -1,22 +1,29 @@
 import { NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { isAdminRequest } from "@/lib/adminAuth";
-import { REDIS_ANNOUNCEMENT_KEY } from "@/lib/constants";
+import { REDIS_ANNOUNCEMENT_KEY, REDIS_TICKER_TEXT_KEY } from "@/lib/constants";
 
 export async function GET() {
   const r = getRedis();
-  if (!r) return NextResponse.json({ announcement: null });
+  if (!r) return NextResponse.json({ announcement: null, tickerText: null });
 
   try {
-    const raw = await r.get(REDIS_ANNOUNCEMENT_KEY);
-    if (!raw) return NextResponse.json({ announcement: null });
-    const announcement = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const [annRaw, tickerRaw] = await Promise.all([
+      r.get(REDIS_ANNOUNCEMENT_KEY),
+      r.get(REDIS_TICKER_TEXT_KEY),
+    ]);
+    const announcement = annRaw
+      ? typeof annRaw === "string" ? JSON.parse(annRaw) : annRaw
+      : null;
+    const tickerData = tickerRaw
+      ? typeof tickerRaw === "string" ? JSON.parse(tickerRaw) : tickerRaw
+      : null;
     return NextResponse.json(
-      { announcement },
+      { announcement, tickerText: tickerData?.text || null },
       { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }
     );
   } catch {
-    return NextResponse.json({ announcement: null });
+    return NextResponse.json({ announcement: null, tickerText: null });
   }
 }
 

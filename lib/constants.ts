@@ -117,7 +117,7 @@ export const INTERCEPTION_TIME_WINDOW_MS = 30 * 60 * 1000;        // 30 min matc
 export const INTERCEPTION_BANNER_AUTO_DISMISS_MS = 120_000;       // 2 min client auto-dismiss
 
 // --- Siren detection ---
-export const SIREN_POLL_MS = 10_000;
+export const SIREN_POLL_MS = 25_000;
 export const SIREN_EXPIRY_MS = 10 * 60 * 1000;
 
 // --- Satellite / FIRMS ---
