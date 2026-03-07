@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/I18nContext";
 import TelegramToast from "@/components/TelegramToast";
@@ -58,6 +59,7 @@ export default function RootLayout({
         <I18nProvider>
           {children}
           <TelegramToast />
+          <Analytics />
         </I18nProvider>
       </body>
     </html>
