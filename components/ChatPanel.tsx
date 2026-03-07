@@ -370,6 +370,34 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
     window.addEventListener("touchcancel", onUp);
   }, [onMoveMove, onMoveEnd, onResizeMove, onResizeEnd]);
 
+  // ── Swipe-down to dismiss on mobile ──
+  const swipeStartY = useRef<number | null>(null);
+  const onSwipeStart = useCallback((y: number) => { swipeStartY.current = y; }, []);
+  const onSwipeEnd = useCallback((y: number) => {
+    if (swipeStartY.current !== null && y - swipeStartY.current > 60) onClose();
+    swipeStartY.current = null;
+  }, [onClose]);
+
+  // ── Escape key to close ──
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // ── Clean up body styles when panel closes ──
+  useEffect(() => {
+    if (!open) {
+      moving.current = false;
+      resizing.current = false;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    }
+  }, [open]);
+
   // Sync tab when parent changes defaultTab
   useEffect(() => {
     if (defaultTab && open) setActiveTab(defaultTab);
@@ -773,23 +801,34 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
       }
     >
     <div className="flex flex-col overflow-hidden h-full md:rounded-lg">
-      {/* Header — drag handle on desktop */}
+      {/* Header — drag handle on desktop, swipe-down to dismiss on mobile */}
       <div
         className={`border-b border-[#2a2a2a] bg-[#0a0a0a] md:bg-transparent ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}`}
         onMouseDown={(e) => {
           if (isMobile) return;
-          // Don't start drag if clicking a button
           if ((e.target as HTMLElement).closest("button")) return;
           e.preventDefault();
           onMoveStart(e.clientX, e.clientY);
         }}
         onTouchStart={(e) => {
-          if (isMobile) return;
+          if (isMobile) {
+            if (!(e.target as HTMLElement).closest("button")) onSwipeStart(e.touches[0].clientY);
+            return;
+          }
           if ((e.target as HTMLElement).closest("button")) return;
           onMoveStart(e.touches[0].clientX, e.touches[0].clientY);
           startTouchDrag();
         }}
+        onTouchEnd={(e) => {
+          if (isMobile && e.changedTouches.length > 0) onSwipeEnd(e.changedTouches[0].clientY);
+        }}
       >
+        {/* Mobile swipe indicator pill */}
+        {isMobile && (
+          <div className="flex justify-center pt-1.5 pb-0">
+            <div className="w-10 h-1 rounded-full bg-neutral-600" />
+          </div>
+        )}
         <div className="px-3 py-2 md:px-2 md:py-1.5 flex items-center justify-between">
           <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-0.5 min-w-0 overflow-x-auto">
             <button
@@ -864,9 +903,10 @@ export default memo(function ChatPanel({ open, onClose, defaultTab, modMode, mod
             )}
             <button
               onClick={onClose}
-              className="text-red-400/70 hover:text-red-400 p-1 transition-colors"
+              className="flex items-center gap-1 text-red-400 hover:text-red-300 hover:bg-red-500/15 px-2 py-1 transition-colors rounded-md active:bg-red-500/20"
+              title="Close (Esc)"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>

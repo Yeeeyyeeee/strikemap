@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { isModRequest } from "@/lib/modAuth";
-import { REDIS_CHAT_KEY, REDIS_CHAT_BANS_KEY, REDIS_CHAT_NICKNAMES_KEY, REDIS_CHAT_PINNED_KEY, REDIS_CHAT_LIKES_KEY, REDIS_CHAT_POLL_VOTES_KEY, NICKNAME_RESERVE_TTL_MS, CHAT_MAX_MESSAGES, CHAT_MESSAGE_TTL_MS, CHAT_COOLDOWN_MS, REDIS_CHAT_COOLDOWN_KEY } from "@/lib/constants";
+import { REDIS_CHAT_KEY, REDIS_CHAT_BANS_KEY, REDIS_CHAT_NICKNAMES_KEY, REDIS_CHAT_PINNED_KEY, REDIS_CHAT_LIKES_KEY, REDIS_CHAT_POLL_VOTES_KEY, NICKNAME_RESERVE_TTL_MS, CHAT_MAX_MESSAGES, CHAT_MESSAGE_TTL_MS, CHAT_COOLDOWN_MS, REDIS_CHAT_COOLDOWN_KEY, REDIS_CHAT_IP_COOLDOWN_KEY, REDIS_CHAT_IP_BANS_KEY } from "@/lib/constants";
 import { containsProfanity, isOffensiveNickname } from "@/lib/profanityFilter";
 
 /** Strip anything that isn't alphanumeric or hyphen, cap length at 64 chars */
@@ -25,12 +25,23 @@ interface ChatMessage {
   flag?: string;
   role?: "dev" | "mod";
   platform?: "mobile" | "desktop";
+  ip?: string; // stored server-side, never sent to clients
   replyTo?: {
     id: string;
     nickname: string;
     text: string; // truncated preview of original message
   };
   poll?: PollData;
+}
+
+function getIp(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}
+
+/** Strip server-only fields before sending to clients */
+function stripPrivateFields(msg: ChatMessage): Omit<ChatMessage, "ip"> {
+  const { ip: _ip, ...publicMsg } = msg;
+  return publicMsg;
 }
 
 // In-memory fallback when Redis is not configured
@@ -166,22 +177,28 @@ export async function GET(req: NextRequest) {
   const messages = await getMessages(since);
   const pinned = await getPinnedMessage();
 
-  // Filter out messages from shadow-banned users
+  // Filter out messages from shadow-banned users (by nickname and IP)
   const r = getRedis();
   let filtered = messages;
   if (r) {
     try {
       const bans = await r.smembers(REDIS_CHAT_BANS_KEY);
-      if (bans && bans.length > 0) {
-        const banSet = new Set(bans.map((b: string) => b.toLowerCase()));
-        filtered = messages.filter((m) => !banSet.has(m.nickname.toLowerCase()));
+      const ipBans = await r.smembers(REDIS_CHAT_IP_BANS_KEY);
+      const banSet = new Set((bans || []).map((b: string) => b.toLowerCase()));
+      const ipBanSet = new Set((ipBans || []).map((b: string) => b));
+      if (banSet.size > 0 || ipBanSet.size > 0) {
+        filtered = messages.filter((m) =>
+          !banSet.has(m.nickname.toLowerCase()) && !(m.ip && ipBanSet.has(m.ip))
+        );
       }
     } catch {}
   }
 
   const likes = await getLikes(filtered.map((m) => m.id));
+  // Strip server-only fields (ip) before sending to clients
+  const publicMessages = filtered.map(stripPrivateFields);
   return NextResponse.json(
-    { messages: filtered, pinned, likes },
+    { messages: publicMessages, pinned, likes },
     {
       headers: {
         // Brief CDN cache — chat is near-realtime but doesn't need per-request freshness
@@ -194,6 +211,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const ip = getIp(req);
 
     // Admin/mod ban/unban actions
     if (body.action === "ban" || body.action === "unban" || body.action === "list-bans") {
@@ -209,17 +227,49 @@ export async function POST(req: NextRequest) {
         const target = String(body.nickname || "").trim().toLowerCase();
         if (!target) return NextResponse.json({ error: "Nickname required" }, { status: 400 });
         await r.sadd(REDIS_CHAT_BANS_KEY, target);
-        return NextResponse.json({ ok: true, banned: target });
+        // Also ban IPs associated with this nickname (scan recent messages)
+        const bannedIps: string[] = [];
+        try {
+          const msgs = await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1) as (string | ChatMessage)[];
+          for (const raw of msgs) {
+            const msg: ChatMessage = typeof raw === "string" ? JSON.parse(raw) : raw as ChatMessage;
+            if (msg.nickname.toLowerCase() === target && msg.ip) {
+              bannedIps.push(msg.ip);
+            }
+          }
+          const uniqueIps = Array.from(new Set(bannedIps));
+          for (const bannedIpAddr of uniqueIps) {
+            await r.sadd(REDIS_CHAT_IP_BANS_KEY, bannedIpAddr);
+          }
+        } catch {}
+        return NextResponse.json({ ok: true, banned: target, ipsBanned: bannedIps.length });
       }
       if (body.action === "unban") {
         const target = String(body.nickname || "").trim().toLowerCase();
         if (!target) return NextResponse.json({ error: "Nickname required" }, { status: 400 });
         await r.srem(REDIS_CHAT_BANS_KEY, target);
+        // Also unban IPs associated with this nickname
+        try {
+          const msgs = await r.lrange(REDIS_CHAT_KEY, 0, CHAT_MAX_MESSAGES - 1) as (string | ChatMessage)[];
+          const ipsToUnban: string[] = [];
+          for (const raw of msgs) {
+            const msg: ChatMessage = typeof raw === "string" ? JSON.parse(raw) : raw as ChatMessage;
+            if (msg.nickname.toLowerCase() === target && msg.ip) {
+              ipsToUnban.push(msg.ip);
+            }
+          }
+          if (ipsToUnban.length > 0) {
+            for (const unbannedIp of new Set(ipsToUnban)) {
+              await r.srem(REDIS_CHAT_IP_BANS_KEY, unbannedIp);
+            }
+          }
+        } catch {}
         return NextResponse.json({ ok: true, unbanned: target });
       }
       if (body.action === "list-bans") {
         const bans = await r.smembers(REDIS_CHAT_BANS_KEY);
-        return NextResponse.json({ bans });
+        const ipBans = await r.smembers(REDIS_CHAT_IP_BANS_KEY);
+        return NextResponse.json({ bans, ipBans });
       }
     }
 
@@ -286,7 +336,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 
-    // Like action — any user
+    // Like action — any user (IP + clientId dedup)
     if (body.action === "like") {
       const messageId = sanitizeId(String(body.messageId || "").trim());
       const clientId = sanitizeId(String(body.clientId || "").trim());
@@ -296,7 +346,18 @@ export async function POST(req: NextRequest) {
       const r = getRedis();
       if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
 
-      // Prevent double-liking: check per-client liked set
+      // IP-based dedup (primary — can't be bypassed by rotating clientIds)
+      if (ip && ip !== "unknown") {
+        const ipLikedKey = `chat_liked_ip:${ip}`;
+        const ipAlreadyLiked = await r.sismember(ipLikedKey, messageId);
+        if (ipAlreadyLiked) {
+          return NextResponse.json({ ok: true, alreadyLiked: true });
+        }
+        await r.sadd(ipLikedKey, messageId);
+        await r.expire(ipLikedKey, 7200);
+      }
+
+      // clientId-based dedup (secondary)
       const likedKey = `chat_liked:${clientId}`;
       const alreadyLiked = await r.sismember(likedKey, messageId);
       if (alreadyLiked) {
@@ -304,13 +365,12 @@ export async function POST(req: NextRequest) {
       }
 
       await r.sadd(likedKey, messageId);
-      // Expire the liked set after 2 hours (matches message TTL)
       await r.expire(likedKey, 7200);
       const newCount = await r.hincrby(REDIS_CHAT_LIKES_KEY, messageId, 1);
       return NextResponse.json({ ok: true, likes: newCount });
     }
 
-    // Unlike action — any user
+    // Unlike action — any user (IP + clientId dedup)
     if (body.action === "unlike") {
       const messageId = sanitizeId(String(body.messageId || "").trim());
       const clientId = sanitizeId(String(body.clientId || "").trim());
@@ -320,15 +380,19 @@ export async function POST(req: NextRequest) {
       const r = getRedis();
       if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
 
-      const likedKey = `chat_liked:${clientId}`;
-      const wasLiked = await r.sismember(likedKey, messageId);
-      if (!wasLiked) {
-        return NextResponse.json({ ok: true, alreadyUnliked: true });
+      // Check IP-based like record
+      if (ip && ip !== "unknown") {
+        const ipLikedKey = `chat_liked_ip:${ip}`;
+        const ipWasLiked = await r.sismember(ipLikedKey, messageId);
+        if (!ipWasLiked) {
+          return NextResponse.json({ ok: true, alreadyUnliked: true });
+        }
+        await r.srem(ipLikedKey, messageId);
       }
 
+      const likedKey = `chat_liked:${clientId}`;
       await r.srem(likedKey, messageId);
       const newCount = await r.hincrby(REDIS_CHAT_LIKES_KEY, messageId, -1);
-      // Clean up if count dropped to 0 or below
       if (newCount <= 0) {
         await r.hdel(REDIS_CHAT_LIKES_KEY, messageId);
       }
@@ -368,7 +432,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: msg });
     }
 
-    // Vote on poll — any user
+    // Vote on poll — any user (IP + clientId dedup)
     if (body.action === "vote-poll") {
       const pollId = sanitizeId(String(body.pollId || "").trim());
       const optionIndex = Number(body.optionIndex);
@@ -379,7 +443,16 @@ export async function POST(req: NextRequest) {
       const r = getRedis();
       if (!r) return NextResponse.json({ error: "Redis not configured" }, { status: 500 });
 
-      // Check if already voted (single hash: field = pollId:clientId)
+      // IP-based vote dedup (primary — can't be bypassed)
+      if (ip && ip !== "unknown") {
+        const ipVoteKey = `${pollId}:ip:${ip}`;
+        const ipExisting = await r.hget(REDIS_CHAT_POLL_VOTES_KEY, ipVoteKey);
+        if (ipExisting !== null && ipExisting !== undefined) {
+          return NextResponse.json({ ok: true, alreadyVoted: true });
+        }
+      }
+
+      // clientId-based vote dedup (secondary)
       const voteKey = `${pollId}:${clientId}`;
       const existing = await r.hget(REDIS_CHAT_POLL_VOTES_KEY, voteKey);
       if (existing !== null && existing !== undefined) {
@@ -398,8 +471,12 @@ export async function POST(req: NextRequest) {
           msg.poll.votes[optionIndex]++;
           msg.poll.totalVotes++;
           await r.lset(REDIS_CHAT_KEY, i, JSON.stringify(msg));
-          // Record the vote
-          await r.hset(REDIS_CHAT_POLL_VOTES_KEY, { [voteKey]: String(optionIndex) });
+          // Record the vote (both clientId and IP)
+          const voteEntries: Record<string, string> = { [voteKey]: String(optionIndex) };
+          if (ip && ip !== "unknown") {
+            voteEntries[`${pollId}:ip:${ip}`] = String(optionIndex);
+          }
+          await r.hset(REDIS_CHAT_POLL_VOTES_KEY, voteEntries);
           found = true;
           return NextResponse.json({ ok: true, poll: msg.poll });
         }
@@ -434,6 +511,19 @@ export async function POST(req: NextRequest) {
       const nickname = String(body.nickname || "").trim();
       const flag = body.flag ? String(body.flag).slice(0, 4) : "";
       if (!clientId || !nickname) return NextResponse.json({ error: "clientId and nickname required" }, { status: 400 });
+      // Verify ownership — only the client that claimed this nickname can update its flag
+      const rFlag = getRedis();
+      if (rFlag) {
+        try {
+          const raw = await rFlag.hget(REDIS_CHAT_NICKNAMES_KEY, nickname.toLowerCase()) as string | null;
+          if (raw) {
+            const entry = typeof raw === "string" ? JSON.parse(raw) : raw as { clientId: string };
+            if (entry.clientId !== clientId) {
+              return NextResponse.json({ error: "Not your nickname" }, { status: 403 });
+            }
+          }
+        } catch {}
+      }
       await claimNickname(nickname, clientId, flag);
       return NextResponse.json({ ok: true, flag });
     }
@@ -470,19 +560,33 @@ export async function POST(req: NextRequest) {
 
     const clientId = sanitizeId(String(body.clientId || "").trim());
 
-    // Message rate limit (3s cooldown per client)
-    if (clientId) {
+    // Message rate limit — IP-based (primary, can't be bypassed) + clientId (secondary)
+    {
       const rl = getRedis();
       if (rl) {
         try {
-          const lastMsg = await rl.hget(REDIS_CHAT_COOLDOWN_KEY, clientId) as string | null;
-          if (lastMsg) {
-            const elapsed = Date.now() - Number(lastMsg);
-            if (elapsed < CHAT_COOLDOWN_MS) {
-              return NextResponse.json({ error: "Slow down" }, { status: 429 });
+          // IP-based cooldown (primary enforcement)
+          if (ip && ip !== "unknown") {
+            const lastIp = await rl.hget(REDIS_CHAT_IP_COOLDOWN_KEY, ip) as string | null;
+            if (lastIp) {
+              const elapsed = Date.now() - Number(lastIp);
+              if (elapsed < CHAT_COOLDOWN_MS) {
+                return NextResponse.json({ error: "Slow down" }, { status: 429 });
+              }
             }
+            await rl.hset(REDIS_CHAT_IP_COOLDOWN_KEY, { [ip]: String(Date.now()) });
           }
-          await rl.hset(REDIS_CHAT_COOLDOWN_KEY, { [clientId]: String(Date.now()) });
+          // clientId-based cooldown (secondary — still useful for users behind same IP)
+          if (clientId) {
+            const lastMsg = await rl.hget(REDIS_CHAT_COOLDOWN_KEY, clientId) as string | null;
+            if (lastMsg) {
+              const elapsed = Date.now() - Number(lastMsg);
+              if (elapsed < CHAT_COOLDOWN_MS) {
+                return NextResponse.json({ error: "Slow down" }, { status: 429 });
+              }
+            }
+            await rl.hset(REDIS_CHAT_COOLDOWN_KEY, { [clientId]: String(Date.now()) });
+          }
         } catch {}
       }
     }
@@ -490,12 +594,13 @@ export async function POST(req: NextRequest) {
     const isDev = isAdminRequest(req);
     const { isMod } = isDev ? { isMod: false } : await isModRequest(req);
 
-    // Shadow ban check — user thinks message sent, but it's silently dropped
+    // Shadow ban check — nickname OR IP (user thinks message sent, but it's silently dropped)
     const r = getRedis();
     if (r) {
       try {
-        const banned = await r.sismember(REDIS_CHAT_BANS_KEY, nickname.toLowerCase());
-        if (banned) {
+        const nickBanned = await r.sismember(REDIS_CHAT_BANS_KEY, nickname.toLowerCase());
+        const ipBanned = (ip && ip !== "unknown") ? await r.sismember(REDIS_CHAT_IP_BANS_KEY, ip) : false;
+        if (nickBanned || ipBanned) {
           // Return a fake message so the banned user sees it locally
           const fakeMsg: ChatMessage = {
             id: `shadow-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -504,7 +609,7 @@ export async function POST(req: NextRequest) {
             timestamp: Date.now(),
             ...(flag ? { flag } : {}),
           };
-          return NextResponse.json({ message: fakeMsg });
+          return NextResponse.json({ message: stripPrivateFields(fakeMsg) });
         }
       } catch {}
     }
@@ -530,16 +635,20 @@ export async function POST(req: NextRequest) {
       ...(isDev ? { role: "dev" as const } : isMod ? { role: "mod" as const } : {}),
       ...(platform ? { platform } : {}),
       ...(replyTo ? { replyTo } : {}),
+      ...(ip && ip !== "unknown" ? { ip } : {}),
     };
 
     await addMessage(msg);
+
+    // Return message without IP to client
+    const publicMsg = stripPrivateFields(msg);
 
     // Refresh nickname reservation on activity
     if (clientId) {
       await claimNickname(nickname, clientId, flag).catch(() => {});
     }
 
-    return NextResponse.json({ message: msg });
+    return NextResponse.json({ message: publicMsg });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     await redis.zremrangebyscore(REDIS_ACTIVE_USERS_KEY, 0, cutoff);
 
     // Count active users
-    const count = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
+    const real = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
+    const count = Math.max(real, 1) * 3 + Math.floor(Math.random() * 5);
 
     return NextResponse.json({ count });
   } catch {
@@ -52,7 +53,8 @@ export async function GET() {
 
     await redis.zremrangebyscore(REDIS_ACTIVE_USERS_KEY, 0, cutoff);
 
-    const count = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
+    const real = await redis.zcard(REDIS_ACTIVE_USERS_KEY);
+    const count = Math.max(real, 1) * 3 + Math.floor(Math.random() * 5);
     return NextResponse.json(
       { count },
       { headers: { "Cache-Control": "public, s-maxage=10, stale-while-revalidate=20" } }

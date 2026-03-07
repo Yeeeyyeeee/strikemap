@@ -59,6 +59,8 @@ export const REDIS_CHAT_PINNED_KEY = "chat_pinned_v1";
 export const REDIS_CHAT_LIKES_KEY = "chat_likes_v1";
 export const CHAT_COOLDOWN_MS = 3_000; // 3s between messages
 export const REDIS_CHAT_COOLDOWN_KEY = "chat_msg_cd";
+export const REDIS_CHAT_IP_COOLDOWN_KEY = "chat_msg_cd_ip";
+export const REDIS_CHAT_IP_BANS_KEY = "chat_bans_ip";
 
 // --- Map zoom ---
 export const ZOOM_DETAIL_THRESHOLD = 8;

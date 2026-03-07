@@ -17,6 +17,10 @@ import sharp from "sharp";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// Limit concurrent satellite image processing to prevent OOM on VPS
+const MAX_CONCURRENT = 2;
+let activeRequests = 0;
+
 export async function GET(request: Request) {
   // Check credentials before doing anything
   if (
@@ -46,6 +50,14 @@ export async function GET(request: Request) {
     );
   }
 
+  if (activeRequests >= MAX_CONCURRENT) {
+    return NextResponse.json(
+      { error: "Satellite imagery processing busy, try again shortly" },
+      { status: 503 },
+    );
+  }
+
+  activeRequests++;
   try {
     // Dynamic imports to avoid module-load crashes
     const [
@@ -234,5 +246,7 @@ export async function GET(request: Request) {
       { error: "Failed to fetch satellite imagery" },
       { status: 500 },
     );
+  } finally {
+    activeRequests--;
   }
 }
